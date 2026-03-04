@@ -367,16 +367,24 @@ a:hover { color: var(--primary-700); }
 ═══════════════════════════════════════════════════ */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, max-content));
+  grid-template-columns: repeat(auto-fill, minmax(var(--cw, 210px), max-content));
   gap: 0.75rem 1rem;
   justify-content: center;
 }
+
+/* Zoom levels — CSS custom properties cascade from grid to all child cards */
+.card-grid            { --cw: 210px; --cmh: 150px; }
+.card-grid[data-zoom="0"] { --cw:  80px; --cmh:  80px; }
+.card-grid[data-zoom="1"] { --cw: 120px; --cmh: 120px; }
+.card-grid[data-zoom="2"] { --cw: 210px; --cmh: 150px; }
+.card-grid[data-zoom="3"] { --cw: 240px; --cmh: 175px; }
+.card-grid[data-zoom="4"] { --cw: 270px; --cmh: 200px; }
 
 /* ═══════════════════════════════════════════════════
    CARD BASE
 ═══════════════════════════════════════════════════ */
 .card {
-  width: 220px;
+  width: var(--cw, 210px);
   overflow: hidden;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -391,7 +399,7 @@ a:hover { color: var(--primary-700); }
 /* ─── Card media (image / avatar / cover area) ─── */
 .card-media {
   position: relative;
-  height: 130px;
+  height: var(--cmh, 150px);
   overflow: hidden;
 }
 /* Category gradients (contact) */

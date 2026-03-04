@@ -31,11 +31,17 @@ function saveState() {
   localStorage.setItem('bbg-prototypes', JSON.stringify(state.prototypes));
 }
 function loadState() {
-  const c = localStorage.getItem('bbg-contacts');
-  const p = localStorage.getItem('bbg-prototypes');
-  state.contacts   = c ? JSON.parse(c) : SEED_CONTACTS;
-  state.prototypes = p ? JSON.parse(p) : SEED_PROTOTYPES;
-  if (!c || !p) saveState();
+  try {
+    const c = localStorage.getItem('bbg-contacts');
+    const p = localStorage.getItem('bbg-prototypes');
+    state.contacts   = c ? JSON.parse(c) : SEED_CONTACTS;
+    state.prototypes = p ? JSON.parse(p) : SEED_PROTOTYPES;
+    if (!c || !p) saveState();
+  } catch(e) {
+    state.contacts   = SEED_CONTACTS;
+    state.prototypes = SEED_PROTOTYPES;
+    saveState();
+  }
 }
 
 // ── UTILS ──────────────────────────────────────────
@@ -172,45 +178,47 @@ function renderContacts() {
   updateFilterCount('contacts');
 
   if (list.length === 0) {
-    gridEl.innerHTML = ''; gridEl.classList.add('hidden');
-    listEl.innerHTML = ''; listEl.classList.add('hidden');
-    empty.classList.remove('hidden');
+    gridEl.innerHTML = '';    gridEl.style.display = 'none';
+    listEl.innerHTML = '';    listEl.style.display = 'none';
+    empty.style.display = '';
     return;
   }
-  empty.classList.add('hidden');
+  empty.style.display = 'none';
 
   if (state.contactsView === 'list') {
-    gridEl.classList.add('hidden');
-    listEl.classList.remove('hidden');
+    gridEl.style.display = 'none';
+    listEl.style.display = '';
     listEl.innerHTML = buildContactsTable(list);
   } else {
-    listEl.classList.add('hidden');
-    gridEl.classList.remove('hidden');
-    const { width } = cardDims(state.contactsZoom);
-    gridEl.style.gridTemplateColumns = `repeat(auto-fill, minmax(${width}px, max-content))`;
+    listEl.style.display = 'none';
+    gridEl.style.display = '';
+    gridEl.dataset.zoom  = state.contactsZoom;   // CSS custom props handle card size
     gridEl.innerHTML = list.map(c => contactCard(c, state.contactsZoom)).join('');
   }
 }
 
-/* ── Contact card (zoom-aware) ── */
+/* ── Contact card (zoom-aware — sizes come from CSS custom props on .card-grid) ── */
 function contactCard(c, zoom) {
-  const { isMin, width, mediaH } = cardDims(zoom);
-  const urg = c.taskUrgency || 'normal';
+  const isMin = zoom <= 1;
+  const cat   = c.category || 'auteur';
+  const urg   = c.taskUrgency || 'normal';
 
   const mediaContent = c.photo
-    ? `<img src="${esc(c.photo)}" class="card-photo" alt="" />`
-    : `<div class="card-avatar card-avatar-${c.category}">${initials(c.name)}</div>`;
+    ? `<img src="${c.photo}" class="card-photo" alt="" />`
+    : `<div class="card-avatar card-avatar-${cat}">${initials(c.name)}</div>`;
 
-  const badge = isMin
-    ? `<span class="badge badge-${c.category} card-badge" style="font-size:.6rem;padding:.1rem .35rem">${esc(c.category.charAt(0).toUpperCase())}</span>`
-    : `<span class="badge badge-${c.category} card-badge">${esc(c.category)}</span>`;
+  const badge = `<span class="badge badge-${cat} card-badge"
+    style="${isMin ? 'font-size:.6rem;padding:.1rem .35rem' : ''}">${
+      isMin ? (cat.charAt(0) || '?').toUpperCase() : esc(cat)
+    }</span>`;
 
   const extLink = !isMin && c.website
-    ? `<a class="card-ext-link" href="${esc(c.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Site web">${ICONS.extLink}</a>`
+    ? `<a class="card-ext-link" href="${c.website}" target="_blank" rel="noopener"
+         onclick="event.stopPropagation()">${ICONS.extLink}</a>`
     : '';
 
-  const editBtn = `<button class="card-edit-btn" ${isMin ? 'style="padding:.2rem"' : ''}
-    onclick="event.stopPropagation();editContact('${c.id}')" title="Modifier">${ICONS.pencil}</button>`;
+  const editBtn = `<button class="card-edit-btn"
+    onclick="event.stopPropagation();editContact('${c.id}')">${ICONS.pencil}</button>`;
 
   let body = '';
   if (!isMin) {
@@ -226,24 +234,23 @@ function contactCard(c, zoom) {
         <span class="card-task-text">${esc(c.task)}</span>
       </div>`;
     }
-    const taskIndicator = c.task && zoom < 4
-      ? `<span class="badge badge-urgence-${urg}" style="font-size:.6rem">${esc(urg.charAt(0).toUpperCase())}</span>`
+    const taskPill = c.task && zoom < 4
+      ? `<span class="badge badge-urgence-${urg}" style="font-size:.6rem">${esc(urg[0].toUpperCase())}</span>`
       : '';
     body = `<div class="card-body">
       <h3 class="card-title">${esc(c.name)}</h3>
       ${subtitle ? `<p class="card-subtitle">${esc(subtitle)}</p>` : ''}
       ${extra}
       <div class="card-footer">
-        <span class="badge badge-${c.status}">${esc(c.status)}</span>
-        ${taskIndicator}
+        <span class="badge badge-${c.status || 'actif'}">${esc(c.status || 'actif')}</span>
+        ${taskPill}
       </div>
     </div>`;
   }
 
-  return `<div class="card card-hover card-bg-${c.category}"
-    style="width:${width}px"
+  return `<div class="card card-hover card-bg-${cat}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
-    <div class="card-media card-media-${c.category}" style="height:${mediaH}px">
+    <div class="card-media card-media-${cat}">
       ${mediaContent}${badge}${extLink}${editBtn}
     </div>
     ${body}
@@ -314,29 +321,28 @@ function renderPrototypes() {
   updateFilterCount('prototypes');
 
   if (list.length === 0) {
-    gridEl.innerHTML = ''; gridEl.classList.add('hidden');
-    listEl.innerHTML = ''; listEl.classList.add('hidden');
-    empty.classList.remove('hidden');
+    gridEl.innerHTML = '';    gridEl.style.display = 'none';
+    listEl.innerHTML = '';    listEl.style.display = 'none';
+    empty.style.display = '';
     return;
   }
-  empty.classList.add('hidden');
+  empty.style.display = 'none';
 
   if (state.prototypesView === 'list') {
-    gridEl.classList.add('hidden');
-    listEl.classList.remove('hidden');
+    gridEl.style.display = 'none';
+    listEl.style.display = '';
     listEl.innerHTML = buildPrototypesTable(list);
   } else {
-    listEl.classList.add('hidden');
-    gridEl.classList.remove('hidden');
-    const { width } = cardDims(state.prototypesZoom);
-    gridEl.style.gridTemplateColumns = `repeat(auto-fill, minmax(${width}px, max-content))`;
+    listEl.style.display = 'none';
+    gridEl.style.display = '';
+    gridEl.dataset.zoom  = state.prototypesZoom;
     gridEl.innerHTML = list.map(p => prototypeCard(p, state.prototypesZoom)).join('');
   }
 }
 
-/* ── Prototype card (zoom-aware) ── */
+/* ── Prototype card (zoom-aware — sizes come from CSS custom props on .card-grid) ── */
 function prototypeCard(p, zoom) {
-  const { isMin, width, mediaH } = cardDims(zoom);
+  const isMin = zoom <= 1;
   const icon = PROTO_ICONS[p.status] || '🎮';
 
   const badge = isMin
@@ -361,9 +367,8 @@ function prototypeCard(p, zoom) {
   }
 
   return `<div class="card card-hover"
-    style="width:${width}px"
     onclick="openDetail('prototype','${p.id}')" title="${esc(p.title)}">
-    <div class="card-media card-media-${p.status}" style="height:${mediaH}px">
+    <div class="card-media card-media-${p.status}">
       <span class="card-game-icon">${icon}</span>
       ${badge}${editBtn}
     </div>
