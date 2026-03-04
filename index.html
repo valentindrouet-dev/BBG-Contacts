@@ -116,6 +116,22 @@
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="contacts-count">0 contact</p>
       <div class="toolbar-right">
+        <!-- Zoom -->
+        <div class="zoom-wrap" id="contacts-zoom-wrap">
+          <svg class="zoom-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="range" class="zoom-slider" id="contacts-zoom" min="0" max="4" step="1" value="2" />
+          <svg class="zoom-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <!-- View toggle -->
+        <div class="view-toggle">
+          <button class="view-btn active" id="contacts-view-grid" title="Vue vignettes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="view-btn" id="contacts-view-list" title="Vue liste">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+        <!-- Sort -->
         <div class="sort-wrap">
           <select class="sort-select" id="contacts-sort">
             <option value="name">Nom</option>
@@ -123,7 +139,7 @@
             <option value="status">Statut</option>
             <option value="company">Entreprise</option>
           </select>
-          <button class="sort-order-btn" id="contacts-sort-order" data-order="asc" title="Inverser le tri">
+          <button class="sort-order-btn" id="contacts-sort-order" title="Inverser le tri">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="contacts-sort-icon">
               <polyline points="18 15 12 9 6 15"/>
             </svg>
@@ -132,8 +148,9 @@
       </div>
     </div>
 
-    <!-- Card grid -->
+    <!-- Card grid / list view -->
     <div class="card-grid" id="contacts-grid"></div>
+    <div id="contacts-list" class="hidden"></div>
 
     <!-- Empty state -->
     <div class="empty-state hidden" id="contacts-empty">
@@ -198,13 +215,29 @@
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="prototypes-count">0 prototype</p>
       <div class="toolbar-right">
+        <!-- Zoom -->
+        <div class="zoom-wrap" id="prototypes-zoom-wrap">
+          <svg class="zoom-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="range" class="zoom-slider" id="prototypes-zoom" min="0" max="4" step="1" value="2" />
+          <svg class="zoom-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <!-- View toggle -->
+        <div class="view-toggle">
+          <button class="view-btn active" id="prototypes-view-grid" title="Vue vignettes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="view-btn" id="prototypes-view-list" title="Vue liste">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+        <!-- Sort -->
         <div class="sort-wrap">
           <select class="sort-select" id="prototypes-sort">
             <option value="title">Titre</option>
             <option value="status">Statut</option>
             <option value="createdAt">Date d'ajout</option>
           </select>
-          <button class="sort-order-btn" id="prototypes-sort-order" data-order="asc" title="Inverser le tri">
+          <button class="sort-order-btn" id="prototypes-sort-order" title="Inverser le tri">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="prototypes-sort-icon">
               <polyline points="18 15 12 9 6 15"/>
             </svg>
@@ -213,8 +246,9 @@
       </div>
     </div>
 
-    <!-- Card grid -->
+    <!-- Card grid / list view -->
     <div class="card-grid" id="prototypes-grid"></div>
+    <div id="prototypes-list" class="hidden"></div>
 
     <!-- Empty state -->
     <div class="empty-state hidden" id="prototypes-empty">
@@ -233,7 +267,7 @@
      MODAL — CONTACT
 ═══════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="modal-contact">
-  <div class="modal">
+  <div class="modal modal-wide">
     <div class="modal-header">
       <h2 id="modal-contact-title">Nouveau contact</h2>
       <button class="modal-close" onclick="closeModal('contact')">✕</button>
@@ -284,6 +318,71 @@
           <label class="radio-label"><input type="radio" name="contact-status" value="prospect" /> Prospect</label>
         </div>
       </div>
+
+      <!-- Photo -->
+      <div class="form-group full">
+        <label>Photo</label>
+        <div class="photo-section">
+          <div class="photo-preview-wrap" id="contact-photo-preview">
+            <div class="photo-placeholder">👤</div>
+          </div>
+          <div class="photo-controls">
+            <input class="photo-url-input" type="url" id="contact-photo-url"
+              placeholder="URL de la photo (https://…)" oninput="previewContactPhoto()" />
+            <div class="photo-row">
+              <label class="photo-upload-label">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Importer une image
+                <input type="file" accept="image/*" id="contact-photo-file"
+                  class="photo-upload-input" onchange="uploadContactPhoto(event)" />
+              </label>
+              <button type="button" class="photo-clear-btn" onclick="clearContactPhoto()">Effacer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tâche + urgence -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tâche en cours</label>
+          <input type="text" id="contact-task" placeholder="Ex : Envoyer brief illustration…" />
+        </div>
+        <div class="form-group">
+          <label>Urgence</label>
+          <div class="urgency-wrap">
+            <input type="radio" class="urgency-radio" name="contact-urgency" id="urg-faible"   value="faible"   /><label class="urgency-pill urgency-pill-faible"   for="urg-faible">Faible</label>
+            <input type="radio" class="urgency-radio" name="contact-urgency" id="urg-normal"   value="normal"   checked /><label class="urgency-pill urgency-pill-normal"   for="urg-normal">Normal</label>
+            <input type="radio" class="urgency-radio" name="contact-urgency" id="urg-urgent"   value="urgent"   /><label class="urgency-pill urgency-pill-urgent"   for="urg-urgent">Urgent</label>
+            <input type="radio" class="urgency-radio" name="contact-urgency" id="urg-critique" value="critique" /><label class="urgency-pill urgency-pill-critique" for="urg-critique">Critique</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jeux associés -->
+      <div class="form-group full">
+        <label>Jeux associés</label>
+        <div class="game-list-wrap">
+          <table class="game-list-table">
+            <thead>
+              <tr>
+                <th style="width:28%">Jeu</th>
+                <th style="width:20%">Éditeur</th>
+                <th style="width:9%">Année</th>
+                <th style="width:18%">Statut</th>
+                <th style="width:20%">Notes</th>
+                <th style="width:5%"></th>
+              </tr>
+            </thead>
+            <tbody id="contact-games-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addGameRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un jeu
+        </button>
+      </div>
+
       <div class="form-group full">
         <label>Notes</label>
         <textarea id="contact-notes" placeholder="Remarques, historique de collaboration…"></textarea>
