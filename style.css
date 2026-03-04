@@ -105,17 +105,19 @@ a:hover { color: var(--primary-700); }
 /* ═══════════════════════════════════════════════════
    HEADER
 ═══════════════════════════════════════════════════ */
+/* Header — dark (exact Kicktraquer: bg-slate-800 shadow-lg) */
 .header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: #ffffff;
-  border-bottom: 1px solid var(--border);
+  background: #1e293b; /* slate-800 */
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.15), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 .header-inner {
   max-width: 80rem;
   margin: 0 auto;
-  padding: 0.75rem 1.5rem;
+  padding: 0 1.5rem;
+  height: 4rem;          /* h-16 */
   display: flex;
   align-items: center;
   gap: 1.25rem;
@@ -127,65 +129,59 @@ a:hover { color: var(--primary-700); }
   gap: 0.5rem;
   flex-shrink: 0;
   text-decoration: none;
+  transition: opacity var(--transition);
 }
-.logo-icon { font-size: 1.4rem; }
-.logo-text {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-800);
-  letter-spacing: -0.01em;
-}
-.logo-text strong { color: var(--primary-600); font-weight: 700; }
+.logo:hover { opacity: 0.8; }
+.logo-icon  { font-size: 1.4rem; }
+.logo-text  { font-size: 1.125rem; font-weight: 700; color: #ffffff; }
 
-/* Nav tabs */
-.nav-tabs {
-  display: flex;
-  gap: 0.25rem;
-  flex: 1;
-}
+/* Nav tabs (on dark header) */
+.nav-tabs { display: flex; gap: 0.125rem; flex: 1; }
 .nav-tab {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 1rem;
   border-radius: var(--rx-lg);
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--text-600);
+  color: #94a3b8;          /* slate-300 */
   transition: background var(--transition), color var(--transition);
 }
-.nav-tab:hover { background: #f1f5f9; color: var(--text-700); }
-.nav-tab.active { background: var(--primary-50); color: var(--primary-700); }
+.nav-tab:hover  { background: #334155; color: #ffffff; } /* slate-700 */
+.nav-tab.active { background: #334155; color: #ffffff; }
 
 .nav-count {
   display: inline-block;
-  background: #e2e8f0;
-  color: var(--text-600);
+  background: #334155;     /* slate-700 */
+  color: #94a3b8;
   font-size: 0.7rem;
   font-weight: 600;
   padding: 0.1rem 0.45rem;
   border-radius: var(--rx-full);
 }
-.nav-tab.active .nav-count {
-  background: var(--primary-100);
-  color: var(--primary-700);
-}
+.nav-tab.active .nav-count { background: #475569; color: #ffffff; }
 
-/* Primary button */
+/* "Ajouter" button — white on dark, exact Kicktraquer */
 .btn-primary {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   padding: 0.5rem 1rem;
-  background: var(--primary-600);
-  color: #ffffff;
+  background: #ffffff;
+  color: #1e293b;          /* slate-800 */
   border-radius: var(--rx-lg);
   font-size: 0.875rem;
   font-weight: 500;
   flex-shrink: 0;
+  margin-left: 0.5rem;
   transition: background var(--transition);
 }
-.btn-primary:hover { background: var(--primary-700); }
+.btn-primary:hover { background: #f1f5f9; }
+
+/* btn-primary in page content (empty state, etc.) → use blue */
+.empty-state .btn-primary { background: var(--primary-600); color: #ffffff; margin-left: 0; }
+.empty-state .btn-primary:hover { background: var(--primary-700); }
 
 /* ═══════════════════════════════════════════════════
    MAIN / PAGES
