@@ -14,16 +14,13 @@
 <header class="header">
   <div class="header-inner">
 
-    <!-- Logo -->
     <div class="logo">
       <span class="logo-icon">🎲</span>
       <span class="logo-text">BBG <strong>Contacts</strong></span>
     </div>
 
-    <!-- Nav tabs -->
     <nav class="nav-tabs">
       <button class="nav-tab active" data-page="contacts">
-        <!-- Users icon -->
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -32,23 +29,58 @@
         <span class="nav-count" id="nav-contacts-count">0</span>
       </button>
       <button class="nav-tab" data-page="prototypes">
-        <!-- Star icon -->
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
         Prototypes
         <span class="nav-count" id="nav-prototypes-count">0</span>
       </button>
+      <button class="nav-tab" data-page="tasks">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        Tâches
+        <span class="nav-count" id="nav-tasks-count">0</span>
+      </button>
     </nav>
 
-    <!-- Header action -->
-    <button class="btn-primary" id="btn-add">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Ajouter
-    </button>
+    <div class="header-actions">
+      <button class="btn-header-icon" id="btn-import-export" title="Import / Export Excel" onclick="toggleImportExport()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
+      <button class="btn-primary" id="btn-add">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Ajouter
+      </button>
+    </div>
 
   </div>
 </header>
+
+<!-- Import/Export panel -->
+<div id="import-export-panel" class="import-export-panel" style="display:none">
+  <div class="import-export-inner">
+    <strong>Import / Export Excel</strong>
+    <div class="ie-group">
+      <span class="ie-label">Contacts</span>
+      <button class="btn-ie" onclick="exportExcel('contacts')">↓ Exporter</button>
+      <label class="btn-ie">↑ Importer
+        <input type="file" accept=".xlsx,.xls,.csv" class="ie-file-input" onchange="importExcel(event,'contacts')" />
+      </label>
+    </div>
+    <div class="ie-group">
+      <span class="ie-label">Prototypes</span>
+      <button class="btn-ie" onclick="exportExcel('prototypes')">↓ Exporter</button>
+      <label class="btn-ie">↑ Importer
+        <input type="file" accept=".xlsx,.xls,.csv" class="ie-file-input" onchange="importExcel(event,'prototypes')" />
+      </label>
+    </div>
+    <button class="ie-close" onclick="toggleImportExport()">✕</button>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════
      MAIN
@@ -60,7 +92,6 @@
        ╚═════════════════════════════════╝ -->
   <div class="page active" id="page-contacts">
 
-    <!-- Search -->
     <div class="panel panel-pad mb-4">
       <div class="search-wrap">
         <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -71,11 +102,9 @@
       </div>
     </div>
 
-    <!-- Filters (collapsible) -->
     <div class="panel mb-4" id="contacts-filter-panel">
       <button class="filter-toggle" id="contacts-filter-toggle">
         <div class="filter-toggle-left">
-          <!-- Filter icon -->
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-500)">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
           </svg>
@@ -92,19 +121,22 @@
             <label>Catégorie</label>
             <select id="contacts-cat-filter">
               <option value="">Toutes</option>
-              <option value="illustrateur">Illustrateur</option>
               <option value="auteur">Auteur</option>
+              <option value="illustrateur">Illustrateur</option>
+              <option value="editeur">Éditeur</option>
               <option value="distributeur">Distributeur</option>
               <option value="fabricant">Fabricant</option>
             </select>
           </div>
           <div class="filter-field">
-            <label>Statut</label>
-            <select id="contacts-status-filter">
-              <option value="">Tous</option>
-              <option value="actif">Actif</option>
-              <option value="inactif">Inactif</option>
-              <option value="prospect">Prospect</option>
+            <label>Urgence tâche</label>
+            <select id="contacts-urgency-filter">
+              <option value="">Toutes</option>
+              <option value="critique">Critique</option>
+              <option value="urgent">Urgent</option>
+              <option value="normal">Normal</option>
+              <option value="faible">Faible</option>
+              <option value="none">Sans tâche</option>
             </select>
           </div>
         </div>
@@ -112,17 +144,18 @@
       </div>
     </div>
 
-    <!-- Toolbar -->
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="contacts-count">0 contact</p>
       <div class="toolbar-right">
-        <!-- Zoom -->
         <div class="zoom-wrap" id="contacts-zoom-wrap">
-          <svg class="zoom-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button class="zoom-btn" onclick="zoomPage('contacts',-1)" title="Réduire">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
           <input type="range" class="zoom-slider" id="contacts-zoom" min="0" max="4" step="1" value="2" />
-          <svg class="zoom-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button class="zoom-btn" onclick="zoomPage('contacts',1)" title="Agrandir">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
         </div>
-        <!-- View toggle -->
         <div class="view-toggle">
           <button class="view-btn active" id="contacts-view-grid" title="Vue vignettes">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -131,13 +164,13 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           </button>
         </div>
-        <!-- Sort -->
         <div class="sort-wrap">
           <select class="sort-select" id="contacts-sort">
             <option value="name">Nom</option>
             <option value="category">Catégorie</option>
-            <option value="status">Statut</option>
+            <option value="urgency">Urgence tâche</option>
             <option value="company">Entreprise</option>
+            <option value="lastMeeting">Dernière rencontre</option>
           </select>
           <button class="sort-order-btn" id="contacts-sort-order" title="Inverser le tri">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="contacts-sort-icon">
@@ -148,11 +181,9 @@
       </div>
     </div>
 
-    <!-- Card grid / list view -->
     <div class="card-grid" id="contacts-grid"></div>
-    <div id="contacts-list" class="hidden"></div>
+    <div id="contacts-list" style="display:none"></div>
 
-    <!-- Empty state -->
     <div class="empty-state hidden" id="contacts-empty">
       <div class="empty-icon">👤</div>
       <h3>Aucun contact</h3>
@@ -168,7 +199,6 @@
        ╚═════════════════════════════════╝ -->
   <div class="page" id="page-prototypes">
 
-    <!-- Search -->
     <div class="panel panel-pad mb-4">
       <div class="search-wrap">
         <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -179,7 +209,6 @@
       </div>
     </div>
 
-    <!-- Filters (collapsible) -->
     <div class="panel mb-4" id="prototypes-filter-panel">
       <button class="filter-toggle" id="prototypes-filter-toggle">
         <div class="filter-toggle-left">
@@ -194,7 +223,7 @@
         </svg>
       </button>
       <div class="filter-body" id="prototypes-filter-body" style="display:none">
-        <div class="filter-grid" style="grid-template-columns:1fr">
+        <div class="filter-grid" style="grid-template-columns:1fr 1fr">
           <div class="filter-field">
             <label>Statut</label>
             <select id="prototypes-status-filter">
@@ -206,22 +235,34 @@
               <option value="publié">Publié</option>
             </select>
           </div>
+          <div class="filter-field">
+            <label>Niveau d'intérêt</label>
+            <select id="prototypes-interest-filter">
+              <option value="">Tous</option>
+              <option value="5">⭐⭐⭐⭐⭐ Exceptionnel</option>
+              <option value="4">⭐⭐⭐⭐ Très fort</option>
+              <option value="3">⭐⭐⭐ Fort</option>
+              <option value="2">⭐⭐ Moyen</option>
+              <option value="1">⭐ Faible</option>
+            </select>
+          </div>
         </div>
         <button class="btn-reset hidden" id="prototypes-filter-reset">Réinitialiser les filtres</button>
       </div>
     </div>
 
-    <!-- Toolbar -->
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="prototypes-count">0 prototype</p>
       <div class="toolbar-right">
-        <!-- Zoom -->
         <div class="zoom-wrap" id="prototypes-zoom-wrap">
-          <svg class="zoom-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button class="zoom-btn" onclick="zoomPage('prototypes',-1)" title="Réduire">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
           <input type="range" class="zoom-slider" id="prototypes-zoom" min="0" max="4" step="1" value="2" />
-          <svg class="zoom-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button class="zoom-btn" onclick="zoomPage('prototypes',1)" title="Agrandir">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
         </div>
-        <!-- View toggle -->
         <div class="view-toggle">
           <button class="view-btn active" id="prototypes-view-grid" title="Vue vignettes">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -230,11 +271,12 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           </button>
         </div>
-        <!-- Sort -->
         <div class="sort-wrap">
           <select class="sort-select" id="prototypes-sort">
             <option value="title">Titre</option>
             <option value="status">Statut</option>
+            <option value="interest">Intérêt</option>
+            <option value="urgency">Urgence tâche</option>
             <option value="createdAt">Date d'ajout</option>
           </select>
           <button class="sort-order-btn" id="prototypes-sort-order" title="Inverser le tri">
@@ -246,11 +288,9 @@
       </div>
     </div>
 
-    <!-- Card grid / list view -->
     <div class="card-grid" id="prototypes-grid"></div>
-    <div id="prototypes-list" class="hidden"></div>
+    <div id="prototypes-list" style="display:none"></div>
 
-    <!-- Empty state -->
     <div class="empty-state hidden" id="prototypes-empty">
       <div class="empty-icon">🎮</div>
       <h3>Aucun prototype</h3>
@@ -259,6 +299,39 @@
     </div>
 
   </div><!-- /page-prototypes -->
+
+
+  <!-- ╔═════════════════════════════════╗
+       ║        PAGE — TÂCHES           ║
+       ╚═════════════════════════════════╝ -->
+  <div class="page" id="page-tasks">
+
+    <div class="toolbar mb-4">
+      <p class="toolbar-count" id="tasks-count">0 tâche</p>
+      <div class="toolbar-right">
+        <div class="sort-wrap">
+          <select class="sort-select" id="tasks-sort" onchange="renderTasks()">
+            <option value="urgency">Urgence</option>
+            <option value="source">Source</option>
+            <option value="name">Nom</option>
+          </select>
+        </div>
+        <label class="tasks-show-done-label">
+          <input type="checkbox" id="tasks-show-done" onchange="renderTasks()" />
+          Afficher terminées
+        </label>
+      </div>
+    </div>
+
+    <div id="tasks-list"></div>
+
+    <div class="empty-state hidden" id="tasks-empty">
+      <div class="empty-icon">✅</div>
+      <h3>Aucune tâche en cours</h3>
+      <p>Ajoutez des tâches depuis les fiches contacts ou prototypes.</p>
+    </div>
+
+  </div><!-- /page-tasks -->
 
 </main>
 
@@ -274,6 +347,7 @@
     </div>
     <form class="modal-form" id="form-contact" onsubmit="submitContact(event)">
       <input type="hidden" id="contact-id" />
+
       <div class="form-row">
         <div class="form-group">
           <label>Nom <span class="req">*</span></label>
@@ -283,13 +357,15 @@
           <label>Catégorie <span class="req">*</span></label>
           <select id="contact-category" required>
             <option value="">— Choisir —</option>
-            <option value="illustrateur">Illustrateur</option>
             <option value="auteur">Auteur</option>
+            <option value="illustrateur">Illustrateur</option>
+            <option value="editeur">Éditeur</option>
             <option value="distributeur">Distributeur</option>
             <option value="fabricant">Fabricant</option>
           </select>
         </div>
       </div>
+
       <div class="form-row">
         <div class="form-group">
           <label>Email</label>
@@ -300,6 +376,7 @@
           <input type="text" id="contact-phone" placeholder="+33 6 …" />
         </div>
       </div>
+
       <div class="form-row">
         <div class="form-group">
           <label>Entreprise / Studio</label>
@@ -310,12 +387,15 @@
           <input type="url" id="contact-website" placeholder="https://…" />
         </div>
       </div>
-      <div class="form-group full">
-        <label>Statut</label>
-        <div class="radio-group">
-          <label class="radio-label"><input type="radio" name="contact-status" value="actif" checked /> Actif</label>
-          <label class="radio-label"><input type="radio" name="contact-status" value="inactif" /> Inactif</label>
-          <label class="radio-label"><input type="radio" name="contact-status" value="prospect" /> Prospect</label>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date dernière rencontre / échange</label>
+          <input type="date" id="contact-last-meeting" />
+        </div>
+        <div class="form-group">
+          <label>Note de la dernière rencontre</label>
+          <input type="text" id="contact-last-meeting-note" placeholder="Ex : Salon Essen, très intéressé…" />
         </div>
       </div>
 
@@ -359,18 +439,16 @@
         </div>
       </div>
 
-      <!-- Jeux associés -->
+      <!-- Jeux associés (Jeu / Statut / Notes) -->
       <div class="form-group full">
         <label>Jeux associés</label>
         <div class="game-list-wrap">
           <table class="game-list-table">
             <thead>
               <tr>
-                <th style="width:28%">Jeu</th>
-                <th style="width:20%">Éditeur</th>
-                <th style="width:9%">Année</th>
-                <th style="width:18%">Statut</th>
-                <th style="width:20%">Notes</th>
+                <th style="width:40%">Jeu</th>
+                <th style="width:25%">Statut</th>
+                <th style="width:30%">Notes</th>
                 <th style="width:5%"></th>
               </tr>
             </thead>
@@ -387,6 +465,7 @@
         <label>Notes</label>
         <textarea id="contact-notes" placeholder="Remarques, historique de collaboration…"></textarea>
       </div>
+
       <div class="modal-actions">
         <button type="button" class="btn-cancel" onclick="closeModal('contact')">Annuler</button>
         <button type="submit" class="btn-save">Enregistrer</button>
@@ -407,6 +486,7 @@
     </div>
     <form class="modal-form" id="form-prototype" onsubmit="submitPrototype(event)">
       <input type="hidden" id="prototype-id" />
+
       <div class="form-row">
         <div class="form-group">
           <label>Titre du jeu <span class="req">*</span></label>
@@ -424,6 +504,7 @@
           </select>
         </div>
       </div>
+
       <div class="form-row">
         <div class="form-group">
           <label>Genre / Mécanique</label>
@@ -434,6 +515,7 @@
           <input type="text" id="prototype-players" placeholder="ex : 2–5" />
         </div>
       </div>
+
       <div class="form-row">
         <div class="form-group">
           <label>Durée estimée</label>
@@ -444,6 +526,76 @@
           <input type="text" id="prototype-age" placeholder="ex : 10+" />
         </div>
       </div>
+
+      <!-- Niveau d'intérêt -->
+      <div class="form-group full">
+        <label>Niveau d'intérêt</label>
+        <div class="interest-wrap">
+          <input type="radio" class="interest-radio" name="proto-interest" id="int-1" value="1" /><label class="interest-star" for="int-1" title="Faible">⭐</label>
+          <input type="radio" class="interest-radio" name="proto-interest" id="int-2" value="2" /><label class="interest-star" for="int-2" title="Moyen">⭐</label>
+          <input type="radio" class="interest-radio" name="proto-interest" id="int-3" value="3" checked /><label class="interest-star" for="int-3" title="Fort">⭐</label>
+          <input type="radio" class="interest-radio" name="proto-interest" id="int-4" value="4" /><label class="interest-star" for="int-4" title="Très fort">⭐</label>
+          <input type="radio" class="interest-radio" name="proto-interest" id="int-5" value="5" /><label class="interest-star" for="int-5" title="Exceptionnel">⭐</label>
+          <span class="interest-label" id="interest-label-text">Fort</span>
+        </div>
+      </div>
+
+      <!-- Photo prototype -->
+      <div class="form-group full">
+        <label>Photo / Image</label>
+        <div class="photo-section">
+          <div class="photo-preview-wrap" id="proto-photo-preview">
+            <div class="photo-placeholder">🎮</div>
+          </div>
+          <div class="photo-controls">
+            <input class="photo-url-input" type="text" id="proto-photo-url"
+              placeholder="URL de l'image (https://…)" oninput="previewProtoPhoto()" />
+            <div class="photo-row">
+              <label class="photo-upload-label">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Importer une image
+                <input type="file" accept="image/*" id="proto-photo-file"
+                  class="photo-upload-input" onchange="uploadProtoPhoto(event)" />
+              </label>
+              <button type="button" class="photo-clear-btn" onclick="clearProtoPhoto()">Effacer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PDF règles -->
+      <div class="form-group full">
+        <label>Règles du jeu (PDF)</label>
+        <div class="pdf-section">
+          <span class="pdf-name" id="proto-pdf-name">Aucun fichier</span>
+          <label class="photo-upload-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importer un PDF
+            <input type="file" accept=".pdf" id="proto-pdf-file"
+              class="photo-upload-input" onchange="uploadProtoPdf(event)" />
+          </label>
+          <button type="button" class="photo-clear-btn" onclick="clearProtoPdf()">Effacer</button>
+          <a id="proto-pdf-link" class="pdf-download-link" style="display:none" target="_blank">Voir le PDF</a>
+        </div>
+      </div>
+
+      <!-- Tâche + urgence prototype -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tâche en cours</label>
+          <input type="text" id="prototype-task" placeholder="Ex : Préparer convention Essen…" />
+        </div>
+        <div class="form-group">
+          <label>Urgence</label>
+          <div class="urgency-wrap">
+            <input type="radio" class="urgency-radio" name="proto-urgency" id="purg-faible"   value="faible"   /><label class="urgency-pill urgency-pill-faible"   for="purg-faible">Faible</label>
+            <input type="radio" class="urgency-radio" name="proto-urgency" id="purg-normal"   value="normal"   checked /><label class="urgency-pill urgency-pill-normal"   for="purg-normal">Normal</label>
+            <input type="radio" class="urgency-radio" name="proto-urgency" id="purg-urgent"   value="urgent"   /><label class="urgency-pill urgency-pill-urgent"   for="purg-urgent">Urgent</label>
+            <input type="radio" class="urgency-radio" name="proto-urgency" id="purg-critique" value="critique" /><label class="urgency-pill urgency-pill-critique" for="purg-critique">Critique</label>
+          </div>
+        </div>
+      </div>
+
       <div class="form-group full">
         <label>Description</label>
         <textarea id="prototype-description" placeholder="Résumé du concept, pitch…"></textarea>
@@ -490,6 +642,7 @@
   </div>
 </div>
 
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>
