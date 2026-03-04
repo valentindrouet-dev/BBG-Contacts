@@ -5,211 +5,183 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BBG Contacts</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
 
-  <!-- ── HEADER ── -->
-  <header class="header">
-    <div class="header-inner">
-      <div class="logo">
-        <span class="logo-icon">🎲</span>
-        <span class="logo-text">BBG <strong>Contacts</strong></span>
-      </div>
-      <nav class="nav">
-        <button class="nav-btn active" data-page="contacts">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          Contacts
-        </button>
-        <button class="nav-btn" data-page="prototypes">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-          </svg>
-          Prototypes
-        </button>
-      </nav>
-      <button class="btn-add" id="btn-add">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        Ajouter
-      </button>
+<!-- ═══════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-inner">
+
+    <!-- Logo -->
+    <div class="logo">
+      <span class="logo-icon">🎲</span>
+      <span class="logo-text">BBG <strong>Contacts</strong></span>
     </div>
-  </header>
 
-  <!-- ── MAIN ── -->
-  <main class="main">
+    <!-- Nav tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-page="contacts">
+        <!-- Users icon -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Contacts
+        <span class="nav-count" id="nav-contacts-count">0</span>
+      </button>
+      <button class="nav-tab" data-page="prototypes">
+        <!-- Star icon -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        Prototypes
+        <span class="nav-count" id="nav-prototypes-count">0</span>
+      </button>
+    </nav>
 
-    <!-- ===== PAGE CONTACTS ===== -->
-    <section class="page active" id="page-contacts">
+    <!-- Header action -->
+    <button class="btn-primary" id="btn-add">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Ajouter
+    </button>
 
-      <div class="page-header">
-        <div class="page-title-block">
-          <h1 class="page-title">Contacts</h1>
-          <span class="page-count" id="contacts-count">0</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- ╔═════════════════════════════════╗
+       ║        PAGE — CONTACTS         ║
+       ╚═════════════════════════════════╝ -->
+  <div class="page active" id="page-contacts">
+
+    <!-- Search -->
+    <div class="panel panel-pad mb-4">
+      <div class="search-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input class="search-input" id="contacts-search" type="text"
+          placeholder="Rechercher par nom, entreprise, email…" autocomplete="off" />
+      </div>
+    </div>
+
+    <!-- Filters (collapsible) -->
+    <div class="panel mb-4" id="contacts-filter-panel">
+      <button class="filter-toggle" id="contacts-filter-toggle">
+        <div class="filter-toggle-left">
+          <!-- Filter icon -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-500)">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          <span>Filtres</span>
+          <span class="filter-active-count hidden" id="contacts-filter-count">0 actif(s)</span>
         </div>
-        <div class="controls">
-          <div class="search-wrap">
-            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input class="search-input" id="contacts-search" type="text" placeholder="Rechercher un contact…" />
-          </div>
-          <div class="filters" id="contacts-filters">
-            <button class="filter-btn active" data-filter="all">Tous</button>
-            <button class="filter-btn" data-filter="illustrateur">Illustrateurs</button>
-            <button class="filter-btn" data-filter="auteur">Auteurs</button>
-            <button class="filter-btn" data-filter="distributeur">Distributeurs</button>
-            <button class="filter-btn" data-filter="fabricant">Fabricants</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card-grid" id="contacts-grid"></div>
-      <div class="empty-state hidden" id="contacts-empty">
-        <span class="empty-icon">👤</span>
-        <p>Aucun contact trouvé</p>
-        <button class="btn-add-empty" onclick="openModal('contact')">Ajouter un contact</button>
-      </div>
-    </section>
-
-    <!-- ===== PAGE PROTOTYPES ===== -->
-    <section class="page" id="page-prototypes">
-
-      <div class="page-header">
-        <div class="page-title-block">
-          <h1 class="page-title">Prototypes</h1>
-          <span class="page-count" id="prototypes-count">0</span>
-        </div>
-        <div class="controls">
-          <div class="search-wrap">
-            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input class="search-input" id="prototypes-search" type="text" placeholder="Rechercher un prototype…" />
-          </div>
-          <div class="filters" id="prototypes-filters">
-            <button class="filter-btn active" data-filter="all">Tous</button>
-            <button class="filter-btn" data-filter="concept">Concept</button>
-            <button class="filter-btn" data-filter="développement">Développement</button>
-            <button class="filter-btn" data-filter="test">En test</button>
-            <button class="filter-btn" data-filter="finalisation">Finalisation</button>
-            <button class="filter-btn" data-filter="publié">Publié</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card-grid" id="prototypes-grid"></div>
-      <div class="empty-state hidden" id="prototypes-empty">
-        <span class="empty-icon">🎮</span>
-        <p>Aucun prototype trouvé</p>
-        <button class="btn-add-empty" onclick="openModal('prototype')">Ajouter un prototype</button>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- ══════════════════════════════════════════
-       MODAL — CONTACT
-  ══════════════════════════════════════════ -->
-  <div class="modal-overlay hidden" id="modal-contact">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modal-contact-title">Nouveau contact</h2>
-        <button class="modal-close" onclick="closeModal('contact')">✕</button>
-      </div>
-      <form class="modal-form" id="form-contact" onsubmit="submitContact(event)">
-        <input type="hidden" id="contact-id" />
-        <div class="form-row">
-          <div class="form-group">
-            <label>Nom <span class="req">*</span></label>
-            <input type="text" id="contact-name" required placeholder="Prénom Nom" />
-          </div>
-          <div class="form-group">
-            <label>Catégorie <span class="req">*</span></label>
-            <select id="contact-category" required>
-              <option value="">-- Choisir --</option>
+        <svg class="chevron-icon" id="contacts-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="filter-body" id="contacts-filter-body" style="display:none">
+        <div class="filter-grid">
+          <div class="filter-field">
+            <label>Catégorie</label>
+            <select id="contacts-cat-filter">
+              <option value="">Toutes</option>
               <option value="illustrateur">Illustrateur</option>
               <option value="auteur">Auteur</option>
               <option value="distributeur">Distributeur</option>
               <option value="fabricant">Fabricant</option>
             </select>
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="contact-email" placeholder="email@exemple.com" />
-          </div>
-          <div class="form-group">
-            <label>Téléphone</label>
-            <input type="text" id="contact-phone" placeholder="+33 6 …" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Entreprise / Studio</label>
-            <input type="text" id="contact-company" placeholder="Nom de la structure" />
-          </div>
-          <div class="form-group">
-            <label>Site web / Portfolio</label>
-            <input type="url" id="contact-website" placeholder="https://…" />
+          <div class="filter-field">
+            <label>Statut</label>
+            <select id="contacts-status-filter">
+              <option value="">Tous</option>
+              <option value="actif">Actif</option>
+              <option value="inactif">Inactif</option>
+              <option value="prospect">Prospect</option>
+            </select>
           </div>
         </div>
-        <div class="form-group full">
-          <label>Notes</label>
-          <textarea id="contact-notes" rows="3" placeholder="Remarques, historique de collaboration…"></textarea>
-        </div>
-        <div class="form-group full">
-          <label>Statut</label>
-          <div class="radio-group">
-            <label class="radio-label"><input type="radio" name="contact-status" value="actif" checked /> Actif</label>
-            <label class="radio-label"><input type="radio" name="contact-status" value="inactif" /> Inactif</label>
-            <label class="radio-label"><input type="radio" name="contact-status" value="prospect" /> Prospect</label>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-cancel" onclick="closeModal('contact')">Annuler</button>
-          <button type="submit" class="btn-save">Enregistrer</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════
-       MODAL — PROTOTYPE
-  ══════════════════════════════════════════ -->
-  <div class="modal-overlay hidden" id="modal-prototype">
-    <div class="modal modal-wide">
-      <div class="modal-header">
-        <h2 id="modal-prototype-title">Nouveau prototype</h2>
-        <button class="modal-close" onclick="closeModal('prototype')">✕</button>
+        <button class="btn-reset hidden" id="contacts-filter-reset">Réinitialiser les filtres</button>
       </div>
-      <form class="modal-form" id="form-prototype" onsubmit="submitPrototype(event)">
-        <input type="hidden" id="prototype-id" />
-        <div class="form-row">
-          <div class="form-group">
-            <label>Titre du jeu <span class="req">*</span></label>
-            <input type="text" id="prototype-title" required placeholder="Nom du prototype" />
-          </div>
-          <div class="form-group">
-            <label>Statut <span class="req">*</span></label>
-            <select id="prototype-status" required>
-              <option value="">-- Choisir --</option>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar mb-4">
+      <p class="toolbar-count" id="contacts-count">0 contact</p>
+      <div class="toolbar-right">
+        <div class="sort-wrap">
+          <select class="sort-select" id="contacts-sort">
+            <option value="name">Nom</option>
+            <option value="category">Catégorie</option>
+            <option value="status">Statut</option>
+            <option value="company">Entreprise</option>
+          </select>
+          <button class="sort-order-btn" id="contacts-sort-order" data-order="asc" title="Inverser le tri">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="contacts-sort-icon">
+              <polyline points="18 15 12 9 6 15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card grid -->
+    <div class="card-grid" id="contacts-grid"></div>
+
+    <!-- Empty state -->
+    <div class="empty-state hidden" id="contacts-empty">
+      <div class="empty-icon">👤</div>
+      <h3>Aucun contact</h3>
+      <p>Commencez par ajouter votre premier contact professionnel.</p>
+      <button class="btn-primary" onclick="openModal('contact')">Ajouter un contact</button>
+    </div>
+
+  </div><!-- /page-contacts -->
+
+
+  <!-- ╔═════════════════════════════════╗
+       ║       PAGE — PROTOTYPES        ║
+       ╚═════════════════════════════════╝ -->
+  <div class="page" id="page-prototypes">
+
+    <!-- Search -->
+    <div class="panel panel-pad mb-4">
+      <div class="search-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input class="search-input" id="prototypes-search" type="text"
+          placeholder="Rechercher par titre, genre, description…" autocomplete="off" />
+      </div>
+    </div>
+
+    <!-- Filters (collapsible) -->
+    <div class="panel mb-4" id="prototypes-filter-panel">
+      <button class="filter-toggle" id="prototypes-filter-toggle">
+        <div class="filter-toggle-left">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-500)">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          <span>Filtres</span>
+          <span class="filter-active-count hidden" id="prototypes-filter-count">0 actif(s)</span>
+        </div>
+        <svg class="chevron-icon" id="prototypes-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="filter-body" id="prototypes-filter-body" style="display:none">
+        <div class="filter-grid" style="grid-template-columns:1fr">
+          <div class="filter-field">
+            <label>Statut</label>
+            <select id="prototypes-status-filter">
+              <option value="">Tous</option>
               <option value="concept">Concept</option>
               <option value="développement">Développement</option>
               <option value="test">En test</option>
@@ -218,71 +190,208 @@
             </select>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Genre / Mécanique</label>
-            <input type="text" id="prototype-genre" placeholder="ex : deck-building, coopératif…" />
-          </div>
-          <div class="form-group">
-            <label>Joueurs</label>
-            <input type="text" id="prototype-players" placeholder="ex : 2–5" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Durée estimée</label>
-            <input type="text" id="prototype-duration" placeholder="ex : 45 min" />
-          </div>
-          <div class="form-group">
-            <label>Âge minimum</label>
-            <input type="text" id="prototype-age" placeholder="ex : 10+" />
-          </div>
-        </div>
-        <div class="form-group full">
-          <label>Description</label>
-          <textarea id="prototype-description" rows="3" placeholder="Résumé du concept, pitch…"></textarea>
-        </div>
-        <div class="form-group full">
-          <label>Contacts associés</label>
-          <input type="text" id="prototype-contacts" placeholder="ex : Illustrateur, Auteur co-designer…" />
-        </div>
-        <div class="form-group full">
-          <label>Notes de développement</label>
-          <textarea id="prototype-notes" rows="2" placeholder="Avancement, retours de test, prochaines étapes…"></textarea>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-cancel" onclick="closeModal('prototype')">Annuler</button>
-          <button type="submit" class="btn-save">Enregistrer</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════
-       MODAL — DETAIL (lecture seule)
-  ══════════════════════════════════════════ -->
-  <div class="modal-overlay hidden" id="modal-detail">
-    <div class="modal modal-wide" id="modal-detail-content"></div>
-  </div>
-
-  <!-- ══════════════════════════════════════════
-       CONFIRM DELETE
-  ══════════════════════════════════════════ -->
-  <div class="modal-overlay hidden" id="modal-confirm">
-    <div class="modal modal-sm">
-      <div class="modal-header">
-        <h2>Confirmer la suppression</h2>
-        <button class="modal-close" onclick="closeModal('confirm')">✕</button>
+        <button class="btn-reset hidden" id="prototypes-filter-reset">Réinitialiser les filtres</button>
       </div>
-      <p class="confirm-text">Cette action est irréversible. Supprimer cet élément ?</p>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar mb-4">
+      <p class="toolbar-count" id="prototypes-count">0 prototype</p>
+      <div class="toolbar-right">
+        <div class="sort-wrap">
+          <select class="sort-select" id="prototypes-sort">
+            <option value="title">Titre</option>
+            <option value="status">Statut</option>
+            <option value="createdAt">Date d'ajout</option>
+          </select>
+          <button class="sort-order-btn" id="prototypes-sort-order" data-order="asc" title="Inverser le tri">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="prototypes-sort-icon">
+              <polyline points="18 15 12 9 6 15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card grid -->
+    <div class="card-grid" id="prototypes-grid"></div>
+
+    <!-- Empty state -->
+    <div class="empty-state hidden" id="prototypes-empty">
+      <div class="empty-icon">🎮</div>
+      <h3>Aucun prototype</h3>
+      <p>Commencez par ajouter votre premier prototype de jeu de société.</p>
+      <button class="btn-primary" onclick="openModal('prototype')">Ajouter un prototype</button>
+    </div>
+
+  </div><!-- /page-prototypes -->
+
+</main>
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — CONTACT
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-contact">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-contact-title">Nouveau contact</h2>
+      <button class="modal-close" onclick="closeModal('contact')">✕</button>
+    </div>
+    <form class="modal-form" id="form-contact" onsubmit="submitContact(event)">
+      <input type="hidden" id="contact-id" />
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nom <span class="req">*</span></label>
+          <input type="text" id="contact-name" required placeholder="Prénom Nom" />
+        </div>
+        <div class="form-group">
+          <label>Catégorie <span class="req">*</span></label>
+          <select id="contact-category" required>
+            <option value="">— Choisir —</option>
+            <option value="illustrateur">Illustrateur</option>
+            <option value="auteur">Auteur</option>
+            <option value="distributeur">Distributeur</option>
+            <option value="fabricant">Fabricant</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="contact-email" placeholder="email@exemple.com" />
+        </div>
+        <div class="form-group">
+          <label>Téléphone</label>
+          <input type="text" id="contact-phone" placeholder="+33 6 …" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Entreprise / Studio</label>
+          <input type="text" id="contact-company" placeholder="Nom de la structure" />
+        </div>
+        <div class="form-group">
+          <label>Site web / Portfolio</label>
+          <input type="url" id="contact-website" placeholder="https://…" />
+        </div>
+      </div>
+      <div class="form-group full">
+        <label>Statut</label>
+        <div class="radio-group">
+          <label class="radio-label"><input type="radio" name="contact-status" value="actif" checked /> Actif</label>
+          <label class="radio-label"><input type="radio" name="contact-status" value="inactif" /> Inactif</label>
+          <label class="radio-label"><input type="radio" name="contact-status" value="prospect" /> Prospect</label>
+        </div>
+      </div>
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="contact-notes" placeholder="Remarques, historique de collaboration…"></textarea>
+      </div>
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal('confirm')">Annuler</button>
-        <button class="btn-delete" id="btn-confirm-delete">Supprimer</button>
+        <button type="button" class="btn-cancel" onclick="closeModal('contact')">Annuler</button>
+        <button type="submit" class="btn-save">Enregistrer</button>
       </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — PROTOTYPE
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-prototype">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2 id="modal-prototype-title">Nouveau prototype</h2>
+      <button class="modal-close" onclick="closeModal('prototype')">✕</button>
+    </div>
+    <form class="modal-form" id="form-prototype" onsubmit="submitPrototype(event)">
+      <input type="hidden" id="prototype-id" />
+      <div class="form-row">
+        <div class="form-group">
+          <label>Titre du jeu <span class="req">*</span></label>
+          <input type="text" id="prototype-title" required placeholder="Nom du prototype" />
+        </div>
+        <div class="form-group">
+          <label>Statut <span class="req">*</span></label>
+          <select id="prototype-status" required>
+            <option value="">— Choisir —</option>
+            <option value="concept">Concept</option>
+            <option value="développement">Développement</option>
+            <option value="test">En test</option>
+            <option value="finalisation">Finalisation</option>
+            <option value="publié">Publié</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Genre / Mécanique</label>
+          <input type="text" id="prototype-genre" placeholder="ex : deck-building, coopératif…" />
+        </div>
+        <div class="form-group">
+          <label>Joueurs</label>
+          <input type="text" id="prototype-players" placeholder="ex : 2–5" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Durée estimée</label>
+          <input type="text" id="prototype-duration" placeholder="ex : 45 min" />
+        </div>
+        <div class="form-group">
+          <label>Âge minimum</label>
+          <input type="text" id="prototype-age" placeholder="ex : 10+" />
+        </div>
+      </div>
+      <div class="form-group full">
+        <label>Description</label>
+        <textarea id="prototype-description" placeholder="Résumé du concept, pitch…"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Contacts associés</label>
+        <input type="text" id="prototype-contacts" placeholder="ex : Sophie Martel (illustration), Thomas Lebrun (co-design)" />
+      </div>
+      <div class="form-group full">
+        <label>Notes de développement</label>
+        <textarea id="prototype-notes" placeholder="Avancement, retours de test, prochaines étapes…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('prototype')">Annuler</button>
+        <button type="submit" class="btn-save">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — DETAIL (lecture)
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-detail">
+  <div class="modal modal-wide" id="modal-detail-content"></div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — CONFIRM DELETE
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-confirm">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>Confirmer la suppression</h2>
+      <button class="modal-close" onclick="closeModal('confirm')">✕</button>
+    </div>
+    <p class="confirm-text">Cette action est irréversible. Supprimer cet élément ?</p>
+    <div class="modal-actions" style="padding:0 1.5rem 1.25rem">
+      <button class="btn-cancel" onclick="closeModal('confirm')">Annuler</button>
+      <button class="btn-delete" id="btn-confirm-delete">Supprimer</button>
     </div>
   </div>
+</div>
 
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
