@@ -20,10 +20,10 @@ const state = {
   prototypesSearch:  '',
   prototypesStatus:  '',
   prototypesInterest:'',
-  prototypesSort:    'title',
+  prototypesSort:    'status',
   prototypesSortAsc: true,
   prototypesView:    'grid',
-  prototypesZoom:    2,
+  prototypesZoom:    1,
 };
 
 // ── STORAGE ────────────────────────────────────────
@@ -673,12 +673,12 @@ function renderTasks() {
 }
 
 function taskCard(t) {
-  const typeLabel = t.type === 'contact' ? 'Contact' : 'Prototype';
+  const typeEmoji = t.type === 'contact' ? '👤' : '🎲';
   return `<div class="task-card${t.done ? ' done' : ''}" onclick="openDetail('${t.type}','${t.itemId}')">
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
       onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.itemId}','${t.taskId}')" />
     <div class="task-body">
-      <span class="task-source">${typeLabel} · ${esc(t.name)}</span>
+      <span class="task-source">${typeEmoji} ${esc(t.name)}</span>
       <span class="task-text">${esc(t.task)}</span>
       <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span></span>
     </div>
@@ -1538,4 +1538,7 @@ document.getElementById('prototypes-view-list').addEventListener('click', () => 
 // ═══════════════════════════════════════════════════
 loadState();
 updateInterestUI(3);
+// Sync UI controls to default state
+document.getElementById('prototypes-sort').value = state.prototypesSort;
+document.getElementById('prototypes-zoom').value = state.prototypesZoom;
 switchPage('contacts');
