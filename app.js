@@ -564,11 +564,9 @@ function taskCard(t) {
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
       onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.id}')" />
     <div class="task-body">
-      <div class="task-source">${typeLabel} · ${esc(t.name)}</div>
-      <div class="task-text">${esc(t.task)}</div>
-      <div class="task-meta">
-        <span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span>
-      </div>
+      <span class="task-source">${typeLabel} · ${esc(t.name)}</span>
+      <span class="task-text">${esc(t.task)}</span>
+      <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span></span>
     </div>
   </div>`;
 }
