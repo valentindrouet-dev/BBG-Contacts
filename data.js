@@ -110,7 +110,7 @@ const SEED_PROTOTYPES = [
   {
     id: "p1",
     title: "Nebula Quest",
-    status: "test",
+    status: "proto",
     genre: "Exploration spatiale • Deck-building",
     players: "2–4",
     duration: "60–90 min",
@@ -150,7 +150,7 @@ const SEED_PROTOTYPES = [
   {
     id: "p3",
     title: "Marchands de Rome",
-    status: "finalisation",
+    status: "production",
     genre: "Stratégie • Routes commerciales",
     players: "3–5",
     duration: "90–120 min",
@@ -171,7 +171,7 @@ const SEED_PROTOTYPES = [
   {
     id: "p4",
     title: "Pixel Dungeon",
-    status: "concept",
+    status: "proto",
     genre: "Dungeon crawler • Rétro",
     players: "2–6",
     duration: "30 min",
@@ -188,7 +188,7 @@ const SEED_PROTOTYPES = [
   {
     id: "p5",
     title: "Archipel",
-    status: "publié",
+    status: "sorti",
     genre: "Famille • Construction d'îles",
     players: "2–4",
     duration: "30–45 min",

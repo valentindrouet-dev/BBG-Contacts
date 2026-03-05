@@ -41,6 +41,8 @@ function migrateContact(c) {
   }
   return c;
 }
+const STATUS_MIGRATE = { concept: 'proto', test: 'proto', finalisation: 'production', publié: 'sorti' };
+
 function migratePrototype(p) {
   if (!Array.isArray(p.tasks)) {
     p.tasks = p.task
@@ -50,6 +52,7 @@ function migratePrototype(p) {
   if (!Array.isArray(p.contactLinks)) {
     p.contactLinks = [];
   }
+  if (STATUS_MIGRATE[p.status]) p.status = STATUS_MIGRATE[p.status];
   return p;
 }
 
@@ -103,7 +106,14 @@ const ICONS = {
 };
 
 const PROTO_ICONS = {
-  concept: '💡', développement: '🔧', test: '🧪', finalisation: '✨', publié: '🚀'
+  proto: '🧩', signé: '✍️', développement: '🔧', production: '🏭', sorti: '🚀'
+};
+
+const URGENCY_EMOJI = { faible: '💤', normal: '📌', urgent: '⚠️', critique: '🚨' };
+
+const CAT_LABELS = {
+  auteur: 'Auteurs', illustrateur: 'Illustrateurs', editeur: 'Éditeurs',
+  distributeur: 'Distributeurs', fabricant: 'Fabricants'
 };
 
 const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exceptionnel'];
@@ -299,7 +309,20 @@ function renderContacts() {
     listEl.style.display = 'none';
     gridEl.style.display = '';
     gridEl.dataset.zoom = state.contactsZoom;
-    gridEl.innerHTML = list.map(c => contactCard(c, state.contactsZoom)).join('');
+    if (state.contactsSort === 'category') {
+      let html = '';
+      let curCat = null;
+      for (const c of list) {
+        if (c.category !== curCat) {
+          curCat = c.category;
+          html += `<div class="cat-group-header">${CAT_LABELS[curCat] || curCat}</div>`;
+        }
+        html += contactCard(c, state.contactsZoom);
+      }
+      gridEl.innerHTML = html;
+    } else {
+      gridEl.innerHTML = list.map(c => contactCard(c, state.contactsZoom)).join('');
+    }
   }
 }
 
@@ -320,9 +343,9 @@ function contactCard(c, zoom) {
       isMin ? (cat.charAt(0)||'?').toUpperCase() : esc(cat)
     }</span>`;
 
-  // Urgency dot always visible in media area when task is urgent/critique
-  const urgDot = hasUrgentTask
-    ? `<span class="card-urg-dot card-urg-dot-${urg}" title="Tâche ${urg}"></span>`
+  // Urgency emoji visible on all cards with pending tasks
+  const urgEmoji = topTask
+    ? `<span class="card-urg-emoji" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
     : '';
 
   const extLink = !isMin && c.website
@@ -367,14 +390,13 @@ function contactCard(c, zoom) {
     </div>`;
   }
 
-  const urgClass = hasUrgentTask ? ` card-urg-${urg}` : '';
   const allDone = (c.tasks||[]).length > 0 && (c.tasks||[]).every(t => t.done);
   const doneClass = allDone ? ' card-task-done' : '';
 
-  return `<div class="card card-hover card-bg-${cat}${urgClass}${doneClass}"
+  return `<div class="card card-hover card-bg-${cat}${doneClass}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
     <div class="card-media card-media-${cat}">
-      ${mediaContent}${badge}${urgDot}${extLink}${editBtn}
+      ${mediaContent}${badge}${urgEmoji}${extLink}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -401,36 +423,46 @@ function buildContactsTable(list) {
       ${th('lastMeeting', 'Dernière rencontre', '13%')}
       <th class="col-actions"></th>
     </tr></thead>
-    <tbody>${list.map(c => {
-      const topTask = getTopTask(c);
-      const urg = topTask ? (topTask.urgency || 'normal') : 'normal';
-      const pendingCount = (c.tasks || []).filter(t => !t.done).length;
-      const avatar = c.photo
-        ? `<img src="${esc(c.photo)}" class="list-photo" alt="" />`
-        : `<div class="list-avatar list-avatar-${c.category}">${initials(c.name)}</div>`;
-      const taskCell = topTask
-        ? `<div class="td-task">
-            <span class="badge badge-urgence-${urg}" style="flex-shrink:0">${esc(urg)}</span>
-            <span class="td-task-text">${esc(topTask.text)}</span>
-            ${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}
-          </div>` : '';
-      const meetDate = c.lastMeeting
-        ? new Date(c.lastMeeting).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'2-digit' })
-        : '';
-      return `<tr onclick="openDetail('contact','${c.id}')">
-        <td class="col-avatar">${avatar}</td>
-        <td class="td-fw">${esc(c.name)}</td>
-        <td><span class="badge badge-${c.category}">${esc(c.category)}</span></td>
-        <td>${taskCell}</td>
-        <td class="td-muted">${esc(c.company||'')}</td>
-        <td class="td-muted">${esc(c.email||'')}</td>
-        <td class="td-muted">${meetDate}</td>
-        <td class="col-actions">
-          <button class="list-row-btn" onclick="event.stopPropagation();editContact('${c.id}')"
-            title="Modifier">${ICONS.pencil}</button>
-        </td>
-      </tr>`;
-    }).join('')}</tbody>
+    <tbody>${(() => {
+      let rows = '';
+      let curCat = null;
+      for (const c of list) {
+        if (sort === 'category' && c.category !== curCat) {
+          curCat = c.category;
+          rows += `<tr class="cat-group-row"><td colspan="8">${CAT_LABELS[curCat] || curCat}</td></tr>`;
+        }
+        const topTask = getTopTask(c);
+        const urg = topTask ? (topTask.urgency || 'normal') : 'normal';
+        const pendingCount = (c.tasks || []).filter(t => !t.done).length;
+        const avatar = c.photo
+          ? `<img src="${esc(c.photo)}" class="list-photo" alt="" />`
+          : `<div class="list-avatar list-avatar-${c.category}">${initials(c.name)}</div>`;
+        const taskCell = topTask
+          ? `<div class="td-task">
+              <span style="flex-shrink:0">${URGENCY_EMOJI[urg]||''}</span>
+              <span class="badge badge-urgence-${urg}" style="flex-shrink:0">${esc(urg)}</span>
+              <span class="td-task-text">${esc(topTask.text)}</span>
+              ${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}
+            </div>` : '';
+        const meetDate = c.lastMeeting
+          ? new Date(c.lastMeeting).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'2-digit' })
+          : '';
+        rows += `<tr onclick="openDetail('contact','${c.id}')">
+          <td class="col-avatar">${avatar}</td>
+          <td class="td-fw">${esc(c.name)}</td>
+          <td><span class="badge badge-${c.category}">${esc(c.category)}</span></td>
+          <td>${taskCell}</td>
+          <td class="td-muted">${esc(c.company||'')}</td>
+          <td class="td-muted">${esc(c.email||'')}</td>
+          <td class="td-muted">${meetDate}</td>
+          <td class="col-actions">
+            <button class="list-row-btn" onclick="event.stopPropagation();editContact('${c.id}')"
+              title="Modifier">${ICONS.pencil}</button>
+          </td>
+        </tr>`;
+      }
+      return rows;
+    })()}</tbody>
   </table></div>`;
 }
 
@@ -489,8 +521,8 @@ function prototypeCard(p, zoom) {
     ? `<img src="${esc(p.photo)}" class="card-photo" alt="" />`
     : `<span class="card-game-icon">${icon}</span>`;
 
-  const urgDot = hasUrgentTask
-    ? `<span class="card-urg-dot card-urg-dot-${urg}" title="Tâche ${urg}"></span>`
+  const urgEmoji = topTask
+    ? `<span class="card-urg-emoji" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
     : '';
 
   // Title always visible
@@ -516,14 +548,13 @@ function prototypeCard(p, zoom) {
     </div>`;
   }
 
-  const urgClass = hasUrgentTask ? ` card-urg-${urg}` : '';
   const allDoneP = (p.tasks||[]).length > 0 && (p.tasks||[]).every(t => t.done);
   const doneClass = allDoneP ? ' card-task-done' : '';
 
-  return `<div class="card card-hover${urgClass}${doneClass}"
+  return `<div class="card card-hover${doneClass}"
     onclick="openDetail('prototype','${p.id}')" title="${esc(p.title)}">
     <div class="card-media card-media-${p.status}">
-      ${mediaContent}${badge}${urgDot}${editBtn}
+      ${mediaContent}${badge}${urgEmoji}${editBtn}
     </div>
     ${body}
   </div>`;
