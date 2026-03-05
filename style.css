@@ -457,6 +457,18 @@ a:hover { color: var(--primary-700); }
   left: 0.5rem;
 }
 
+/* Urgency dot (bottom-left of media, always visible) */
+.card-urg-dot {
+  position: absolute;
+  bottom: 0.35rem;
+  left: 0.35rem;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.8);
+}
+.card-urg-dot-urgent   { background: #f97316; }
+.card-urg-dot-critique { background: #ef4444; box-shadow: 0 0 4px rgba(239,68,68,0.6); }
+
 /* External link (top-right) */
 .card-ext-link {
   position: absolute;
@@ -541,6 +553,28 @@ a:hover { color: var(--primary-700); }
 .card-bg-editeur      { background: #fdf2f8; }
 .card-bg-distributeur { background: #f0fdfa; }
 .card-bg-fabricant    { background: #fff7ed; }
+
+/* ─── Urgency border on card (visible at all zoom levels) ─── */
+.card-urg-urgent   { border-top: 3px solid #f97316 !important; }
+.card-urg-critique { border-top: 3px solid #ef4444 !important; }
+
+/* ─── Task done: card slightly faded ─── */
+.card-task-done { opacity: 0.6; }
+
+/* ─── Min-card name (always visible at zoom 0/1) ─── */
+.card-min-name {
+  padding: 0.18rem 0.3rem 0.22rem;
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-700);
+  background: #ffffff;
+  border-top: 1px solid var(--border-light);
+  line-height: 1.3;
+}
 
 /* ═══════════════════════════════════════════════════
    EMPTY STATE
@@ -1096,6 +1130,15 @@ a:hover { color: var(--primary-700); }
 .task-text { font-size: 0.9rem; color: var(--text-800); font-weight: 500; }
 .task-meta { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.35rem; }
 .task-urgency-group { display: flex; gap: 0.5rem; }
+
+/* Task done toggle inside detail modal */
+.detail-task-done-label {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; color: var(--text-600); cursor: pointer;
+  margin-top: 0.5rem;
+}
+.detail-task-done-label input { width: auto; cursor: pointer; accent-color: var(--primary-600); }
+.detail-task-done-label.is-done { color: var(--text-400); text-decoration: line-through; }
 
 /* urgency ordering visual blocks */
 .task-group-header {

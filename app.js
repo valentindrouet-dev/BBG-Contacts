@@ -235,6 +235,7 @@ function contactCard(c, zoom) {
   const isMin = zoom <= 1;
   const cat   = c.category || 'auteur';
   const urg   = c.taskUrgency || 'normal';
+  const hasUrgentTask = c.task && !c.taskDone && (urg === 'urgent' || urg === 'critique');
 
   const mediaContent = c.photo
     ? `<img src="${esc(c.photo)}" class="card-photo" alt="" />`
@@ -245,6 +246,11 @@ function contactCard(c, zoom) {
       isMin ? (cat.charAt(0)||'?').toUpperCase() : esc(cat)
     }</span>`;
 
+  // Urgency dot always visible in media area when task is urgent/critique
+  const urgDot = hasUrgentTask
+    ? `<span class="card-urg-dot card-urg-dot-${urg}" title="Tâche ${urg}"></span>`
+    : '';
+
   const extLink = !isMin && c.website
     ? `<a class="card-ext-link" href="${esc(c.website)}" target="_blank" rel="noopener"
          onclick="event.stopPropagation()">${ICONS.extLink}</a>`
@@ -254,13 +260,14 @@ function contactCard(c, zoom) {
     onclick="event.stopPropagation();editContact('${c.id}')">${ICONS.pencil}</button>`;
 
   // Show urgency pill instead of status
-  const urgPill = c.task
+  const urgPill = c.task && !c.taskDone
     ? `<span class="badge badge-urgence-${urg}" style="${isMin ? 'font-size:.6rem' : ''}">${
         isMin ? urg[0].toUpperCase() : esc(urg)
       }</span>`
     : '';
 
-  let body = '';
+  // Name always visible — compact at min zoom, full body otherwise
+  let body = `<div class="card-min-name" title="${esc(c.name)}">${esc(c.name)}</div>`;
   if (!isMin) {
     const subtitle = c.company || c.email || '';
     let extra = '';
@@ -268,7 +275,7 @@ function contactCard(c, zoom) {
       if (c.email) extra += `<p class="card-detail-row">${ICONS.mail} ${esc(c.email)}</p>`;
       if (c.phone) extra += `<p class="card-detail-row">${ICONS.phone} ${esc(c.phone)}</p>`;
     }
-    if (zoom >= 4 && c.task) {
+    if (zoom >= 4 && c.task && !c.taskDone) {
       extra += `<div class="card-task">
         <span class="badge badge-urgence-${urg}">${esc(urg)}</span>
         <span class="card-task-text">${esc(c.task)}</span>
@@ -285,10 +292,13 @@ function contactCard(c, zoom) {
     </div>`;
   }
 
-  return `<div class="card card-hover card-bg-${cat}"
+  const urgClass = hasUrgentTask ? ` card-urg-${urg}` : '';
+  const doneClass = c.taskDone ? ' card-task-done' : '';
+
+  return `<div class="card card-hover card-bg-${cat}${urgClass}${doneClass}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
     <div class="card-media card-media-${cat}">
-      ${mediaContent}${badge}${extLink}${editBtn}
+      ${mediaContent}${badge}${urgDot}${extLink}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -386,6 +396,7 @@ function prototypeCard(p, zoom) {
   const icon = PROTO_ICONS[p.status] || '🎮';
   const urg  = p.taskUrgency || 'normal';
   const stars = '⭐'.repeat(p.interest || 3);
+  const hasUrgentTask = p.task && !p.taskDone && (urg === 'urgent' || urg === 'critique');
 
   const badge = isMin
     ? `<span class="badge badge-${p.status} card-badge" style="font-size:.6rem;padding:.1rem .35rem">${esc(p.status.charAt(0).toUpperCase())}</span>`
@@ -398,14 +409,19 @@ function prototypeCard(p, zoom) {
     ? `<img src="${esc(p.photo)}" class="card-photo" alt="" />`
     : `<span class="card-game-icon">${icon}</span>`;
 
-  let body = '';
+  const urgDot = hasUrgentTask
+    ? `<span class="card-urg-dot card-urg-dot-${urg}" title="Tâche ${urg}"></span>`
+    : '';
+
+  // Title always visible
+  let body = `<div class="card-min-name" title="${esc(p.title)}">${esc(p.title)}</div>`;
   if (!isMin) {
     let chips = '';
     if (zoom >= 3) {
       if (p.players)  chips += `<span class="spec-chip">${ICONS.users} ${esc(p.players)}</span>`;
       if (p.duration) chips += `<span class="spec-chip">${ICONS.clock} ${esc(p.duration)}</span>`;
     }
-    const urgPill = p.task
+    const urgPill = p.task && !p.taskDone
       ? `<span class="badge badge-urgence-${urg}" style="font-size:.65rem">${esc(zoom >= 3 ? urg : urg[0].toUpperCase())}</span>`
       : '';
     body = `<div class="card-body">
@@ -419,10 +435,13 @@ function prototypeCard(p, zoom) {
     </div>`;
   }
 
-  return `<div class="card card-hover"
+  const urgClass = hasUrgentTask ? ` card-urg-${urg}` : '';
+  const doneClass = p.taskDone ? ' card-task-done' : '';
+
+  return `<div class="card card-hover${urgClass}${doneClass}"
     onclick="openDetail('prototype','${p.id}')" title="${esc(p.title)}">
     <div class="card-media card-media-${p.status}">
-      ${mediaContent}${badge}${editBtn}
+      ${mediaContent}${badge}${urgDot}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -558,12 +577,16 @@ function toggleTaskDone(type, id) {
   if (type === 'contact') {
     const c = state.contacts.find(x => x.id === id);
     if (c) c.taskDone = !c.taskDone;
+    saveState();
+    renderContacts();
   } else {
     const p = state.prototypes.find(x => x.id === id);
     if (p) p.taskDone = !p.taskDone;
+    saveState();
+    renderPrototypes();
   }
-  saveState();
-  renderTasks();
+  // Also refresh tasks list if visible
+  if (state.activePage === 'tasks') renderTasks();
 }
 
 // ═══════════════════════════════════════════════════
@@ -988,10 +1011,14 @@ function openDetail(type, id) {
             <a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website.replace(/^https?:\/\//,''))}</a></div>` : ''}
         </div>
         ${c.task ? `<div class="detail-section-title">Tâche en cours</div>
-          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem;flex-wrap:wrap">
             <span class="badge badge-urgence-${urg}">${esc(urg)}</span>
-            <span style="font-size:.875rem;color:var(--text-700)">${esc(c.task)}</span>
-          </div>` : ''}
+            <span style="font-size:.875rem;color:var(--text-700);${c.taskDone?'text-decoration:line-through;opacity:.5':''}">${esc(c.task)}</span>
+          </div>
+          <label class="detail-task-done-label${c.taskDone?' is-done':''}">
+            <input type="checkbox" ${c.taskDone?'checked':''} onchange="toggleTaskDone('contact','${c.id}');openDetail('contact','${c.id}')" />
+            Marquer comme terminée
+          </label>` : ''}
         ${meetHtml}
         ${gamesHtml}
         ${c.notes ? `<div class="detail-section-title">Notes</div>
@@ -1034,10 +1061,14 @@ function openDetail(type, id) {
           <div class="detail-kv"><label>Intérêt</label><span>${'⭐'.repeat(p.interest||3)} ${INTEREST_LABELS[p.interest||3]}</span></div>
         </div>
         ${p.task ? `<div class="detail-section-title">Tâche en cours</div>
-          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem;flex-wrap:wrap">
             <span class="badge badge-urgence-${urg}">${esc(urg)}</span>
-            <span style="font-size:.875rem;color:var(--text-700)">${esc(p.task)}</span>
-          </div>` : ''}
+            <span style="font-size:.875rem;color:var(--text-700);${p.taskDone?'text-decoration:line-through;opacity:.5':''}">${esc(p.task)}</span>
+          </div>
+          <label class="detail-task-done-label${p.taskDone?' is-done':''}">
+            <input type="checkbox" ${p.taskDone?'checked':''} onchange="toggleTaskDone('prototype','${p.id}');openDetail('prototype','${p.id}')" />
+            Marquer comme terminée
+          </label>` : ''}
         ${p.pdf ? `<div class="detail-section-title">Règles du jeu</div>
           <a href="${esc(p.pdf)}" target="_blank" class="pdf-download-link">📄 ${esc(p.pdfName||'Règles.pdf')}</a>` : ''}
         ${p.contacts ? `<div class="detail-section-title">Contacts associés</div>
