@@ -422,21 +422,19 @@
         </div>
       </div>
 
-      <!-- Tâche + urgence -->
-      <div class="form-row">
-        <div class="form-group">
-          <label>Tâche en cours</label>
-          <input type="text" id="contact-task" placeholder="Ex : Envoyer brief illustration…" />
+      <!-- Tâches -->
+      <div class="form-group full">
+        <label>Tâches</label>
+        <div class="game-list-wrap">
+          <table class="task-list-table">
+            <thead><tr><th style="width:58%">Description</th><th style="width:32%">Urgence</th><th style="width:10%"></th></tr></thead>
+            <tbody id="contact-tasks-body"></tbody>
+          </table>
         </div>
-        <div class="form-group">
-          <label>Urgence</label>
-          <div class="urgency-wrap">
-            <input type="radio" class="urgency-radio" name="contact-urgency" id="urg-faible"   value="faible"   /><label class="urgency-pill urgency-pill-faible"   for="urg-faible">Faible</label>
-            <input type="radio" class="urgency-radio" name="contact-urgency" id="urg-normal"   value="normal"   checked /><label class="urgency-pill urgency-pill-normal"   for="urg-normal">Normal</label>
-            <input type="radio" class="urgency-radio" name="contact-urgency" id="urg-urgent"   value="urgent"   /><label class="urgency-pill urgency-pill-urgent"   for="urg-urgent">Urgent</label>
-            <input type="radio" class="urgency-radio" name="contact-urgency" id="urg-critique" value="critique" /><label class="urgency-pill urgency-pill-critique" for="urg-critique">Critique</label>
-          </div>
-        </div>
+        <button type="button" class="btn-add-row" onclick="addTaskRow('contact')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter une tâche
+        </button>
       </div>
 
       <!-- Jeux associés (Jeu / Statut / Notes) -->
@@ -579,30 +577,39 @@
         </div>
       </div>
 
-      <!-- Tâche + urgence prototype -->
-      <div class="form-row">
-        <div class="form-group">
-          <label>Tâche en cours</label>
-          <input type="text" id="prototype-task" placeholder="Ex : Préparer convention Essen…" />
+      <!-- Tâches prototype -->
+      <div class="form-group full">
+        <label>Tâches</label>
+        <div class="game-list-wrap">
+          <table class="task-list-table">
+            <thead><tr><th style="width:58%">Description</th><th style="width:32%">Urgence</th><th style="width:10%"></th></tr></thead>
+            <tbody id="proto-tasks-body"></tbody>
+          </table>
         </div>
-        <div class="form-group">
-          <label>Urgence</label>
-          <div class="urgency-wrap">
-            <input type="radio" class="urgency-radio" name="proto-urgency" id="purg-faible"   value="faible"   /><label class="urgency-pill urgency-pill-faible"   for="purg-faible">Faible</label>
-            <input type="radio" class="urgency-radio" name="proto-urgency" id="purg-normal"   value="normal"   checked /><label class="urgency-pill urgency-pill-normal"   for="purg-normal">Normal</label>
-            <input type="radio" class="urgency-radio" name="proto-urgency" id="purg-urgent"   value="urgent"   /><label class="urgency-pill urgency-pill-urgent"   for="purg-urgent">Urgent</label>
-            <input type="radio" class="urgency-radio" name="proto-urgency" id="purg-critique" value="critique" /><label class="urgency-pill urgency-pill-critique" for="purg-critique">Critique</label>
-          </div>
-        </div>
+        <button type="button" class="btn-add-row" onclick="addTaskRow('proto')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter une tâche
+        </button>
       </div>
 
       <div class="form-group full">
         <label>Description</label>
         <textarea id="prototype-description" placeholder="Résumé du concept, pitch…"></textarea>
       </div>
+
+      <!-- Contacts associés (liaison vers contacts existants) -->
       <div class="form-group full">
         <label>Contacts associés</label>
-        <input type="text" id="prototype-contacts" placeholder="ex : Sophie Martel (illustration), Thomas Lebrun (co-design)" />
+        <div class="game-list-wrap contact-link-wrap">
+          <table class="game-list-table">
+            <thead><tr><th style="width:55%">Contact</th><th style="width:35%">Rôle</th><th style="width:10%"></th></tr></thead>
+            <tbody id="proto-contacts-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addContactLinkRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un contact
+        </button>
       </div>
       <div class="form-group full">
         <label>Notes de développement</label>

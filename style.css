@@ -1165,6 +1165,39 @@ a:hover { color: var(--primary-700); }
 .pdf-name { font-size: 0.8rem; color: var(--text-500); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pdf-download-link { font-size: 0.8rem; color: var(--primary-600); }
 .pdf-download-link:hover { color: var(--primary-700); }
+.pdf-viewer-wrap { margin-top: 0.5rem; }
+.pdf-viewer-frame {
+  width: 100%; height: 480px; border: 1px solid var(--border);
+  border-radius: var(--rx-lg); display: block;
+}
+.pdf-open-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; padding: 0.3rem 0.7rem;
+  background: var(--primary-600); color: #fff;
+  border: none; border-radius: var(--rx-md); cursor: pointer;
+  transition: background var(--transition);
+}
+.pdf-open-btn:hover { background: var(--primary-700); }
+
+/* Task list table inside forms */
+.task-list-table { width: 100%; border-collapse: collapse; }
+.task-list-table th, .task-list-table td {
+  padding: 0.35rem 0.5rem; text-align: left;
+  border-bottom: 1px solid var(--border); font-size: 0.8rem;
+}
+.task-list-table th { color: var(--text-500); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; font-size: .7rem; }
+.task-list-table select { width: 100%; padding: 0.25rem 0.4rem; }
+
+/* Contact link table (prototype form) */
+.contact-link-wrap { overflow-x: auto; }
+
+/* Multi-task badge on cards */
+.card-task-count {
+  font-size: 0.65rem; font-weight: 700;
+  background: var(--primary-600); color: #fff;
+  border-radius: 99px; padding: 0 .35rem;
+  line-height: 1.6;
+}
 
 .interest-wrap { display: flex; align-items: center; gap: 0.2rem; }
 .interest-radio { display: none; }
@@ -1173,9 +1206,7 @@ a:hover { color: var(--primary-700); }
   transition: opacity var(--transition), transform var(--transition);
   line-height: 1;
 }
-/* When a radio is checked, highlight it and all preceding stars via CSS trick */
-.interest-radio:checked ~ .interest-star { opacity: 0.25; }
-/* Use JS-controlled class instead */
+/* JS controls .lit class — no CSS sibling trick to avoid specificity conflict */
 .interest-star.lit { opacity: 1; }
 .interest-star:hover { transform: scale(1.15); }
 .interest-label {

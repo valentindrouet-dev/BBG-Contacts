@@ -31,16 +31,38 @@ function saveState() {
   localStorage.setItem('bbg-contacts',   JSON.stringify(state.contacts));
   localStorage.setItem('bbg-prototypes', JSON.stringify(state.prototypes));
 }
+// ── Data migration ──────────────────────────────
+function migrateContact(c) {
+  // task/taskUrgency/taskDone → tasks[]
+  if (!Array.isArray(c.tasks)) {
+    c.tasks = c.task
+      ? [{ id: uid(), text: c.task, urgency: c.taskUrgency || 'normal', done: c.taskDone || false }]
+      : [];
+  }
+  return c;
+}
+function migratePrototype(p) {
+  if (!Array.isArray(p.tasks)) {
+    p.tasks = p.task
+      ? [{ id: uid(), text: p.task, urgency: p.taskUrgency || 'normal', done: p.taskDone || false }]
+      : [];
+  }
+  if (!Array.isArray(p.contactLinks)) {
+    p.contactLinks = [];
+  }
+  return p;
+}
+
 function loadState() {
   try {
     const c = localStorage.getItem('bbg-contacts');
     const p = localStorage.getItem('bbg-prototypes');
-    state.contacts   = c ? JSON.parse(c) : SEED_CONTACTS;
-    state.prototypes = p ? JSON.parse(p) : SEED_PROTOTYPES;
+    state.contacts   = (c ? JSON.parse(c) : SEED_CONTACTS).map(migrateContact);
+    state.prototypes = (p ? JSON.parse(p) : SEED_PROTOTYPES).map(migratePrototype);
     if (!c || !p) saveState();
   } catch(e) {
-    state.contacts   = SEED_CONTACTS;
-    state.prototypes = SEED_PROTOTYPES;
+    state.contacts   = SEED_CONTACTS.map(migrateContact);
+    state.prototypes = SEED_PROTOTYPES.map(migratePrototype);
     saveState();
   }
 }
@@ -86,6 +108,57 @@ const PROTO_ICONS = {
 
 const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exceptionnel'];
 
+// ── Task helpers ───────────────────────────────────
+function getTopTask(item) {
+  const pending = (item.tasks || []).filter(t => !t.done);
+  if (!pending.length) return null;
+  return pending.reduce((best, t) =>
+    (URGENCY_ORDER[t.urgency || 'normal'] < URGENCY_ORDER[best.urgency || 'normal']) ? t : best
+  , pending[0]);
+}
+
+function getTopUrgency(item) {
+  const top = getTopTask(item);
+  return top ? (top.urgency || 'normal') : '';
+}
+
+// ── PDF helper ────────────────────────────────────
+function openPdfBlob(protoId) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p?.pdf) return;
+  try {
+    const dataUrl = p.pdf;
+    const b64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+    const bytes = atob(b64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    const blob = new Blob([arr], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch(e) {
+    window.open(p.pdf, '_blank');
+  }
+}
+
+function injectPdfViewer(protoId) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p?.pdf) return;
+  const frame = document.getElementById('pdf-preview-frame-' + protoId);
+  if (!frame) return;
+  try {
+    const dataUrl = p.pdf;
+    const b64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+    const bytes = atob(b64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    const blob = new Blob([arr], { type: 'application/pdf' });
+    frame.src = URL.createObjectURL(blob);
+  } catch(e) {
+    frame.src = p.pdf;
+  }
+}
+
 // ═══════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════
@@ -116,9 +189,9 @@ function filteredContacts() {
   );
   if (state.contactsCat) list = list.filter(c => c.category === state.contactsCat);
   if (state.contactsUrgency === 'none') {
-    list = list.filter(c => !c.task);
+    list = list.filter(c => !(c.tasks || []).some(t => !t.done));
   } else if (state.contactsUrgency) {
-    list = list.filter(c => c.task && (c.taskUrgency || 'normal') === state.contactsUrgency);
+    list = list.filter(c => getTopUrgency(c) === state.contactsUrgency);
   }
   list.sort((a, b) => {
     let cmp = 0;
@@ -128,8 +201,8 @@ function filteredContacts() {
       case 'company':     cmp = (a.company||'').localeCompare(b.company||'', 'fr'); break;
       case 'lastMeeting': cmp = (a.lastMeeting||'').localeCompare(b.lastMeeting||''); break;
       case 'urgency': {
-        const ua = a.task ? URGENCY_ORDER[a.taskUrgency||'normal'] : 99;
-        const ub = b.task ? URGENCY_ORDER[b.taskUrgency||'normal'] : 99;
+        const ua = getTopTask(a) ? URGENCY_ORDER[getTopUrgency(a)] : 99;
+        const ub = getTopTask(b) ? URGENCY_ORDER[getTopUrgency(b)] : 99;
         cmp = ua - ub; break;
       }
     }
@@ -156,8 +229,8 @@ function filteredPrototypes() {
       case 'createdAt': cmp = (a.createdAt||'').localeCompare(b.createdAt||''); break;
       case 'interest':  cmp = (b.interest||3) - (a.interest||3); break;
       case 'urgency': {
-        const ua = a.task ? URGENCY_ORDER[a.taskUrgency||'normal'] : 99;
-        const ub = b.task ? URGENCY_ORDER[b.taskUrgency||'normal'] : 99;
+        const ua = getTopTask(a) ? URGENCY_ORDER[getTopUrgency(a)] : 99;
+        const ub = getTopTask(b) ? URGENCY_ORDER[getTopUrgency(b)] : 99;
         cmp = ua - ub; break;
       }
     }
@@ -234,8 +307,9 @@ function renderContacts() {
 function contactCard(c, zoom) {
   const isMin = zoom <= 1;
   const cat   = c.category || 'auteur';
-  const urg   = c.taskUrgency || 'normal';
-  const hasUrgentTask = c.task && !c.taskDone && (urg === 'urgent' || urg === 'critique');
+  const topTask = getTopTask(c);
+  const urg   = topTask ? (topTask.urgency || 'normal') : 'normal';
+  const hasUrgentTask = topTask && (urg === 'urgent' || urg === 'critique');
 
   const mediaContent = c.photo
     ? `<img src="${esc(c.photo)}" class="card-photo" alt="" />`
@@ -260,10 +334,11 @@ function contactCard(c, zoom) {
     onclick="event.stopPropagation();editContact('${c.id}')">${ICONS.pencil}</button>`;
 
   // Show urgency pill instead of status
-  const urgPill = c.task && !c.taskDone
+  const pendingCount = (c.tasks || []).filter(t => !t.done).length;
+  const urgPill = topTask
     ? `<span class="badge badge-urgence-${urg}" style="${isMin ? 'font-size:.6rem' : ''}">${
         isMin ? urg[0].toUpperCase() : esc(urg)
-      }</span>`
+      }</span>${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}`
     : '';
 
   // Name always visible — compact at min zoom, full body otherwise
@@ -275,10 +350,10 @@ function contactCard(c, zoom) {
       if (c.email) extra += `<p class="card-detail-row">${ICONS.mail} ${esc(c.email)}</p>`;
       if (c.phone) extra += `<p class="card-detail-row">${ICONS.phone} ${esc(c.phone)}</p>`;
     }
-    if (zoom >= 4 && c.task && !c.taskDone) {
+    if (zoom >= 4 && topTask) {
       extra += `<div class="card-task">
         <span class="badge badge-urgence-${urg}">${esc(urg)}</span>
-        <span class="card-task-text">${esc(c.task)}</span>
+        <span class="card-task-text">${esc(topTask.text)}</span>
       </div>`;
     }
     body = `<div class="card-body">
@@ -293,7 +368,8 @@ function contactCard(c, zoom) {
   }
 
   const urgClass = hasUrgentTask ? ` card-urg-${urg}` : '';
-  const doneClass = c.taskDone ? ' card-task-done' : '';
+  const allDone = (c.tasks||[]).length > 0 && (c.tasks||[]).every(t => t.done);
+  const doneClass = allDone ? ' card-task-done' : '';
 
   return `<div class="card card-hover card-bg-${cat}${urgClass}${doneClass}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
@@ -326,14 +402,17 @@ function buildContactsTable(list) {
       <th class="col-actions"></th>
     </tr></thead>
     <tbody>${list.map(c => {
-      const urg = c.taskUrgency || 'normal';
+      const topTask = getTopTask(c);
+      const urg = topTask ? (topTask.urgency || 'normal') : 'normal';
+      const pendingCount = (c.tasks || []).filter(t => !t.done).length;
       const avatar = c.photo
         ? `<img src="${esc(c.photo)}" class="list-photo" alt="" />`
         : `<div class="list-avatar list-avatar-${c.category}">${initials(c.name)}</div>`;
-      const taskCell = c.task
+      const taskCell = topTask
         ? `<div class="td-task">
             <span class="badge badge-urgence-${urg}" style="flex-shrink:0">${esc(urg)}</span>
-            <span class="td-task-text">${esc(c.task)}</span>
+            <span class="td-task-text">${esc(topTask.text)}</span>
+            ${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}
           </div>` : '';
       const meetDate = c.lastMeeting
         ? new Date(c.lastMeeting).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'2-digit' })
@@ -394,9 +473,10 @@ function renderPrototypes() {
 function prototypeCard(p, zoom) {
   const isMin = zoom <= 1;
   const icon = PROTO_ICONS[p.status] || '🎮';
-  const urg  = p.taskUrgency || 'normal';
+  const topTask = getTopTask(p);
+  const urg  = topTask ? (topTask.urgency || 'normal') : 'normal';
   const stars = '⭐'.repeat(p.interest || 3);
-  const hasUrgentTask = p.task && !p.taskDone && (urg === 'urgent' || urg === 'critique');
+  const hasUrgentTask = topTask && (urg === 'urgent' || urg === 'critique');
 
   const badge = isMin
     ? `<span class="badge badge-${p.status} card-badge" style="font-size:.6rem;padding:.1rem .35rem">${esc(p.status.charAt(0).toUpperCase())}</span>`
@@ -421,8 +501,9 @@ function prototypeCard(p, zoom) {
       if (p.players)  chips += `<span class="spec-chip">${ICONS.users} ${esc(p.players)}</span>`;
       if (p.duration) chips += `<span class="spec-chip">${ICONS.clock} ${esc(p.duration)}</span>`;
     }
-    const urgPill = p.task && !p.taskDone
-      ? `<span class="badge badge-urgence-${urg}" style="font-size:.65rem">${esc(zoom >= 3 ? urg : urg[0].toUpperCase())}</span>`
+    const pendingCount = (p.tasks || []).filter(t => !t.done).length;
+    const urgPill = topTask
+      ? `<span class="badge badge-urgence-${urg}" style="font-size:.65rem">${esc(zoom >= 3 ? urg : urg[0].toUpperCase())}</span>${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}`
       : '';
     body = `<div class="card-body">
       <h3 class="card-title">${esc(p.title)}</h3>
@@ -436,7 +517,8 @@ function prototypeCard(p, zoom) {
   }
 
   const urgClass = hasUrgentTask ? ` card-urg-${urg}` : '';
-  const doneClass = p.taskDone ? ' card-task-done' : '';
+  const allDoneP = (p.tasks||[]).length > 0 && (p.tasks||[]).every(t => t.done);
+  const doneClass = allDoneP ? ' card-task-done' : '';
 
   return `<div class="card card-hover${urgClass}${doneClass}"
     onclick="openDetail('prototype','${p.id}')" title="${esc(p.title)}">
@@ -470,11 +552,14 @@ function buildPrototypesTable(list) {
     </tr></thead>
     <tbody>${list.map(p => {
       const date = p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'2-digit' }) : '';
-      const urg  = p.taskUrgency || 'normal';
-      const taskCell = p.task
+      const topTask = getTopTask(p);
+      const urg  = topTask ? (topTask.urgency || 'normal') : 'normal';
+      const pendingCount = (p.tasks || []).filter(t => !t.done).length;
+      const taskCell = topTask
         ? `<div class="td-task">
             <span class="badge badge-urgence-${urg}" style="flex-shrink:0">${esc(urg)}</span>
-            <span class="td-task-text">${esc(p.task)}</span>
+            <span class="td-task-text">${esc(topTask.text)}</span>
+            ${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}
           </div>` : '';
       return `<tr onclick="openDetail('prototype','${p.id}')">
         <td class="col-avatar"><span class="list-proto-icon">${PROTO_ICONS[p.status]||'🎮'}</span></td>
@@ -503,18 +588,16 @@ function renderTasks() {
   const listEl    = document.getElementById('tasks-list');
   const emptyEl   = document.getElementById('tasks-empty');
 
-  // Gather all tasks
+  // Gather all tasks from contacts and prototypes
   let tasks = [];
   state.contacts.forEach(c => {
-    if (c.task) tasks.push({
-      id: c.id, type: 'contact', name: c.name, task: c.task,
-      urgency: c.taskUrgency || 'normal', done: c.taskDone || false,
+    (c.tasks || []).forEach(t => {
+      tasks.push({ itemId: c.id, taskId: t.id, type: 'contact', name: c.name, task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
     });
   });
   state.prototypes.forEach(p => {
-    if (p.task) tasks.push({
-      id: p.id, type: 'prototype', name: p.title, task: p.task,
-      urgency: p.taskUrgency || 'normal', done: p.taskDone || false,
+    (p.tasks || []).forEach(t => {
+      tasks.push({ itemId: p.id, taskId: t.id, type: 'prototype', name: p.title, task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
     });
   });
 
@@ -560,9 +643,9 @@ function renderTasks() {
 
 function taskCard(t) {
   const typeLabel = t.type === 'contact' ? 'Contact' : 'Prototype';
-  return `<div class="task-card${t.done ? ' done' : ''}" onclick="openDetail('${t.type}','${t.id}')">
+  return `<div class="task-card${t.done ? ' done' : ''}" onclick="openDetail('${t.type}','${t.itemId}')">
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
-      onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.id}')" />
+      onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.itemId}','${t.taskId}')" />
     <div class="task-body">
       <span class="task-source">${typeLabel} · ${esc(t.name)}</span>
       <span class="task-text">${esc(t.task)}</span>
@@ -571,19 +654,24 @@ function taskCard(t) {
   </div>`;
 }
 
-function toggleTaskDone(type, id) {
+function toggleTaskDone(type, itemId, taskId) {
   if (type === 'contact') {
-    const c = state.contacts.find(x => x.id === id);
-    if (c) c.taskDone = !c.taskDone;
+    const c = state.contacts.find(x => x.id === itemId);
+    if (c) {
+      const t = (c.tasks || []).find(x => x.id === taskId);
+      if (t) t.done = !t.done;
+    }
     saveState();
     renderContacts();
   } else {
-    const p = state.prototypes.find(x => x.id === id);
-    if (p) p.taskDone = !p.taskDone;
+    const p = state.prototypes.find(x => x.id === itemId);
+    if (p) {
+      const t = (p.tasks || []).find(x => x.id === taskId);
+      if (t) t.done = !t.done;
+    }
     saveState();
     renderPrototypes();
   }
-  // Also refresh tasks list if visible
   if (state.activePage === 'tasks') renderTasks();
 }
 
@@ -749,6 +837,81 @@ function populateGamesForm(games = []) {
 }
 
 // ═══════════════════════════════════════════════════
+// TASK LIST (forms)
+// ═══════════════════════════════════════════════════
+function addTaskRow(prefix, task = {}) {
+  const tbody = document.getElementById(`${prefix}-tasks-body`);
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const urgencies = ['faible', 'normal', 'urgent', 'critique'];
+  const opts = urgencies.map(u =>
+    `<option value="${u}" ${(task.urgency || 'normal') === u ? 'selected' : ''}>${u.charAt(0).toUpperCase() + u.slice(1)}</option>`
+  ).join('');
+  const tid = task.id || uid();
+  tr.dataset.taskId = tid;
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Description de la tâche…" value="${esc(task.text || '')}" /></td>
+    <td><select>${opts}</select></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getTasksFromForm(prefix) {
+  const tbody = document.getElementById(`${prefix}-tasks-body`);
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => {
+    const inputs = tr.querySelectorAll('input[type="text"], select');
+    return {
+      id: tr.dataset.taskId || uid(),
+      text: inputs[0]?.value.trim() || '',
+      urgency: inputs[1]?.value || 'normal',
+      done: false,
+    };
+  }).filter(t => t.text);
+}
+
+function populateTasksForm(prefix, tasks = []) {
+  const tbody = document.getElementById(`${prefix}-tasks-body`);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  tasks.forEach(t => addTaskRow(prefix, t));
+}
+
+// ═══════════════════════════════════════════════════
+// CONTACT LINKS (prototype form)
+// ═══════════════════════════════════════════════════
+function addContactLinkRow(link = {}) {
+  const tbody = document.getElementById('proto-contacts-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const opts = state.contacts.map(c =>
+    `<option value="${c.id}" ${link.contactId === c.id ? 'selected' : ''}>${esc(c.name)}${c.company ? ' – ' + esc(c.company) : ''}</option>`
+  ).join('');
+  tr.innerHTML = `
+    <td><select><option value="">— Choisir un contact —</option>${opts}</select></td>
+    <td><input type="text" placeholder="ex : auteur, illustrateur…" value="${esc(link.role || '')}" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getContactLinksFromForm() {
+  const tbody = document.getElementById('proto-contacts-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => {
+    const sel  = tr.querySelector('select');
+    const inp  = tr.querySelector('input[type="text"]');
+    return { contactId: sel?.value || '', role: inp?.value.trim() || '' };
+  }).filter(l => l.contactId);
+}
+
+function populateContactLinksForm(links = []) {
+  const tbody = document.getElementById('proto-contacts-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  links.forEach(l => addContactLinkRow(l));
+}
+
+// ═══════════════════════════════════════════════════
 // MODALS
 // ═══════════════════════════════════════════════════
 function openModal(type) {
@@ -779,14 +942,14 @@ document.addEventListener('keydown', e => {
 // ── Contact form ──────────────────────────────────
 function resetContactForm() {
   ['contact-id','contact-name','contact-email','contact-phone',
-   'contact-company','contact-website','contact-notes','contact-task',
+   'contact-company','contact-website','contact-notes',
    'contact-photo-url','contact-last-meeting','contact-last-meeting-note'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('contact-photo-file').value = '';
   document.getElementById('contact-category').value = '';
-  document.querySelector('input[name="contact-urgency"][value="normal"]').checked = true;
   _updatePhotoPreview('contact', '');
+  populateTasksForm('contact', []);
   populateGamesForm([]);
   document.getElementById('modal-contact-title').textContent = 'Nouveau contact';
 }
@@ -802,13 +965,11 @@ function editContact(id) {
   document.getElementById('contact-company').value         = c.company         || '';
   document.getElementById('contact-website').value         = c.website         || '';
   document.getElementById('contact-notes').value           = c.notes           || '';
-  document.getElementById('contact-task').value            = c.task            || '';
   document.getElementById('contact-photo-url').value       = c.photo           || '';
   document.getElementById('contact-last-meeting').value    = c.lastMeeting     || '';
   document.getElementById('contact-last-meeting-note').value = c.lastMeetingNote || '';
   _updatePhotoPreview('contact', c.photo || '');
-  const urgEl = document.querySelector(`input[name="contact-urgency"][value="${c.taskUrgency||'normal'}"]`);
-  if (urgEl) urgEl.checked = true;
+  populateTasksForm('contact', c.tasks || []);
   populateGamesForm(c.games || []);
   document.getElementById('modal-contact-title').textContent = 'Modifier le contact';
   openModal('contact');
@@ -817,7 +978,7 @@ function editContact(id) {
 function submitContact(e) {
   e.preventDefault();
   const id  = document.getElementById('contact-id').value;
-  const urg = document.querySelector('input[name="contact-urgency"]:checked')?.value || 'normal';
+  const newTasks = getTasksFromForm('contact');
   const data = {
     name:             document.getElementById('contact-name').value.trim(),
     category:         document.getElementById('contact-category').value,
@@ -826,9 +987,6 @@ function submitContact(e) {
     company:          document.getElementById('contact-company').value.trim(),
     website:          document.getElementById('contact-website').value.trim(),
     notes:            document.getElementById('contact-notes').value.trim(),
-    task:             document.getElementById('contact-task').value.trim(),
-    taskUrgency:      urg,
-    taskDone:         false,
     photo:            document.getElementById('contact-photo-url').value.trim(),
     lastMeeting:      document.getElementById('contact-last-meeting').value,
     lastMeetingNote:  document.getElementById('contact-last-meeting-note').value.trim(),
@@ -836,11 +994,15 @@ function submitContact(e) {
   };
   if (id) {
     const i = state.contacts.findIndex(x => x.id === id);
-    // Preserve taskDone if task text unchanged
-    if (state.contacts[i].task === data.task) data.taskDone = state.contacts[i].taskDone || false;
-    state.contacts[i] = { ...state.contacts[i], ...data };
+    const existing = state.contacts[i];
+    // Preserve done state for tasks that already exist
+    data.tasks = newTasks.map(t => {
+      const old = (existing.tasks || []).find(o => o.id === t.id);
+      return old ? { ...t, done: old.done } : t;
+    });
+    state.contacts[i] = { ...existing, ...data };
   } else {
-    state.contacts.unshift({ id: uid(), createdAt: today(), ...data });
+    state.contacts.unshift({ id: uid(), createdAt: today(), tasks: newTasks, ...data });
   }
   saveState(); closeModal('contact'); renderContacts();
 }
@@ -849,8 +1011,7 @@ function submitContact(e) {
 function resetPrototypeForm() {
   ['prototype-id','prototype-title','prototype-genre','prototype-players',
    'prototype-duration','prototype-age','prototype-description',
-   'prototype-contacts','prototype-notes','prototype-task',
-   'proto-photo-url'].forEach(id => {
+   'prototype-notes','proto-photo-url'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('prototype-status').value = '';
@@ -859,7 +1020,8 @@ function resetPrototypeForm() {
   clearProtoPdf();
   const intEl = document.querySelector('input[name="proto-interest"][value="3"]');
   if (intEl) { intEl.checked = true; updateInterestUI(3); }
-  document.querySelector('input[name="proto-urgency"][value="normal"]').checked = true;
+  populateTasksForm('proto', []);
+  populateContactLinksForm([]);
   document.getElementById('modal-prototype-title').textContent = 'Nouveau prototype';
 }
 
@@ -874,9 +1036,7 @@ function editPrototype(id) {
   document.getElementById('prototype-duration').value    = p.duration     || '';
   document.getElementById('prototype-age').value         = p.age          || '';
   document.getElementById('prototype-description').value = p.description  || '';
-  document.getElementById('prototype-contacts').value    = p.contacts     || '';
   document.getElementById('prototype-notes').value       = p.notes        || '';
-  document.getElementById('prototype-task').value        = p.task         || '';
   document.getElementById('proto-photo-url').value       = p.photo        || '';
   _updatePhotoPreview('proto', p.photo || '');
 
@@ -884,8 +1044,8 @@ function editPrototype(id) {
   const intEl = document.querySelector(`input[name="proto-interest"][value="${intVal}"]`);
   if (intEl) { intEl.checked = true; updateInterestUI(intVal); }
 
-  const urgEl = document.querySelector(`input[name="proto-urgency"][value="${p.taskUrgency||'normal'}"]`);
-  if (urgEl) urgEl.checked = true;
+  populateTasksForm('proto', p.tasks || []);
+  populateContactLinksForm(p.contactLinks || []);
 
   // PDF
   _protoPdfData = p.pdf || null;
@@ -902,34 +1062,36 @@ function submitPrototype(e) {
   e.preventDefault();
   const id      = document.getElementById('prototype-id').value;
   const intVal  = parseInt(document.querySelector('input[name="proto-interest"]:checked')?.value || 3);
-  const urg     = document.querySelector('input[name="proto-urgency"]:checked')?.value || 'normal';
   const pdfName = _protoPdfData
     ? (document.getElementById('proto-pdf-name').textContent || 'Règles.pdf')
     : null;
+  const newTasks = getTasksFromForm('proto');
+  const newLinks = getContactLinksFromForm();
   const data = {
-    title:       document.getElementById('prototype-title').value.trim(),
-    status:      document.getElementById('prototype-status').value,
-    genre:       document.getElementById('prototype-genre').value.trim(),
-    players:     document.getElementById('prototype-players').value.trim(),
-    duration:    document.getElementById('prototype-duration').value.trim(),
-    age:         document.getElementById('prototype-age').value.trim(),
-    description: document.getElementById('prototype-description').value.trim(),
-    contacts:    document.getElementById('prototype-contacts').value.trim(),
-    notes:       document.getElementById('prototype-notes').value.trim(),
-    task:        document.getElementById('prototype-task').value.trim(),
-    taskUrgency: urg,
-    taskDone:    false,
-    interest:    intVal,
-    photo:       document.getElementById('proto-photo-url').value.trim(),
-    pdf:         _protoPdfData,
+    title:        document.getElementById('prototype-title').value.trim(),
+    status:       document.getElementById('prototype-status').value,
+    genre:        document.getElementById('prototype-genre').value.trim(),
+    players:      document.getElementById('prototype-players').value.trim(),
+    duration:     document.getElementById('prototype-duration').value.trim(),
+    age:          document.getElementById('prototype-age').value.trim(),
+    description:  document.getElementById('prototype-description').value.trim(),
+    contactLinks: newLinks,
+    notes:        document.getElementById('prototype-notes').value.trim(),
+    interest:     intVal,
+    photo:        document.getElementById('proto-photo-url').value.trim(),
+    pdf:          _protoPdfData,
     pdfName,
   };
   if (id) {
     const i = state.prototypes.findIndex(x => x.id === id);
-    if (state.prototypes[i].task === data.task) data.taskDone = state.prototypes[i].taskDone || false;
-    state.prototypes[i] = { ...state.prototypes[i], ...data };
+    const existing = state.prototypes[i];
+    data.tasks = newTasks.map(t => {
+      const old = (existing.tasks || []).find(o => o.id === t.id);
+      return old ? { ...t, done: old.done } : t;
+    });
+    state.prototypes[i] = { ...existing, ...data };
   } else {
-    state.prototypes.unshift({ id: uid(), createdAt: today(), ...data });
+    state.prototypes.unshift({ id: uid(), createdAt: today(), tasks: newTasks, ...data });
   }
   saveState(); closeModal('prototype'); renderPrototypes();
 }
@@ -965,7 +1127,6 @@ function openDetail(type, id) {
   if (type === 'contact') {
     const c = state.contacts.find(x => x.id === id);
     if (!c) return;
-    const urg = c.taskUrgency || 'normal';
     const avatar = c.photo
       ? `<img src="${esc(c.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" />`
       : `<div class="card-avatar card-avatar-${c.category}" style="position:static;transform:none;width:44px;height:44px;font-size:1rem">${initials(c.name)}</div>`;
@@ -1008,19 +1169,37 @@ function openDetail(type, id) {
           ${c.website? `<div class="detail-kv"><label>Site web</label>
             <a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website.replace(/^https?:\/\//,''))}</a></div>` : ''}
         </div>
-        ${c.task ? `<div class="detail-section-title">Tâche en cours</div>
-          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem;flex-wrap:wrap">
-            <span class="badge badge-urgence-${urg}">${esc(urg)}</span>
-            <span style="font-size:.875rem;color:var(--text-700);${c.taskDone?'text-decoration:line-through;opacity:.5':''}">${esc(c.task)}</span>
-          </div>
-          <label class="detail-task-done-label${c.taskDone?' is-done':''}">
-            <input type="checkbox" ${c.taskDone?'checked':''} onchange="toggleTaskDone('contact','${c.id}');openDetail('contact','${c.id}')" />
-            Marquer comme terminée
-          </label>` : ''}
+        ${(c.tasks||[]).length > 0 ? `<div class="detail-section-title">Tâches</div>
+          ${(c.tasks||[]).map(t => `
+          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.35rem;flex-wrap:wrap">
+            <input type="checkbox" ${t.done?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary-600)"
+              onchange="toggleTaskDone('contact','${c.id}','${t.id}');openDetail('contact','${c.id}')" />
+            <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
+            <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
+          </div>`).join('')}` : ''}
         ${meetHtml}
         ${gamesHtml}
         ${c.notes ? `<div class="detail-section-title">Notes</div>
           <div class="detail-notes">${esc(c.notes)}</div>` : ''}
+        ${(() => {
+          const linked = state.prototypes.filter(p =>
+            (p.contactLinks || []).some(l => l.contactId === c.id)
+          );
+          if (!linked.length) return '';
+          return `<div class="detail-section-title">Prototypes liés</div>
+            <div style="display:flex;flex-direction:column;gap:.35rem;margin-top:.25rem">
+              ${linked.map(p => {
+                const role = (p.contactLinks||[]).find(l=>l.contactId===c.id)?.role || '';
+                return `<div style="display:flex;align-items:center;gap:.5rem;cursor:pointer"
+                  onclick="closeModal('detail');openDetail('prototype','${p.id}')">
+                  <span style="font-size:1rem">${PROTO_ICONS[p.status]||'🎮'}</span>
+                  <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(p.title)}</span>
+                  ${role ? `<span style="font-size:.75rem;color:var(--text-500)">(${esc(role)})</span>` : ''}
+                  <span class="badge badge-${p.status}" style="margin-left:auto">${esc(p.status)}</span>
+                </div>`;
+              }).join('')}
+            </div>`;
+        })()}
         <div class="detail-actions">
           <button class="btn-save" onclick="closeModal('detail');editContact('${c.id}')">Modifier</button>
           <button class="btn-cancel" onclick="closeModal('detail');confirmDelete('contact','${c.id}')">Supprimer</button>
@@ -1031,8 +1210,28 @@ function openDetail(type, id) {
     const p = state.prototypes.find(x => x.id === id);
     if (!p) return;
     const icon = PROTO_ICONS[p.status] || '🎮';
-    const urg  = p.taskUrgency || 'normal';
     const date = p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' }) : '';
+
+    // Build contact links section
+    const contactLinksHtml = (() => {
+      const links = (p.contactLinks || []);
+      if (!links.length) return '';
+      const rows = links.map(l => {
+        const contact = state.contacts.find(x => x.id === l.contactId);
+        if (!contact) return '';
+        return `<div style="display:flex;align-items:center;gap:.5rem;cursor:pointer;margin-top:.3rem"
+          onclick="closeModal('detail');openDetail('contact','${contact.id}')">
+          ${contact.photo
+            ? `<img src="${esc(contact.photo)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0" />`
+            : `<div class="card-avatar card-avatar-${contact.category}" style="position:static;transform:none;width:28px;height:28px;font-size:.65rem;flex-shrink:0">${initials(contact.name)}</div>`}
+          <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(contact.name)}</span>
+          ${l.role ? `<span style="font-size:.75rem;color:var(--text-500)">(${esc(l.role)})</span>` : ''}
+          ${contact.category ? `<span class="badge badge-${contact.category}" style="margin-left:auto">${esc(contact.category)}</span>` : ''}
+        </div>`;
+      }).filter(Boolean).join('');
+      return rows ? `<div class="detail-section-title">Contacts associés</div>${rows}` : '';
+    })();
+
     el.innerHTML = `
       <div class="modal-header">
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
@@ -1058,19 +1257,23 @@ function openDetail(type, id) {
           ${date       ? `<div class="detail-kv"><label>Date d'ajout</label><span>${date}</span></div>`        : ''}
           <div class="detail-kv"><label>Intérêt</label><span>${'⭐'.repeat(p.interest||3)} ${INTEREST_LABELS[p.interest||3]}</span></div>
         </div>
-        ${p.task ? `<div class="detail-section-title">Tâche en cours</div>
-          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem;flex-wrap:wrap">
-            <span class="badge badge-urgence-${urg}">${esc(urg)}</span>
-            <span style="font-size:.875rem;color:var(--text-700);${p.taskDone?'text-decoration:line-through;opacity:.5':''}">${esc(p.task)}</span>
-          </div>
-          <label class="detail-task-done-label${p.taskDone?' is-done':''}">
-            <input type="checkbox" ${p.taskDone?'checked':''} onchange="toggleTaskDone('prototype','${p.id}');openDetail('prototype','${p.id}')" />
-            Marquer comme terminée
-          </label>` : ''}
+        ${(p.tasks||[]).length > 0 ? `<div class="detail-section-title">Tâches</div>
+          ${(p.tasks||[]).map(t => `
+          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.35rem;flex-wrap:wrap">
+            <input type="checkbox" ${t.done?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary-600)"
+              onchange="toggleTaskDone('prototype','${p.id}','${t.id}');openDetail('prototype','${p.id}')" />
+            <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
+            <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
+          </div>`).join('')}` : ''}
         ${p.pdf ? `<div class="detail-section-title">Règles du jeu</div>
-          <a href="${esc(p.pdf)}" target="_blank" class="pdf-download-link">📄 ${esc(p.pdfName||'Règles.pdf')}</a>` : ''}
-        ${p.contacts ? `<div class="detail-section-title">Contacts associés</div>
-          <div class="detail-notes">${esc(p.contacts)}</div>` : ''}
+          <div class="pdf-viewer-wrap">
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
+              <span class="pdf-name">📄 ${esc(p.pdfName||'Règles.pdf')}</span>
+              <button class="pdf-open-btn" onclick="openPdfBlob('${p.id}')">Ouvrir dans un onglet</button>
+            </div>
+            <iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>
+          </div>` : ''}
+        ${contactLinksHtml}
         ${p.notes ? `<div class="detail-section-title">Notes de développement</div>
           <div class="detail-notes">${esc(p.notes)}</div>` : ''}
         <div class="detail-actions">
@@ -1082,6 +1285,12 @@ function openDetail(type, id) {
 
   document.getElementById('modal-detail').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  // Load PDF inline after DOM update
+  const openId = type === 'prototype' ? id : null;
+  if (openId) {
+    const proto = state.prototypes.find(x => x.id === openId);
+    if (proto?.pdf) requestAnimationFrame(() => injectPdfViewer(openId));
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1097,24 +1306,34 @@ function exportExcel(type) {
   const data = type === 'contacts' ? state.contacts : state.prototypes;
   const ws   = XLSX.utils.json_to_sheet(data.map(item => {
     if (type === 'contacts') {
+      const topT = getTopTask(item);
       return {
         Nom: item.name, Catégorie: item.category,
         Email: item.email||'', Téléphone: item.phone||'',
         Entreprise: item.company||'', 'Site web': item.website||'',
-        Tâche: item.task||'', Urgence: item.taskUrgency||'',
+        'Tâche principale': topT ? topT.text : '',
+        'Urgence principale': topT ? topT.urgency : '',
+        'Nombre de tâches': (item.tasks||[]).length,
         'Dernière rencontre': item.lastMeeting||'',
         'Note rencontre': item.lastMeetingNote||'',
         Notes: item.notes||'',
       };
     } else {
+      const topT = getTopTask(item);
+      const contactNames = (item.contactLinks||[]).map(l => {
+        const c = state.contacts.find(x => x.id === l.contactId);
+        return c ? `${c.name}${l.role ? ' ('+l.role+')' : ''}` : '';
+      }).filter(Boolean).join(', ');
       return {
         Titre: item.title, Statut: item.status,
         Genre: item.genre||'', Joueurs: item.players||'',
         Durée: item.duration||'', Âge: item.age||'',
         Intérêt: item.interest||3,
-        Tâche: item.task||'', Urgence: item.taskUrgency||'',
+        'Tâche principale': topT ? topT.text : '',
+        'Urgence principale': topT ? topT.urgency : '',
+        'Nombre de tâches': (item.tasks||[]).length,
         Description: item.description||'',
-        Contacts: item.contacts||'', Notes: item.notes||'',
+        Contacts: contactNames, Notes: item.notes||'',
       };
     }
   }));
@@ -1134,29 +1353,37 @@ function importExcel(event, type) {
       const ws   = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws);
       if (type === 'contacts') {
-        const imported = rows.map(r => ({
-          id: uid(), createdAt: today(),
-          name: r['Nom']||'', category: r['Catégorie']||'auteur',
-          email: r['Email']||'', phone: r['Téléphone']||'',
-          company: r['Entreprise']||'', website: r['Site web']||'',
-          task: r['Tâche']||'', taskUrgency: r['Urgence']||'normal',
-          lastMeeting: r['Dernière rencontre']||'',
-          lastMeetingNote: r['Note rencontre']||'',
-          notes: r['Notes']||'', games: [],
-        }));
+        const imported = rows.map(r => {
+          const tasks = [];
+          if (r['Tâche principale']) tasks.push({ id: uid(), text: r['Tâche principale'], urgency: r['Urgence principale']||'normal', done: false });
+          return {
+            id: uid(), createdAt: today(),
+            name: r['Nom']||'', category: r['Catégorie']||'auteur',
+            email: r['Email']||'', phone: r['Téléphone']||'',
+            company: r['Entreprise']||'', website: r['Site web']||'',
+            tasks,
+            lastMeeting: r['Dernière rencontre']||'',
+            lastMeetingNote: r['Note rencontre']||'',
+            notes: r['Notes']||'', games: [],
+          };
+        });
         state.contacts = [...imported, ...state.contacts];
         saveState(); renderContacts();
       } else {
-        const imported = rows.map(r => ({
-          id: uid(), createdAt: today(),
-          title: r['Titre']||'', status: r['Statut']||'concept',
-          genre: r['Genre']||'', players: r['Joueurs']||'',
-          duration: r['Durée']||'', age: r['Âge']||'',
-          interest: parseInt(r['Intérêt'])||3,
-          task: r['Tâche']||'', taskUrgency: r['Urgence']||'normal',
-          description: r['Description']||'',
-          contacts: r['Contacts']||'', notes: r['Notes']||'',
-        }));
+        const imported = rows.map(r => {
+          const tasks = [];
+          if (r['Tâche principale']) tasks.push({ id: uid(), text: r['Tâche principale'], urgency: r['Urgence principale']||'normal', done: false });
+          return {
+            id: uid(), createdAt: today(),
+            title: r['Titre']||'', status: r['Statut']||'concept',
+            genre: r['Genre']||'', players: r['Joueurs']||'',
+            duration: r['Durée']||'', age: r['Âge']||'',
+            interest: parseInt(r['Intérêt'])||3,
+            tasks, contactLinks: [],
+            description: r['Description']||'',
+            notes: r['Notes']||'',
+          };
+        });
         state.prototypes = [...imported, ...state.prototypes];
         saveState(); renderPrototypes();
       }
