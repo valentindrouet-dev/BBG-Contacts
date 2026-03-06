@@ -432,6 +432,13 @@ function contactCard(c, zoom) {
   const videoBadge = (c.videos||[]).length > 0
     ? `<span class="card-video-badge">🎬 ${c.videos.length}</span>` : '';
 
+  // Company logo bubble (bottom-right, only when logo URL set)
+  const companyLogoBubble = c.companyLogo
+    ? `<img src="${esc(c.companyLogo)}" class="card-company-logo"
+        alt="${esc(c.company||'')}"
+        onerror="this.style.display='none'" />`
+    : '';
+
   const extLink = !isMin && c.website
     ? `<a class="card-ext-link" href="${esc(c.website)}" target="_blank" rel="noopener"
          onclick="event.stopPropagation()">${ICONS.extLink}</a>`
@@ -497,7 +504,7 @@ function contactCard(c, zoom) {
   return `<div class="card card-hover card-bg-${cat}${doneClass}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
     <div class="card-media card-media-${cat}">
-      ${favBtn}${mediaContent}${badge}${urgEmoji}${videoBadge}${extLink}${editBtn}
+      ${favBtn}${mediaContent}${badge}${urgEmoji}${companyLogoBubble}${videoBadge}${extLink}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -1541,7 +1548,7 @@ document.addEventListener('keydown', e => {
 // ── Contact form ──────────────────────────────────
 function resetContactForm() {
   ['contact-id','contact-name','contact-email','contact-phone',
-   'contact-company','contact-website','contact-notes',
+   'contact-company','contact-company-logo','contact-website','contact-notes',
    'contact-photo-url'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
@@ -1566,8 +1573,9 @@ function editContact(id) {
   document.getElementById('contact-category').value  = c.category;
   document.getElementById('contact-email').value     = c.email    || '';
   document.getElementById('contact-phone').value     = c.phone    || '';
-  document.getElementById('contact-company').value   = c.company  || '';
-  document.getElementById('contact-website').value   = c.website  || '';
+  document.getElementById('contact-company').value      = c.company      || '';
+  document.getElementById('contact-company-logo').value = c.companyLogo  || '';
+  document.getElementById('contact-website').value      = c.website      || '';
   document.getElementById('contact-notes').value     = c.notes    || '';
   document.getElementById('contact-photo-url').value = c.photo    || '';
   _updatePhotoPreview('contact', c.photo || '');
@@ -1592,6 +1600,7 @@ function submitContact(e) {
     email:          document.getElementById('contact-email').value.trim(),
     phone:          document.getElementById('contact-phone').value.trim(),
     company:        document.getElementById('contact-company').value.trim(),
+    companyLogo:    document.getElementById('contact-company-logo').value.trim(),
     website:        document.getElementById('contact-website').value.trim(),
     notes:          document.getElementById('contact-notes').value.trim(),
     photo:     document.getElementById('contact-photo-url').value.trim(),
