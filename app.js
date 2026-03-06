@@ -12,7 +12,6 @@ const state = {
   contactsSearch:    '',
   contactsCat:       '',
   contactsUrgency:   '',
-  contactsRelStatus: '',
   contactsSort:      'name',
   contactsSortAsc:   true,
   contactsView:      'grid',
@@ -45,17 +44,12 @@ function migrateContact(c) {
       ? [{ id: uid(), text: c.task, urgency: c.taskUrgency || 'normal', done: c.taskDone || false }]
       : [];
   }
-  // Ensure dueDate + note on tasks
-  c.tasks = c.tasks.map(t => ({
-    dueDate: '', note: '', ...t
-  }));
   // lastMeeting → exchanges[]
   if (!Array.isArray(c.exchanges)) {
     c.exchanges = c.lastMeeting
       ? [{ id: uid(), date: c.lastMeeting, type: 'rencontre', note: c.lastMeetingNote || '' }]
       : [];
   }
-  if (!c.relationStatus) c.relationStatus = 'actif';
   if (!Array.isArray(c.socials)) c.socials = [];
   return c;
 }
@@ -67,10 +61,6 @@ function migratePrototype(p) {
       ? [{ id: uid(), text: p.task, urgency: p.taskUrgency || 'normal', done: p.taskDone || false }]
       : [];
   }
-  // Ensure dueDate + note on tasks
-  p.tasks = p.tasks.map(t => ({
-    dueDate: '', note: '', ...t
-  }));
   if (!Array.isArray(p.contactLinks)) {
     p.contactLinks = [];
   }
@@ -143,7 +133,6 @@ const CAT_LABELS = {
 
 const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exceptionnel'];
 
-const REL_STATUS_LABELS = { actif: 'Actif', prospect: 'Prospect', 'en-pause': 'En pause', inactif: 'Inactif' };
 const SOCIAL_TYPES = ['LinkedIn', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
 const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'autre'];
 const STATUS_ORDER = ['proto', 'signé', 'développement', 'production', 'sorti'];
@@ -228,7 +217,6 @@ function filteredContacts() {
     (c.email   || '').toLowerCase().includes(q)
   );
   if (state.contactsCat) list = list.filter(c => c.category === state.contactsCat);
-  if (state.contactsRelStatus) list = list.filter(c => (c.relationStatus || 'actif') === state.contactsRelStatus);
   if (state.contactsUrgency === 'none') {
     list = list.filter(c => !(c.tasks || []).some(t => !t.done));
   } else if (state.contactsUrgency) {
@@ -387,12 +375,11 @@ function buildContactsKanban(list) {
         cols.map(c => {
           const topTask = getTopTask(c);
           const urg = topTask ? (topTask.urgency || 'normal') : null;
-          const relBadge = `<span class="badge badge-${c.relationStatus||'actif'}" style="font-size:.65rem">${REL_STATUS_LABELS[c.relationStatus||'actif']}</span>`;
-          const urgBadge = urg ? `<span class="badge badge-urgence-${urg}" style="font-size:.65rem">${URGENCY_EMOJI[urg]}</span>` : '';
+              const urgBadge = urg ? `<span class="badge badge-urgence-${urg}" style="font-size:.65rem">${URGENCY_EMOJI[urg]}</span>` : '';
           return `<div class="kanban-card" onclick="openDetail('contact','${c.id}')">
             <div class="kanban-card-name">${esc(c.name)}</div>
             ${c.company ? `<div class="kanban-card-sub">${esc(c.company)}</div>` : ''}
-            <div class="kanban-card-foot">${relBadge}${urgBadge}</div>
+            <div class="kanban-card-foot">${urgBadge}</div>
           </div>`;
         }).join('')}
     </div>`;
@@ -428,10 +415,6 @@ function contactCard(c, zoom) {
 
   const editBtn = `<button class="card-edit-btn"
     onclick="event.stopPropagation();editContact('${c.id}')">${ICONS.pencil}</button>`;
-
-  // Relation status badge
-  const relStatus = c.relationStatus || 'actif';
-  const relBadge = !isMin ? `<span class="badge badge-${relStatus}" style="font-size:.65rem">${REL_STATUS_LABELS[relStatus]||relStatus}</span>` : '';
 
   // Reminder badge (no exchange in 60 days)
   const reminderBadge = (() => {
@@ -478,7 +461,6 @@ function contactCard(c, zoom) {
       ${extra}
       ${socialsHtml}
       <div class="card-footer">
-        ${relBadge}
         ${urgPill}
         ${reminderBadge}
       </div>
@@ -769,15 +751,13 @@ function renderTasks() {
   state.contacts.forEach(c => {
     (c.tasks || []).forEach(t => {
       tasks.push({ itemId: c.id, taskId: t.id, type: 'contact', name: c.name,
-        task: t.text, urgency: t.urgency || 'normal', done: t.done || false,
-        dueDate: t.dueDate || '', note: t.note || '' });
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
     });
   });
   state.prototypes.forEach(p => {
     (p.tasks || []).forEach(t => {
       tasks.push({ itemId: p.id, taskId: t.id, type: 'prototype', name: p.title,
-        task: t.text, urgency: t.urgency || 'normal', done: t.done || false,
-        dueDate: t.dueDate || '', note: t.note || '' });
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
     });
   });
 
@@ -789,7 +769,6 @@ function renderTasks() {
 
   // Weekly recap
   const critCount  = tasks.filter(t => !t.done && (t.urgency === 'critique' || t.urgency === 'urgent')).length;
-  const overdueCount = tasks.filter(t => !t.done && t.dueDate && t.dueDate < todayStr).length;
   const doneCount  = tasks.filter(t => t.done).length;
   const recapEl    = document.getElementById('tasks-recap-bar');
   if (recapEl) {
@@ -810,11 +789,6 @@ function renderTasks() {
       </div>
       <div class="tasks-recap-divider"></div>
       <div class="tasks-recap-stat">
-        <span class="tasks-recap-num num-overdue">${overdueCount}</span>
-        <span class="tasks-recap-label">En retard</span>
-      </div>
-      <div class="tasks-recap-divider"></div>
-      <div class="tasks-recap-stat">
         <span class="tasks-recap-num num-done">${doneCount}</span>
         <span class="tasks-recap-label">Terminées</span>
       </div>
@@ -827,10 +801,6 @@ function renderTasks() {
     tasks = tasks.filter(t => t.done);
   } else if (filter === 'urgent') {
     tasks = tasks.filter(t => !t.done && (t.urgency === 'critique' || t.urgency === 'urgent'));
-  } else if (filter === 'today') {
-    tasks = tasks.filter(t => !t.done && t.dueDate === todayStr);
-  } else if (filter === 'overdue') {
-    tasks = tasks.filter(t => !t.done && t.dueDate && t.dueDate < todayStr);
   } else {
     if (!showDone) tasks = tasks.filter(t => !t.done);
   }
@@ -883,28 +853,12 @@ function renderTasks() {
 
 function taskCard(t) {
   const typeEmoji = t.type === 'contact' ? '👤' : '🎲';
-  const todayStr = today();
-  let dueHtml = '';
-  if (t.dueDate) {
-    const isOverdue = !t.done && t.dueDate < todayStr;
-    const isToday   = t.dueDate === todayStr;
-    dueHtml = `<span class="task-due${isOverdue ? ' overdue' : ''}" title="Échéance">
-      ${isOverdue ? '🔴' : isToday ? '📅' : '🗓'} ${t.dueDate}
-    </span>`;
-  }
-  const noteHtml = t.note ? `<div class="task-note-preview" style="${t.done ? 'opacity:.5' : ''}">${esc(t.note)}</div>` : '';
   return `<div class="task-card${t.done ? ' done' : ''}">
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
       onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.itemId}','${t.taskId}')" />
     <div class="task-body" onclick="openDetail('${t.type}','${t.itemId}')">
       <span class="task-source">${typeEmoji} ${esc(t.name)}</span>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-          <span class="task-text">${esc(t.task)}</span>
-          ${dueHtml}
-        </div>
-        ${noteHtml}
-      </div>
+      <span class="task-text">${esc(t.task)}</span>
       <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span></span>
     </div>
   </div>`;
@@ -945,9 +899,8 @@ function toggleFilterPanel(page) {
 function updateFilterCount(page) {
   let active = 0;
   if (page === 'contacts') {
-    if (state.contactsCat)       active++;
-    if (state.contactsUrgency)   active++;
-    if (state.contactsRelStatus) active++;
+    if (state.contactsCat)     active++;
+    if (state.contactsUrgency) active++;
   } else {
     if (state.prototypesStatus)   active++;
     if (state.prototypesInterest) active++;
@@ -1110,8 +1063,6 @@ function addTaskRow(prefix, task = {}) {
   tr.innerHTML = `
     <td><input type="text" placeholder="Description de la tâche…" value="${esc(task.text || '')}" /></td>
     <td><select>${opts}</select></td>
-    <td><input type="date" value="${esc(task.dueDate || '')}" /></td>
-    <td><input type="text" placeholder="Note…" value="${esc(task.note || '')}" /></td>
     <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
   tbody.appendChild(tr);
 }
@@ -1120,16 +1071,11 @@ function getTasksFromForm(prefix) {
   const tbody = document.getElementById(`${prefix}-tasks-body`);
   if (!tbody) return [];
   return Array.from(tbody.querySelectorAll('tr')).map(tr => {
-    const textInp = tr.querySelector('input[type="text"]');
-    const sel     = tr.querySelector('select');
-    const dateInp = tr.querySelector('input[type="date"]');
-    const noteInp = tr.querySelectorAll('input[type="text"]')[1];
+    const inputs = tr.querySelectorAll('input[type="text"], select');
     return {
       id:      tr.dataset.taskId || uid(),
-      text:    textInp?.value.trim() || '',
-      urgency: sel?.value || 'normal',
-      dueDate: dateInp?.value || '',
-      note:    noteInp?.value.trim() || '',
+      text:    inputs[0]?.value.trim() || '',
+      urgency: inputs[1]?.value || 'normal',
       done:    false,
     };
   }).filter(t => t.text);
@@ -1384,7 +1330,6 @@ function resetContactForm() {
   });
   document.getElementById('contact-photo-file').value = '';
   document.getElementById('contact-category').value = '';
-  document.getElementById('contact-relstatus').value = 'actif';
   _updatePhotoPreview('contact', '');
   populateTasksForm('contact', []);
   populateGamesForm([]);
@@ -1405,7 +1350,6 @@ function editContact(id) {
   document.getElementById('contact-website').value   = c.website  || '';
   document.getElementById('contact-notes').value     = c.notes    || '';
   document.getElementById('contact-photo-url').value = c.photo    || '';
-  document.getElementById('contact-relstatus').value = c.relationStatus || 'actif';
   _updatePhotoPreview('contact', c.photo || '');
   populateTasksForm('contact', c.tasks || []);
   populateGamesForm(c.games || []);
@@ -1427,9 +1371,8 @@ function submitContact(e) {
     company:        document.getElementById('contact-company').value.trim(),
     website:        document.getElementById('contact-website').value.trim(),
     notes:          document.getElementById('contact-notes').value.trim(),
-    photo:          document.getElementById('contact-photo-url').value.trim(),
-    relationStatus: document.getElementById('contact-relstatus').value || 'actif',
-    exchanges:      getExchangesFromForm(),
+    photo:     document.getElementById('contact-photo-url').value.trim(),
+    exchanges: getExchangesFromForm(),
     socials:        getSocialsFromForm(),
     games:          getGamesFromForm(),
   };
@@ -1623,7 +1566,6 @@ function openDetail(type, id) {
             ${c.company ? `<div style="font-size:.8rem;color:var(--text-500)">${esc(c.company)}</div>` : ''}
           </div>
           <span class="badge badge-${c.category}" style="margin-left:auto;flex-shrink:0">${esc(c.category)}</span>
-          <span class="badge badge-${c.relationStatus||'actif'}" style="flex-shrink:0">${REL_STATUS_LABELS[c.relationStatus||'actif']}</span>
         </div>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
@@ -1732,14 +1674,6 @@ function openDetail(type, id) {
             <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
             <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
           </div>`).join('')}` : ''}
-        ${p.pdf ? `<div class="detail-section-title">Règles du jeu</div>
-          <div class="pdf-viewer-wrap">
-            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
-              <span class="pdf-name">📄 ${esc(p.pdfName||'Règles.pdf')}</span>
-              <button class="pdf-open-btn" onclick="openPdfBlob('${p.id}')">Ouvrir dans un onglet</button>
-            </div>
-            <iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>
-          </div>` : ''}
         ${contactLinksHtml}
         ${(p.tags||[]).length > 0 ? `<div class="detail-section-title">Tags mécaniques</div>
           <div class="tags-cloud">${(p.tags||[]).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
@@ -1751,6 +1685,14 @@ function openDetail(type, id) {
               <div class="devlog-date">${e.date}</div>
               <div class="devlog-note">${esc(e.note)}</div>
             </div>`).join('')}</div>` : ''}
+        ${p.pdf ? `<div class="detail-section-title">Règles du jeu</div>
+          <div class="pdf-viewer-wrap">
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
+              <span class="pdf-name">📄 ${esc(p.pdfName||'Règles.pdf')}</span>
+              <button class="pdf-open-btn" onclick="openPdfBlob('${p.id}')">Ouvrir dans un onglet</button>
+            </div>
+            <iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>
+          </div>` : ''}
         <div class="detail-actions">
           <button class="btn-save" onclick="closeModal('detail');editPrototype('${p.id}')">Modifier</button>
           <button class="btn-cancel" onclick="closeModal('detail');confirmDelete('prototype','${p.id}')">Supprimer</button>
@@ -1899,10 +1841,9 @@ document.getElementById('contacts-urgency-filter').addEventListener('change', e 
   state.contactsUrgency = e.target.value; renderContacts();
 });
 document.getElementById('contacts-filter-reset').addEventListener('click', () => {
-  state.contactsCat = ''; state.contactsUrgency = ''; state.contactsRelStatus = '';
+  state.contactsCat = ''; state.contactsUrgency = '';
   document.getElementById('contacts-cat-filter').value = '';
   document.getElementById('contacts-urgency-filter').value = '';
-  document.getElementById('contacts-relstatus-filter').value = '';
   renderContacts();
 });
 document.getElementById('contacts-sort').addEventListener('change', e => {
@@ -1940,9 +1881,6 @@ document.getElementById('contacts-view-kanban').addEventListener('click', () => 
   document.getElementById('contacts-view-list').classList.remove('active');
   document.getElementById('contacts-zoom-wrap').style.display = 'none';
   renderContacts();
-});
-document.getElementById('contacts-relstatus-filter').addEventListener('change', e => {
-  state.contactsRelStatus = e.target.value; renderContacts();
 });
 
 // ── Prototypes ────────────────────────────────────

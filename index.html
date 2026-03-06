@@ -139,16 +139,6 @@
               <option value="none">Sans tâche</option>
             </select>
           </div>
-          <div class="filter-field">
-            <label>Statut relation</label>
-            <select id="contacts-relstatus-filter">
-              <option value="">Tous</option>
-              <option value="actif">Actif</option>
-              <option value="prospect">Prospect</option>
-              <option value="en-pause">En pause</option>
-              <option value="inactif">Inactif</option>
-            </select>
-          </div>
         </div>
         <button class="btn-reset hidden" id="contacts-filter-reset">Réinitialiser les filtres</button>
       </div>
@@ -336,8 +326,6 @@
     <div class="task-filter-pills mb-4" id="task-filter-pills">
       <button class="task-filter-pill active" data-filter="all">Toutes</button>
       <button class="task-filter-pill" data-filter="urgent">⚠️ Urgentes</button>
-      <button class="task-filter-pill" data-filter="today">📅 Aujourd'hui</button>
-      <button class="task-filter-pill" data-filter="overdue">🔴 En retard</button>
       <button class="task-filter-pill" data-filter="done">✅ Terminées</button>
     </div>
 
@@ -423,17 +411,6 @@
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label>Statut de la relation</label>
-          <select id="contact-relstatus">
-            <option value="actif">Actif</option>
-            <option value="prospect">Prospect</option>
-            <option value="en-pause">En pause</option>
-            <option value="inactif">Inactif</option>
-          </select>
-        </div>
-      </div>
 
       <!-- Photo -->
       <div class="form-group full">
@@ -493,7 +470,7 @@
         <label>Tâches</label>
         <div class="game-list-wrap">
           <table class="task-list-table">
-            <thead><tr><th style="width:38%">Description</th><th style="width:18%">Urgence</th><th style="width:16%">Échéance</th><th style="width:18%">Note</th><th style="width:10%"></th></tr></thead>
+            <thead><tr><th style="width:58%">Description</th><th style="width:32%">Urgence</th><th style="width:10%"></th></tr></thead>
             <tbody id="contact-tasks-body"></tbody>
           </table>
         </div>
@@ -648,7 +625,7 @@
         <label>Tâches</label>
         <div class="game-list-wrap">
           <table class="task-list-table">
-            <thead><tr><th style="width:38%">Description</th><th style="width:18%">Urgence</th><th style="width:16%">Échéance</th><th style="width:18%">Note</th><th style="width:10%"></th></tr></thead>
+            <thead><tr><th style="width:58%">Description</th><th style="width:32%">Urgence</th><th style="width:10%"></th></tr></thead>
             <tbody id="proto-tasks-body"></tbody>
           </table>
         </div>
