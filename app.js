@@ -1046,6 +1046,18 @@ function clearProtoPdf() {
   document.getElementById('proto-pdf-file').value = '';
   document.getElementById('proto-pdf-name').textContent = 'Aucun fichier';
   document.getElementById('proto-pdf-link').style.display = 'none';
+  const urlEl = document.getElementById('proto-pdf-url');
+  if (urlEl) urlEl.value = '';
+}
+
+function onProtoPdfUrlInput() {
+  const url = document.getElementById('proto-pdf-url').value.trim();
+  const nameEl = document.getElementById('proto-pdf-name');
+  if (url) {
+    nameEl.textContent = 'Lien externe';
+  } else if (!_protoPdfData) {
+    nameEl.textContent = 'Aucun fichier';
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1633,7 +1645,7 @@ function resetPrototypeForm() {
   document.getElementById('prototype-status').value = '';
   document.getElementById('proto-photo-file').value = '';
   _updatePhotoPreview('proto', '');
-  clearProtoPdf();
+  clearProtoPdf(); // also clears proto-pdf-url
   const intEl = document.querySelector('input[name="proto-interest"][value="3"]');
   if (intEl) { intEl.checked = true; updateInterestUI(3); }
   populateTasksForm('proto', []);
@@ -1676,7 +1688,10 @@ function editPrototype(id) {
 
   // PDF
   _protoPdfData = p.pdf || null;
-  document.getElementById('proto-pdf-name').textContent = p.pdfName || (p.pdf ? 'Règles.pdf' : 'Aucun fichier');
+  const pdfUrlEl = document.getElementById('proto-pdf-url');
+  if (pdfUrlEl) pdfUrlEl.value = p.pdfUrl || '';
+  document.getElementById('proto-pdf-name').textContent =
+    p.pdfUrl ? 'Lien externe' : (p.pdfName || (p.pdf ? 'Règles.pdf' : 'Aucun fichier'));
   const link = document.getElementById('proto-pdf-link');
   if (p.pdf) { link.href = p.pdf; link.style.display = ''; }
   else        { link.style.display = 'none'; }
@@ -1689,6 +1704,7 @@ function submitPrototype(e) {
   e.preventDefault();
   const id      = document.getElementById('prototype-id').value;
   const intVal  = parseInt(document.querySelector('input[name="proto-interest"]:checked')?.value || 3);
+  const pdfUrl  = document.getElementById('proto-pdf-url')?.value.trim() || null;
   const pdfName = _protoPdfData
     ? (document.getElementById('proto-pdf-name').textContent || 'Règles.pdf')
     : null;
@@ -1710,6 +1726,7 @@ function submitPrototype(e) {
     photo:        document.getElementById('proto-photo-url').value.trim(),
     pdf:          _protoPdfData,
     pdfName,
+    pdfUrl,
     tags,
     devLog:  getDevLogFromForm(),
     videos:  getVideosFromForm('proto'),
@@ -1976,13 +1993,15 @@ function openDetail(type, id) {
               </tr></tbody>
             </table>`;
         })()}
-        ${p.pdf ? `<div class="detail-section-title">Règles du jeu</div>
+        ${(p.pdf || p.pdfUrl) ? `<div class="detail-section-title">Règles du jeu</div>
           <div class="pdf-viewer-wrap">
             <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
-              <span class="pdf-name">📄 ${esc(p.pdfName||'Règles.pdf')}</span>
-              <button class="pdf-open-btn" onclick="openPdfBlob('${p.id}')">Ouvrir dans un onglet</button>
+              <span class="pdf-name">📄 ${esc(p.pdfUrl ? 'Lien externe' : (p.pdfName||'Règles.pdf'))}</span>
+              ${p.pdfUrl
+                ? `<a class="pdf-open-btn" href="${esc(p.pdfUrl)}" target="_blank" rel="noopener">Ouvrir le lien ↗</a>`
+                : `<button class="pdf-open-btn" onclick="openPdfBlob('${p.id}')">Ouvrir dans un onglet</button>`}
             </div>
-            <iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>
+            ${p.pdf ? `<iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>` : ''}
           </div>` : ''}
         <div class="detail-actions">
           <button class="btn-save" onclick="closeModal('detail');editPrototype('${p.id}')">Modifier</button>

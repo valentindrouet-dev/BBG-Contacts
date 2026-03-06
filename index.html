@@ -643,6 +643,10 @@
           <button type="button" class="photo-clear-btn" onclick="clearProtoPdf()">Effacer</button>
           <a id="proto-pdf-link" class="pdf-download-link" style="display:none" target="_blank">Voir le PDF</a>
         </div>
+        <input type="text" id="proto-pdf-url"
+          placeholder="ou coller un lien (Google Drive, Dropbox…)"
+          style="margin-top:.4rem;font-size:.82rem"
+          oninput="onProtoPdfUrlInput()" />
       </div>
 
       <!-- Tâches prototype -->
