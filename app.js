@@ -12,7 +12,7 @@ const state = {
   contactsSearch:    '',
   contactsCat:       '',
   contactsUrgency:   '',
-  contactsSort:      'name',
+  contactsSort:      'category',
   contactsSortAsc:   true,
   contactsView:      'grid',
   contactsZoom:      2,
@@ -72,17 +72,25 @@ function migratePrototype(p) {
 }
 
 function loadState() {
+  // SAFE load: never overwrite localStorage on error to avoid data loss
+  let c, p;
+  try { c = localStorage.getItem('bbg-contacts'); } catch(e) {}
+  try { p = localStorage.getItem('bbg-prototypes'); } catch(e) {}
+
   try {
-    const c = localStorage.getItem('bbg-contacts');
-    const p = localStorage.getItem('bbg-prototypes');
-    state.contacts   = (c ? JSON.parse(c) : SEED_CONTACTS).map(migrateContact);
-    state.prototypes = (p ? JSON.parse(p) : SEED_PROTOTYPES).map(migratePrototype);
-    if (!c || !p) saveState();
+    state.contacts = (c ? JSON.parse(c) : SEED_CONTACTS).map(migrateContact);
   } catch(e) {
-    state.contacts   = SEED_CONTACTS.map(migrateContact);
-    state.prototypes = SEED_PROTOTYPES.map(migratePrototype);
-    saveState();
+    console.error('Contacts parse error', e);
+    state.contacts = SEED_CONTACTS.map(migrateContact);
   }
+  try {
+    state.prototypes = (p ? JSON.parse(p) : SEED_PROTOTYPES).map(migratePrototype);
+  } catch(e) {
+    console.error('Prototypes parse error', e);
+    state.prototypes = SEED_PROTOTYPES.map(migratePrototype);
+  }
+  // Only seed if truly empty (no existing localStorage data)
+  if (!c) saveState();
 }
 
 // ── UTILS ──────────────────────────────────────────
@@ -1969,6 +1977,8 @@ document.getElementById('modal-compare')?.addEventListener('click', e => {
 loadState();
 updateInterestUI(3);
 // Sync UI controls to default state
+document.getElementById('contacts-sort').value = state.contactsSort;
+document.getElementById('contacts-zoom').value = state.contactsZoom;
 document.getElementById('prototypes-sort').value = state.prototypesSort;
 document.getElementById('prototypes-zoom').value = state.prototypesZoom;
 switchPage('contacts');
