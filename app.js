@@ -166,6 +166,15 @@ function getTopUrgency(item) {
 }
 
 // ── PDF helper ────────────────────────────────────
+function getPdfEmbedUrl(url) {
+  // Google Drive: /file/d/ID/view → /file/d/ID/preview
+  const gd = url.match(/drive\.google\.com\/file\/d\/([^/?#]+)/);
+  if (gd) return `https://drive.google.com/file/d/${gd[1]}/preview`;
+  // Dropbox: ?dl=0 → ?raw=1  (direct download, embeddable)
+  if (url.includes('dropbox.com')) return url.replace(/[?&]dl=\d/, '').replace(/(\?.*)$/, '$1&raw=1').replace(/^([^?]+)$/, '$1?raw=1');
+  // Fallback: Google Docs viewer
+  return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+}
 function openPdfBlob(protoId) {
   const p = state.prototypes.find(x => x.id === protoId);
   if (!p?.pdf) return;
@@ -242,7 +251,7 @@ function filteredContacts() {
     let cmp = 0;
     switch (state.contactsSort) {
       case 'name':        cmp = a.name.localeCompare(b.name, 'fr'); break;
-      case 'category':    cmp = a.category.localeCompare(b.category, 'fr'); break;
+      case 'category':    cmp = a.category.localeCompare(b.category, 'fr') || a.name.localeCompare(b.name, 'fr'); break;
       case 'company':     cmp = (a.company||'').localeCompare(b.company||'', 'fr'); break;
       case 'lastMeeting': cmp = (a.lastMeeting||'').localeCompare(b.lastMeeting||''); break;
       case 'urgency': {
@@ -2001,7 +2010,9 @@ function openDetail(type, id) {
                 ? `<a class="pdf-open-btn" href="${esc(p.pdfUrl)}" target="_blank" rel="noopener">Ouvrir le lien ↗</a>`
                 : `<button class="pdf-open-btn" onclick="openPdfBlob('${p.id}')">Ouvrir dans un onglet</button>`}
             </div>
-            ${p.pdf ? `<iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>` : ''}
+            ${p.pdfUrl
+              ? `<iframe src="${esc(getPdfEmbedUrl(p.pdfUrl))}" class="pdf-viewer-frame" title="Règles du jeu" allowfullscreen></iframe>`
+              : `<iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>`}
           </div>` : ''}
         <div class="detail-actions">
           <button class="btn-save" onclick="closeModal('detail');editPrototype('${p.id}')">Modifier</button>
