@@ -139,6 +139,16 @@
               <option value="none">Sans tâche</option>
             </select>
           </div>
+          <div class="filter-field">
+            <label>Statut relation</label>
+            <select id="contacts-relstatus-filter">
+              <option value="">Tous</option>
+              <option value="actif">Actif</option>
+              <option value="prospect">Prospect</option>
+              <option value="en-pause">En pause</option>
+              <option value="inactif">Inactif</option>
+            </select>
+          </div>
         </div>
         <button class="btn-reset hidden" id="contacts-filter-reset">Réinitialiser les filtres</button>
       </div>
@@ -163,6 +173,9 @@
           <button class="view-btn" id="contacts-view-list" title="Vue liste">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           </button>
+          <button class="view-btn" id="contacts-view-kanban" title="Vue kanban">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="5" height="18" rx="1"/><rect x="9.5" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="8" rx="1"/></svg>
+          </button>
         </div>
         <div class="sort-wrap">
           <select class="sort-select" id="contacts-sort">
@@ -183,6 +196,7 @@
 
     <div class="card-grid" id="contacts-grid"></div>
     <div id="contacts-list" style="display:none"></div>
+    <div id="contacts-kanban" style="display:none"></div>
 
     <div class="empty-state hidden" id="contacts-empty">
       <div class="empty-icon">👤</div>
@@ -246,6 +260,10 @@
               <option value="1">⭐ Faible</option>
             </select>
           </div>
+          <div class="filter-field" style="grid-column:1/-1">
+            <label>Tag mécanique</label>
+            <input type="text" id="prototypes-tag-filter" placeholder="ex : draft, coopératif…" autocomplete="off" style="width:100%;padding:.45rem .75rem;border:1px solid var(--border-input);border-radius:var(--rx-lg);font-size:.875rem;font-family:inherit;outline:none" />
+          </div>
         </div>
         <button class="btn-reset hidden" id="prototypes-filter-reset">Réinitialiser les filtres</button>
       </div>
@@ -270,7 +288,13 @@
           <button class="view-btn" id="prototypes-view-list" title="Vue liste">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           </button>
+          <button class="view-btn" id="prototypes-view-timeline" title="Vue roadmap par statut">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="16" cy="6" r="2" fill="currentColor"/><line x1="3" y1="12" x2="21" y2="12"/><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/><line x1="3" y1="18" x2="21" y2="18"/><circle cx="12" cy="18" r="2" fill="currentColor"/></svg>
+          </button>
         </div>
+        <button class="view-btn" id="prototypes-compare-toggle" title="Mode comparaison" style="border:1px solid var(--border-input);border-radius:var(--rx-lg);padding:.375rem .6rem">
+          ⚖️
+        </button>
         <div class="sort-wrap">
           <select class="sort-select" id="prototypes-sort">
             <option value="title">Titre</option>
@@ -290,6 +314,7 @@
 
     <div class="card-grid" id="prototypes-grid"></div>
     <div id="prototypes-list" style="display:none"></div>
+    <div id="prototypes-timeline" style="display:none"></div>
 
     <div class="empty-state hidden" id="prototypes-empty">
       <div class="empty-icon">🎮</div>
@@ -305,6 +330,16 @@
        ║        PAGE — TÂCHES           ║
        ╚═════════════════════════════════╝ -->
   <div class="page" id="page-tasks">
+
+    <div id="tasks-recap-bar"></div>
+
+    <div class="task-filter-pills mb-4" id="task-filter-pills">
+      <button class="task-filter-pill active" data-filter="all">Toutes</button>
+      <button class="task-filter-pill" data-filter="urgent">⚠️ Urgentes</button>
+      <button class="task-filter-pill" data-filter="today">📅 Aujourd'hui</button>
+      <button class="task-filter-pill" data-filter="overdue">🔴 En retard</button>
+      <button class="task-filter-pill" data-filter="done">✅ Terminées</button>
+    </div>
 
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="tasks-count">0 tâche</p>
@@ -390,12 +425,13 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label>Date dernière rencontre / échange</label>
-          <input type="date" id="contact-last-meeting" />
-        </div>
-        <div class="form-group">
-          <label>Note de la dernière rencontre</label>
-          <input type="text" id="contact-last-meeting-note" placeholder="Ex : Salon Essen, très intéressé…" />
+          <label>Statut de la relation</label>
+          <select id="contact-relstatus">
+            <option value="actif">Actif</option>
+            <option value="prospect">Prospect</option>
+            <option value="en-pause">En pause</option>
+            <option value="inactif">Inactif</option>
+          </select>
         </div>
       </div>
 
@@ -422,12 +458,42 @@
         </div>
       </div>
 
+      <!-- Historique des échanges -->
+      <div class="form-group full">
+        <label>Historique des échanges</label>
+        <div class="game-list-wrap">
+          <table class="task-list-table">
+            <thead><tr><th style="width:22%">Date</th><th style="width:20%">Type</th><th style="width:48%">Note</th><th style="width:10%"></th></tr></thead>
+            <tbody id="contact-exchanges-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addExchangeRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un échange
+        </button>
+      </div>
+
+      <!-- Réseaux sociaux -->
+      <div class="form-group full">
+        <label>Réseaux sociaux / Liens</label>
+        <div class="game-list-wrap">
+          <table class="task-list-table">
+            <thead><tr><th style="width:28%">Réseau</th><th style="width:62%">URL / Identifiant</th><th style="width:10%"></th></tr></thead>
+            <tbody id="contact-socials-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addSocialRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un lien
+        </button>
+      </div>
+
       <!-- Tâches -->
       <div class="form-group full">
         <label>Tâches</label>
         <div class="game-list-wrap">
           <table class="task-list-table">
-            <thead><tr><th style="width:58%">Description</th><th style="width:32%">Urgence</th><th style="width:10%"></th></tr></thead>
+            <thead><tr><th style="width:38%">Description</th><th style="width:18%">Urgence</th><th style="width:16%">Échéance</th><th style="width:18%">Note</th><th style="width:10%"></th></tr></thead>
             <tbody id="contact-tasks-body"></tbody>
           </table>
         </div>
@@ -582,7 +648,7 @@
         <label>Tâches</label>
         <div class="game-list-wrap">
           <table class="task-list-table">
-            <thead><tr><th style="width:58%">Description</th><th style="width:32%">Urgence</th><th style="width:10%"></th></tr></thead>
+            <thead><tr><th style="width:38%">Description</th><th style="width:18%">Urgence</th><th style="width:16%">Échéance</th><th style="width:18%">Note</th><th style="width:10%"></th></tr></thead>
             <tbody id="proto-tasks-body"></tbody>
           </table>
         </div>
@@ -592,9 +658,30 @@
         </button>
       </div>
 
+      <!-- Tags mécaniques -->
+      <div class="form-group full">
+        <label>Tags mécaniques</label>
+        <input type="text" id="prototype-tags" placeholder="ex : draft, coopératif, worker-placement (séparés par virgule)" />
+      </div>
+
       <div class="form-group full">
         <label>Description</label>
         <textarea id="prototype-description" placeholder="Résumé du concept, pitch…"></textarea>
+      </div>
+
+      <!-- Journal de développement -->
+      <div class="form-group full">
+        <label>Journal de développement</label>
+        <div class="game-list-wrap">
+          <table class="task-list-table">
+            <thead><tr><th style="width:22%">Date</th><th style="width:68%">Note</th><th style="width:10%"></th></tr></thead>
+            <tbody id="proto-devlog-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addDevLogRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter une entrée
+        </button>
       </div>
 
       <!-- Contacts associés (liaison vers contacts existants) -->
@@ -646,6 +733,29 @@
       <button class="btn-cancel" onclick="closeModal('confirm')">Annuler</button>
       <button class="btn-delete" id="btn-confirm-delete">Supprimer</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     COMPARE BAR (fixed bottom)
+═══════════════════════════════════════════════════ -->
+<div id="compare-bar" class="compare-bar" style="display:none">
+  <span style="font-size:.8rem;color:#94a3b8;font-weight:600">Comparer</span>
+  <div class="compare-bar-items" id="compare-bar-slots"></div>
+  <button class="compare-bar-btn" id="compare-bar-go" onclick="openCompareModal()" disabled>Comparer</button>
+  <span class="compare-bar-close" onclick="exitCompareMode()">✕</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — COMPARATEUR PROTOTYPES
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-compare">
+  <div class="modal" style="max-width:860px">
+    <div class="modal-header">
+      <h2>Comparaison de prototypes</h2>
+      <button class="modal-close" onclick="closeModal('compare')">✕</button>
+    </div>
+    <div id="compare-modal-content" style="padding:1.25rem 1.5rem;overflow-x:auto"></div>
   </div>
 </div>
 

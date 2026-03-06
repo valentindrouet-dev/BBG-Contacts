@@ -12,6 +12,7 @@ const state = {
   contactsSearch:    '',
   contactsCat:       '',
   contactsUrgency:   '',
+  contactsRelStatus: '',
   contactsSort:      'name',
   contactsSortAsc:   true,
   contactsView:      'grid',
@@ -20,10 +21,15 @@ const state = {
   prototypesSearch:  '',
   prototypesStatus:  '',
   prototypesInterest:'',
+  prototypesTag:     '',
   prototypesSort:    'status',
   prototypesSortAsc: true,
   prototypesView:    'grid',
   prototypesZoom:    1,
+
+  compareMode:        false,
+  selectedForCompare: [],
+  tasksFilter:        'all',
 };
 
 // ── STORAGE ────────────────────────────────────────
@@ -39,6 +45,18 @@ function migrateContact(c) {
       ? [{ id: uid(), text: c.task, urgency: c.taskUrgency || 'normal', done: c.taskDone || false }]
       : [];
   }
+  // Ensure dueDate + note on tasks
+  c.tasks = c.tasks.map(t => ({
+    dueDate: '', note: '', ...t
+  }));
+  // lastMeeting → exchanges[]
+  if (!Array.isArray(c.exchanges)) {
+    c.exchanges = c.lastMeeting
+      ? [{ id: uid(), date: c.lastMeeting, type: 'rencontre', note: c.lastMeetingNote || '' }]
+      : [];
+  }
+  if (!c.relationStatus) c.relationStatus = 'actif';
+  if (!Array.isArray(c.socials)) c.socials = [];
   return c;
 }
 const STATUS_MIGRATE = { concept: 'proto', test: 'proto', finalisation: 'production', publié: 'sorti' };
@@ -49,10 +67,17 @@ function migratePrototype(p) {
       ? [{ id: uid(), text: p.task, urgency: p.taskUrgency || 'normal', done: p.taskDone || false }]
       : [];
   }
+  // Ensure dueDate + note on tasks
+  p.tasks = p.tasks.map(t => ({
+    dueDate: '', note: '', ...t
+  }));
   if (!Array.isArray(p.contactLinks)) {
     p.contactLinks = [];
   }
   if (STATUS_MIGRATE[p.status]) p.status = STATUS_MIGRATE[p.status];
+  if (!Array.isArray(p.devLog))  p.devLog  = [];
+  if (!Array.isArray(p.photos))  p.photos  = [];
+  if (!Array.isArray(p.tags))    p.tags    = [];
   return p;
 }
 
@@ -117,6 +142,11 @@ const CAT_LABELS = {
 };
 
 const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exceptionnel'];
+
+const REL_STATUS_LABELS = { actif: 'Actif', prospect: 'Prospect', 'en-pause': 'En pause', inactif: 'Inactif' };
+const SOCIAL_TYPES = ['LinkedIn', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
+const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'autre'];
+const STATUS_ORDER = ['proto', 'signé', 'développement', 'production', 'sorti'];
 
 // ── Task helpers ───────────────────────────────────
 function getTopTask(item) {
@@ -198,6 +228,7 @@ function filteredContacts() {
     (c.email   || '').toLowerCase().includes(q)
   );
   if (state.contactsCat) list = list.filter(c => c.category === state.contactsCat);
+  if (state.contactsRelStatus) list = list.filter(c => (c.relationStatus || 'actif') === state.contactsRelStatus);
   if (state.contactsUrgency === 'none') {
     list = list.filter(c => !(c.tasks || []).some(t => !t.done));
   } else if (state.contactsUrgency) {
@@ -231,6 +262,10 @@ function filteredPrototypes() {
   );
   if (state.prototypesStatus) list = list.filter(p => p.status === state.prototypesStatus);
   if (state.prototypesInterest) list = list.filter(p => String(p.interest||3) === state.prototypesInterest);
+  if (state.prototypesTag) {
+    const tagQ = state.prototypesTag.toLowerCase().trim();
+    list = list.filter(p => (p.tags || []).some(t => t.toLowerCase().includes(tagQ)));
+  }
   list.sort((a, b) => {
     let cmp = 0;
     switch (state.prototypesSort) {
@@ -282,10 +317,11 @@ function zoomPage(page, delta) {
 // RENDER — CONTACTS
 // ═══════════════════════════════════════════════════
 function renderContacts() {
-  const list   = filteredContacts();
-  const gridEl = document.getElementById('contacts-grid');
-  const listEl = document.getElementById('contacts-list');
-  const empty  = document.getElementById('contacts-empty');
+  const list    = filteredContacts();
+  const gridEl  = document.getElementById('contacts-grid');
+  const listEl  = document.getElementById('contacts-list');
+  const kanbanEl= document.getElementById('contacts-kanban');
+  const empty   = document.getElementById('contacts-empty');
 
   document.getElementById('nav-contacts-count').textContent = state.contacts.length;
   document.getElementById('contacts-count').textContent =
@@ -293,20 +329,31 @@ function renderContacts() {
 
   updateFilterCount('contacts');
 
+  // helper: hide all three
+  const hideAll = () => {
+    gridEl.style.display = 'none';
+    listEl.style.display = 'none';
+    kanbanEl.style.display = 'none';
+  };
+
   if (list.length === 0) {
-    gridEl.innerHTML = '';    gridEl.style.display = 'none';
-    listEl.innerHTML = '';    listEl.style.display = 'none';
+    hideAll();
+    gridEl.innerHTML = ''; listEl.innerHTML = ''; kanbanEl.innerHTML = '';
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
 
   if (state.contactsView === 'list') {
-    gridEl.style.display = 'none';
+    hideAll();
     listEl.style.display = '';
     listEl.innerHTML = buildContactsTable(list);
+  } else if (state.contactsView === 'kanban') {
+    hideAll();
+    kanbanEl.style.display = '';
+    kanbanEl.innerHTML = buildContactsKanban(list);
   } else {
-    listEl.style.display = 'none';
+    hideAll();
     gridEl.style.display = '';
     gridEl.dataset.zoom = state.contactsZoom;
     if (state.contactsSort === 'category') {
@@ -324,6 +371,32 @@ function renderContacts() {
       gridEl.innerHTML = list.map(c => contactCard(c, state.contactsZoom)).join('');
     }
   }
+}
+
+/* ── Contacts kanban ── */
+function buildContactsKanban(list) {
+  const cats = Object.keys(CAT_LABELS);
+  return `<div class="kanban-board">${cats.map(cat => {
+    const cols = list.filter(c => c.category === cat);
+    return `<div class="kanban-col">
+      <div class="kanban-col-header">
+        ${CAT_LABELS[cat]}
+        <span class="badge badge-${cat}" style="font-size:.65rem">${cols.length}</span>
+      </div>
+      ${cols.length === 0 ? '<div class="kanban-empty">—</div>' :
+        cols.map(c => {
+          const topTask = getTopTask(c);
+          const urg = topTask ? (topTask.urgency || 'normal') : null;
+          const relBadge = `<span class="badge badge-${c.relationStatus||'actif'}" style="font-size:.65rem">${REL_STATUS_LABELS[c.relationStatus||'actif']}</span>`;
+          const urgBadge = urg ? `<span class="badge badge-urgence-${urg}" style="font-size:.65rem">${URGENCY_EMOJI[urg]}</span>` : '';
+          return `<div class="kanban-card" onclick="openDetail('contact','${c.id}')">
+            <div class="kanban-card-name">${esc(c.name)}</div>
+            ${c.company ? `<div class="kanban-card-sub">${esc(c.company)}</div>` : ''}
+            <div class="kanban-card-foot">${relBadge}${urgBadge}</div>
+          </div>`;
+        }).join('')}
+    </div>`;
+  }).join('')}</div>`;
 }
 
 /* ── Contact card ── */
@@ -356,6 +429,26 @@ function contactCard(c, zoom) {
   const editBtn = `<button class="card-edit-btn"
     onclick="event.stopPropagation();editContact('${c.id}')">${ICONS.pencil}</button>`;
 
+  // Relation status badge
+  const relStatus = c.relationStatus || 'actif';
+  const relBadge = !isMin ? `<span class="badge badge-${relStatus}" style="font-size:.65rem">${REL_STATUS_LABELS[relStatus]||relStatus}</span>` : '';
+
+  // Reminder badge (no exchange in 60 days)
+  const reminderBadge = (() => {
+    if (isMin || !c.exchanges || !c.exchanges.length) return '';
+    const lastDate = c.exchanges.reduce((max, e) => e.date > max ? e.date : max, '');
+    if (!lastDate) return '';
+    const daysDiff = Math.floor((Date.now() - new Date(lastDate)) / 86400000);
+    return daysDiff >= 60 ? `<span class="reminder-badge">🔔 Relancer</span>` : '';
+  })();
+
+  // Social icons
+  const socialsHtml = !isMin && (c.socials || []).length > 0
+    ? `<div class="social-links">${(c.socials||[]).map(s =>
+        `<a class="social-icon" href="${esc(s.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(s.type)}</a>`
+      ).join('')}</div>`
+    : '';
+
   // Show urgency pill instead of status
   const pendingCount = (c.tasks || []).filter(t => !t.done).length;
   const urgPill = topTask
@@ -383,9 +476,11 @@ function contactCard(c, zoom) {
       <h3 class="card-title">${esc(c.name)}</h3>
       ${subtitle ? `<p class="card-subtitle">${esc(subtitle)}</p>` : ''}
       ${extra}
+      ${socialsHtml}
       <div class="card-footer">
+        ${relBadge}
         ${urgPill}
-        ${c.lastMeeting && zoom >= 3 ? `<span class="card-subtitle" style="font-size:.7rem">${c.lastMeeting}</span>` : ''}
+        ${reminderBadge}
       </div>
     </div>`;
   }
@@ -470,10 +565,11 @@ function buildContactsTable(list) {
 // RENDER — PROTOTYPES
 // ═══════════════════════════════════════════════════
 function renderPrototypes() {
-  const list   = filteredPrototypes();
-  const gridEl = document.getElementById('prototypes-grid');
-  const listEl = document.getElementById('prototypes-list');
-  const empty  = document.getElementById('prototypes-empty');
+  const list      = filteredPrototypes();
+  const gridEl    = document.getElementById('prototypes-grid');
+  const listEl    = document.getElementById('prototypes-list');
+  const timelineEl= document.getElementById('prototypes-timeline');
+  const empty     = document.getElementById('prototypes-empty');
 
   document.getElementById('nav-prototypes-count').textContent = state.prototypes.length;
   document.getElementById('prototypes-count').textContent =
@@ -481,24 +577,64 @@ function renderPrototypes() {
 
   updateFilterCount('prototypes');
 
+  const hideAll = () => {
+    gridEl.style.display = 'none';
+    listEl.style.display = 'none';
+    timelineEl.style.display = 'none';
+  };
+
   if (list.length === 0) {
-    gridEl.innerHTML = '';    gridEl.style.display = 'none';
-    listEl.innerHTML = '';    listEl.style.display = 'none';
+    hideAll();
+    gridEl.innerHTML = ''; listEl.innerHTML = ''; timelineEl.innerHTML = '';
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
 
   if (state.prototypesView === 'list') {
-    gridEl.style.display = 'none';
+    hideAll();
     listEl.style.display = '';
     listEl.innerHTML = buildPrototypesTable(list);
+  } else if (state.prototypesView === 'timeline') {
+    hideAll();
+    timelineEl.style.display = '';
+    timelineEl.innerHTML = buildPrototypesTimeline(list);
   } else {
-    listEl.style.display = 'none';
+    hideAll();
     gridEl.style.display = '';
     gridEl.dataset.zoom = state.prototypesZoom;
     gridEl.innerHTML = list.map(p => prototypeCard(p, state.prototypesZoom)).join('');
   }
+}
+
+/* ── Prototypes timeline / roadmap ── */
+function buildPrototypesTimeline(list) {
+  return `<div class="timeline-board">${STATUS_ORDER.map(status => {
+    const items = list.filter(p => p.status === status);
+    const icon  = PROTO_ICONS[status] || '🎮';
+    return `<div class="timeline-col">
+      <div class="timeline-col-header" style="background:var(--card-media-${status},#f1f5f9)">
+        <span>${icon}</span><span>${status}</span>
+        <span class="badge badge-${status}" style="font-size:.65rem;margin-left:auto">${items.length}</span>
+      </div>
+      ${items.length === 0 ? '<div class="timeline-empty">—</div>' :
+        items.map(p => {
+          const stars = '⭐'.repeat(p.interest || 3);
+          const topTask = getTopTask(p);
+          const urg  = topTask ? (topTask.urgency || 'normal') : null;
+          const tagsHtml = (p.tags||[]).slice(0,2).map(t => `<span class="tag-chip" style="font-size:.6rem">${esc(t)}</span>`).join('');
+          return `<div class="timeline-card" onclick="openDetail('prototype','${p.id}')">
+            <div class="timeline-card-title">${esc(p.title)}</div>
+            ${p.genre ? `<div class="timeline-card-genre">${esc(p.genre)}</div>` : ''}
+            ${tagsHtml ? `<div class="tags-cloud" style="margin-top:.3rem">${tagsHtml}</div>` : ''}
+            <div class="timeline-card-foot">
+              <span style="font-size:.75rem;opacity:.7">${stars}</span>
+              ${urg ? `<span class="badge badge-urgence-${urg}" style="font-size:.65rem">${URGENCY_EMOJI[urg]}</span>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+    </div>`;
+  }).join('')}</div>`;
 }
 
 /* ── Prototype card ── */
@@ -537,10 +673,12 @@ function prototypeCard(p, zoom) {
     const urgPill = topTask
       ? `<span class="badge badge-urgence-${urg}" style="font-size:.65rem">${esc(zoom >= 3 ? urg : urg[0].toUpperCase())}</span>${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}`
       : '';
+    const tagsHtml = (p.tags||[]).slice(0,3).map(t => `<span class="tag-chip">${esc(t)}</span>`).join('');
     body = `<div class="card-body">
       <h3 class="card-title">${esc(p.title)}</h3>
       ${p.genre ? `<p class="card-subtitle">${esc(p.genre)}</p>` : ''}
       ${chips ? `<div class="card-specs">${chips}</div>` : ''}
+      ${tagsHtml && zoom >= 3 ? `<div class="tags-cloud">${tagsHtml}</div>` : ''}
       <div class="card-footer">
         <span style="font-size:.75rem;opacity:.7">${stars}</span>
         ${urgPill}
@@ -551,10 +689,16 @@ function prototypeCard(p, zoom) {
   const allDoneP = (p.tasks||[]).length > 0 && (p.tasks||[]).every(t => t.done);
   const doneClass = allDoneP ? ' card-task-done' : '';
 
+  const compareCheck = state.compareMode
+    ? `<input type="checkbox" class="card-compare-check"
+        ${state.selectedForCompare.includes(p.id) ? 'checked' : ''}
+        onclick="event.stopPropagation();toggleCompareSelect('${p.id}',this)" />`
+    : '';
+
   return `<div class="card card-hover${doneClass}"
-    onclick="openDetail('prototype','${p.id}')" title="${esc(p.title)}">
+    onclick="${state.compareMode ? '' : `openDetail('prototype','${p.id}')`}" title="${esc(p.title)}" style="${state.compareMode ? 'cursor:default' : ''}">
     <div class="card-media card-media-${p.status}">
-      ${mediaContent}${badge}${urgEmoji}${editBtn}
+      ${compareCheck}${mediaContent}${badge}${urgEmoji}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -614,31 +758,82 @@ function buildPrototypesTable(list) {
 // RENDER — TASKS
 // ═══════════════════════════════════════════════════
 function renderTasks() {
-  const sortBy    = document.getElementById('tasks-sort')?.value || 'urgency';
-  const showDone  = document.getElementById('tasks-show-done')?.checked || false;
-  const listEl    = document.getElementById('tasks-list');
-  const emptyEl   = document.getElementById('tasks-empty');
+  const sortBy   = document.getElementById('tasks-sort')?.value || 'urgency';
+  const showDone = document.getElementById('tasks-show-done')?.checked || false;
+  const listEl   = document.getElementById('tasks-list');
+  const emptyEl  = document.getElementById('tasks-empty');
+  const todayStr = today();
 
-  // Gather all tasks from contacts and prototypes
+  // Gather all tasks
   let tasks = [];
   state.contacts.forEach(c => {
     (c.tasks || []).forEach(t => {
-      tasks.push({ itemId: c.id, taskId: t.id, type: 'contact', name: c.name, task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
+      tasks.push({ itemId: c.id, taskId: t.id, type: 'contact', name: c.name,
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false,
+        dueDate: t.dueDate || '', note: t.note || '' });
     });
   });
   state.prototypes.forEach(p => {
     (p.tasks || []).forEach(t => {
-      tasks.push({ itemId: p.id, taskId: t.id, type: 'prototype', name: p.title, task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
+      tasks.push({ itemId: p.id, taskId: t.id, type: 'prototype', name: p.title,
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false,
+        dueDate: t.dueDate || '', note: t.note || '' });
     });
   });
 
-  const total = tasks.length;
+  const total   = tasks.length;
   const pending = tasks.filter(t => !t.done).length;
   document.getElementById('nav-tasks-count').textContent = pending;
   document.getElementById('tasks-count').textContent =
     `${pending} tâche${pending !== 1 ? 's' : ''} en cours${total !== pending ? ` · ${total - pending} terminée${total - pending !== 1 ? 's' : ''}` : ''}`;
 
-  if (!showDone) tasks = tasks.filter(t => !t.done);
+  // Weekly recap
+  const critCount  = tasks.filter(t => !t.done && (t.urgency === 'critique' || t.urgency === 'urgent')).length;
+  const overdueCount = tasks.filter(t => !t.done && t.dueDate && t.dueDate < todayStr).length;
+  const doneCount  = tasks.filter(t => t.done).length;
+  const recapEl    = document.getElementById('tasks-recap-bar');
+  if (recapEl) {
+    recapEl.innerHTML = `<div class="tasks-recap">
+      <div class="tasks-recap-stat">
+        <span class="tasks-recap-num">${total}</span>
+        <span class="tasks-recap-label">Total</span>
+      </div>
+      <div class="tasks-recap-divider"></div>
+      <div class="tasks-recap-stat">
+        <span class="tasks-recap-num">${pending}</span>
+        <span class="tasks-recap-label">En cours</span>
+      </div>
+      <div class="tasks-recap-divider"></div>
+      <div class="tasks-recap-stat">
+        <span class="tasks-recap-num num-critique">${critCount}</span>
+        <span class="tasks-recap-label">Urgentes</span>
+      </div>
+      <div class="tasks-recap-divider"></div>
+      <div class="tasks-recap-stat">
+        <span class="tasks-recap-num num-overdue">${overdueCount}</span>
+        <span class="tasks-recap-label">En retard</span>
+      </div>
+      <div class="tasks-recap-divider"></div>
+      <div class="tasks-recap-stat">
+        <span class="tasks-recap-num num-done">${doneCount}</span>
+        <span class="tasks-recap-label">Terminées</span>
+      </div>
+    </div>`;
+  }
+
+  // Quick filter
+  const filter = state.tasksFilter || 'all';
+  if (filter === 'done') {
+    tasks = tasks.filter(t => t.done);
+  } else if (filter === 'urgent') {
+    tasks = tasks.filter(t => !t.done && (t.urgency === 'critique' || t.urgency === 'urgent'));
+  } else if (filter === 'today') {
+    tasks = tasks.filter(t => !t.done && t.dueDate === todayStr);
+  } else if (filter === 'overdue') {
+    tasks = tasks.filter(t => !t.done && t.dueDate && t.dueDate < todayStr);
+  } else {
+    if (!showDone) tasks = tasks.filter(t => !t.done);
+  }
 
   if (tasks.length === 0) {
     listEl.innerHTML = '';
@@ -650,12 +845,12 @@ function renderTasks() {
   // Sort
   tasks.sort((a, b) => {
     if (sortBy === 'urgency') return URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency];
-    if (sortBy === 'source')  return a.type.localeCompare(b.type);
+    if (sortBy === 'source')  return a.type.localeCompare(b.type) || a.name.localeCompare(b.name, 'fr');
     return a.name.localeCompare(b.name, 'fr');
   });
 
-  // Group by urgency if sorted by urgency
-  if (sortBy === 'urgency') {
+  // Group
+  if (sortBy === 'urgency' && filter !== 'done') {
     const groups = {};
     tasks.forEach(t => { (groups[t.urgency] = groups[t.urgency] || []).push(t); });
     const urgOrder = ['critique', 'urgent', 'normal', 'faible'];
@@ -667,6 +862,20 @@ function renderTasks() {
         </div>
         ${groups[u].map(t => taskCard(t)).join('')}
       `).join('');
+  } else if (sortBy === 'source') {
+    // Group by source name
+    const groups = {};
+    tasks.forEach(t => {
+      const key = `${t.type}__${t.name}__${t.itemId}`;
+      (groups[key] = groups[key] || { type: t.type, name: t.name, itemId: t.itemId, tasks: [] }).tasks.push(t);
+    });
+    listEl.innerHTML = Object.values(groups).map(g => `
+      <div class="task-source-group-header">
+        <span>${g.type === 'contact' ? '👤' : '🎲'}</span>
+        <span style="color:var(--text-700);font-size:.78rem">${esc(g.name)}</span>
+      </div>
+      ${g.tasks.map(t => taskCard(t)).join('')}
+    `).join('');
   } else {
     listEl.innerHTML = tasks.map(t => taskCard(t)).join('');
   }
@@ -674,12 +883,28 @@ function renderTasks() {
 
 function taskCard(t) {
   const typeEmoji = t.type === 'contact' ? '👤' : '🎲';
-  return `<div class="task-card${t.done ? ' done' : ''}" onclick="openDetail('${t.type}','${t.itemId}')">
+  const todayStr = today();
+  let dueHtml = '';
+  if (t.dueDate) {
+    const isOverdue = !t.done && t.dueDate < todayStr;
+    const isToday   = t.dueDate === todayStr;
+    dueHtml = `<span class="task-due${isOverdue ? ' overdue' : ''}" title="Échéance">
+      ${isOverdue ? '🔴' : isToday ? '📅' : '🗓'} ${t.dueDate}
+    </span>`;
+  }
+  const noteHtml = t.note ? `<div class="task-note-preview" style="${t.done ? 'opacity:.5' : ''}">${esc(t.note)}</div>` : '';
+  return `<div class="task-card${t.done ? ' done' : ''}">
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
       onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.itemId}','${t.taskId}')" />
-    <div class="task-body">
+    <div class="task-body" onclick="openDetail('${t.type}','${t.itemId}')">
       <span class="task-source">${typeEmoji} ${esc(t.name)}</span>
-      <span class="task-text">${esc(t.task)}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <span class="task-text">${esc(t.task)}</span>
+          ${dueHtml}
+        </div>
+        ${noteHtml}
+      </div>
       <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span></span>
     </div>
   </div>`;
@@ -720,11 +945,13 @@ function toggleFilterPanel(page) {
 function updateFilterCount(page) {
   let active = 0;
   if (page === 'contacts') {
-    if (state.contactsCat)     active++;
-    if (state.contactsUrgency) active++;
+    if (state.contactsCat)       active++;
+    if (state.contactsUrgency)   active++;
+    if (state.contactsRelStatus) active++;
   } else {
     if (state.prototypesStatus)   active++;
     if (state.prototypesInterest) active++;
+    if (state.prototypesTag)      active++;
   }
   const badge = document.getElementById(`${page}-filter-count`);
   const reset = document.getElementById(`${page}-filter-reset`);
@@ -883,6 +1110,8 @@ function addTaskRow(prefix, task = {}) {
   tr.innerHTML = `
     <td><input type="text" placeholder="Description de la tâche…" value="${esc(task.text || '')}" /></td>
     <td><select>${opts}</select></td>
+    <td><input type="date" value="${esc(task.dueDate || '')}" /></td>
+    <td><input type="text" placeholder="Note…" value="${esc(task.note || '')}" /></td>
     <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
   tbody.appendChild(tr);
 }
@@ -891,12 +1120,17 @@ function getTasksFromForm(prefix) {
   const tbody = document.getElementById(`${prefix}-tasks-body`);
   if (!tbody) return [];
   return Array.from(tbody.querySelectorAll('tr')).map(tr => {
-    const inputs = tr.querySelectorAll('input[type="text"], select');
+    const textInp = tr.querySelector('input[type="text"]');
+    const sel     = tr.querySelector('select');
+    const dateInp = tr.querySelector('input[type="date"]');
+    const noteInp = tr.querySelectorAll('input[type="text"]')[1];
     return {
-      id: tr.dataset.taskId || uid(),
-      text: inputs[0]?.value.trim() || '',
-      urgency: inputs[1]?.value || 'normal',
-      done: false,
+      id:      tr.dataset.taskId || uid(),
+      text:    textInp?.value.trim() || '',
+      urgency: sel?.value || 'normal',
+      dueDate: dateInp?.value || '',
+      note:    noteInp?.value.trim() || '',
+      done:    false,
     };
   }).filter(t => t.text);
 }
@@ -943,6 +1177,177 @@ function populateContactLinksForm(links = []) {
 }
 
 // ═══════════════════════════════════════════════════
+// EXCHANGE HISTORY (contact form)
+// ═══════════════════════════════════════════════════
+function addExchangeRow(ex = {}) {
+  const tbody = document.getElementById('contact-exchanges-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const typeOpts = EXCHANGE_TYPES.map(t =>
+    `<option value="${t}" ${(ex.type || 'rencontre') === t ? 'selected' : ''}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`
+  ).join('');
+  const eid = ex.id || uid();
+  tr.dataset.exchId = eid;
+  tr.innerHTML = `
+    <td><input type="date" value="${esc(ex.date || today())}" /></td>
+    <td><select>${typeOpts}</select></td>
+    <td><input type="text" placeholder="Note sur l'échange…" value="${esc(ex.note || '')}" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+function getExchangesFromForm() {
+  const tbody = document.getElementById('contact-exchanges-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
+    id:   tr.dataset.exchId || uid(),
+    date: tr.querySelector('input[type="date"]')?.value || '',
+    type: tr.querySelector('select')?.value || 'rencontre',
+    note: tr.querySelector('input[type="text"]')?.value.trim() || '',
+  })).filter(e => e.date);
+}
+function populateExchangesForm(exchanges = []) {
+  const tbody = document.getElementById('contact-exchanges-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  exchanges.forEach(e => addExchangeRow(e));
+}
+
+// ═══════════════════════════════════════════════════
+// SOCIAL LINKS (contact form)
+// ═══════════════════════════════════════════════════
+function addSocialRow(social = {}) {
+  const tbody = document.getElementById('contact-socials-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const typeOpts = SOCIAL_TYPES.map(t =>
+    `<option value="${t}" ${(social.type || '') === t ? 'selected' : ''}>${t}</option>`
+  ).join('');
+  tr.innerHTML = `
+    <td><select><option value="">— Réseau —</option>${typeOpts}</select></td>
+    <td><input type="text" placeholder="https://…" value="${esc(social.url || '')}" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+function getSocialsFromForm() {
+  const tbody = document.getElementById('contact-socials-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
+    type: tr.querySelector('select')?.value || '',
+    url:  tr.querySelector('input[type="text"]')?.value.trim() || '',
+  })).filter(s => s.type && s.url);
+}
+function populateSocialsForm(socials = []) {
+  const tbody = document.getElementById('contact-socials-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  socials.forEach(s => addSocialRow(s));
+}
+
+// ═══════════════════════════════════════════════════
+// DEV LOG (prototype form)
+// ═══════════════════════════════════════════════════
+function addDevLogRow(entry = {}) {
+  const tbody = document.getElementById('proto-devlog-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const eid = entry.id || uid();
+  tr.dataset.entryId = eid;
+  tr.innerHTML = `
+    <td><input type="date" value="${esc(entry.date || today())}" /></td>
+    <td><input type="text" placeholder="Note de développement…" value="${esc(entry.note || '')}" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+function getDevLogFromForm() {
+  const tbody = document.getElementById('proto-devlog-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
+    id:   tr.dataset.entryId || uid(),
+    date: tr.querySelector('input[type="date"]')?.value || '',
+    note: tr.querySelector('input[type="text"]')?.value.trim() || '',
+  })).filter(e => e.note);
+}
+function populateDevLogForm(devLog = []) {
+  const tbody = document.getElementById('proto-devlog-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  devLog.forEach(e => addDevLogRow(e));
+}
+
+// ═══════════════════════════════════════════════════
+// COMPARATOR
+// ═══════════════════════════════════════════════════
+function toggleCompareMode() {
+  state.compareMode = !state.compareMode;
+  state.selectedForCompare = [];
+  const btn = document.getElementById('prototypes-compare-toggle');
+  if (btn) btn.style.background = state.compareMode ? 'var(--primary-100)' : '';
+  const bar = document.getElementById('compare-bar');
+  if (bar) bar.style.display = state.compareMode ? '' : 'none';
+  renderPrototypes();
+}
+function exitCompareMode() {
+  state.compareMode = false;
+  state.selectedForCompare = [];
+  const btn = document.getElementById('prototypes-compare-toggle');
+  if (btn) btn.style.background = '';
+  const bar = document.getElementById('compare-bar');
+  if (bar) bar.style.display = 'none';
+  renderPrototypes();
+}
+function toggleCompareSelect(protoId, checkbox) {
+  const idx = state.selectedForCompare.indexOf(protoId);
+  if (checkbox.checked && idx === -1) {
+    if (state.selectedForCompare.length >= 3) {
+      checkbox.checked = false;
+      return;
+    }
+    state.selectedForCompare.push(protoId);
+  } else if (!checkbox.checked && idx !== -1) {
+    state.selectedForCompare.splice(idx, 1);
+  }
+  updateCompareBar();
+}
+function updateCompareBar() {
+  const slots = document.getElementById('compare-bar-slots');
+  const goBtn = document.getElementById('compare-bar-go');
+  if (!slots || !goBtn) return;
+  const items = state.selectedForCompare.map(id => {
+    const p = state.prototypes.find(x => x.id === id);
+    return `<div class="compare-bar-slot filled" title="${esc(p?.title||'')}">${PROTO_ICONS[p?.status]||'🎮'}</div>`;
+  });
+  while (items.length < 2) items.push('<div class="compare-bar-slot">?</div>');
+  slots.innerHTML = items.join('');
+  goBtn.disabled = state.selectedForCompare.length < 2;
+}
+function openCompareModal() {
+  if (state.selectedForCompare.length < 2) return;
+  const protos = state.selectedForCompare.map(id => state.prototypes.find(x => x.id === id)).filter(Boolean);
+  const fields = [
+    ['Statut', p => `<span class="badge badge-${p.status}">${esc(p.status)}</span>`],
+    ['Intérêt', p => '⭐'.repeat(p.interest||3)],
+    ['Genre', p => esc(p.genre||'—')],
+    ['Joueurs', p => esc(p.players||'—')],
+    ['Durée', p => esc(p.duration||'—')],
+    ['Âge', p => esc(p.age||'—')],
+    ['Tags', p => (p.tags||[]).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join(' ')||'—'],
+    ['Tâches en cours', p => String((p.tasks||[]).filter(t=>!t.done).length)],
+    ['Contacts liés', p => String((p.contactLinks||[]).length)],
+  ];
+  const headerRow = `<th style="width:20%">Critère</th>${protos.map(p => `<th>${PROTO_ICONS[p.status]||'🎮'} ${esc(p.title)}</th>`).join('')}`;
+  const rows = fields.map(([label, fn]) =>
+    `<tr><td style="font-weight:600;font-size:.8rem;color:var(--text-600)">${label}</td>${protos.map(p=>`<td>${fn(p)}</td>`).join('')}</tr>`
+  ).join('');
+  document.getElementById('compare-modal-content').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <thead><tr style="background:var(--bg)">${headerRow}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  document.getElementById('modal-compare').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+// ═══════════════════════════════════════════════════
 // MODALS
 // ═══════════════════════════════════════════════════
 function openModal(type) {
@@ -963,7 +1368,7 @@ document.querySelectorAll('.modal-overlay').forEach(ov =>
 );
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['contact','prototype','detail','confirm'].forEach(t =>
+    ['contact','prototype','detail','confirm','compare'].forEach(t =>
       document.getElementById('modal-' + t)?.classList.add('hidden')
     );
     document.body.style.overflow = '';
@@ -974,34 +1379,38 @@ document.addEventListener('keydown', e => {
 function resetContactForm() {
   ['contact-id','contact-name','contact-email','contact-phone',
    'contact-company','contact-website','contact-notes',
-   'contact-photo-url','contact-last-meeting','contact-last-meeting-note'].forEach(id => {
+   'contact-photo-url'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('contact-photo-file').value = '';
   document.getElementById('contact-category').value = '';
+  document.getElementById('contact-relstatus').value = 'actif';
   _updatePhotoPreview('contact', '');
   populateTasksForm('contact', []);
   populateGamesForm([]);
+  populateExchangesForm([]);
+  populateSocialsForm([]);
   document.getElementById('modal-contact-title').textContent = 'Nouveau contact';
 }
 
 function editContact(id) {
   const c = state.contacts.find(x => x.id === id);
   if (!c) return;
-  document.getElementById('contact-id').value              = c.id;
-  document.getElementById('contact-name').value            = c.name;
-  document.getElementById('contact-category').value        = c.category;
-  document.getElementById('contact-email').value           = c.email           || '';
-  document.getElementById('contact-phone').value           = c.phone           || '';
-  document.getElementById('contact-company').value         = c.company         || '';
-  document.getElementById('contact-website').value         = c.website         || '';
-  document.getElementById('contact-notes').value           = c.notes           || '';
-  document.getElementById('contact-photo-url').value       = c.photo           || '';
-  document.getElementById('contact-last-meeting').value    = c.lastMeeting     || '';
-  document.getElementById('contact-last-meeting-note').value = c.lastMeetingNote || '';
+  document.getElementById('contact-id').value        = c.id;
+  document.getElementById('contact-name').value      = c.name;
+  document.getElementById('contact-category').value  = c.category;
+  document.getElementById('contact-email').value     = c.email    || '';
+  document.getElementById('contact-phone').value     = c.phone    || '';
+  document.getElementById('contact-company').value   = c.company  || '';
+  document.getElementById('contact-website').value   = c.website  || '';
+  document.getElementById('contact-notes').value     = c.notes    || '';
+  document.getElementById('contact-photo-url').value = c.photo    || '';
+  document.getElementById('contact-relstatus').value = c.relationStatus || 'actif';
   _updatePhotoPreview('contact', c.photo || '');
   populateTasksForm('contact', c.tasks || []);
   populateGamesForm(c.games || []);
+  populateExchangesForm(c.exchanges || []);
+  populateSocialsForm(c.socials || []);
   document.getElementById('modal-contact-title').textContent = 'Modifier le contact';
   openModal('contact');
 }
@@ -1011,17 +1420,18 @@ function submitContact(e) {
   const id  = document.getElementById('contact-id').value;
   const newTasks = getTasksFromForm('contact');
   const data = {
-    name:             document.getElementById('contact-name').value.trim(),
-    category:         document.getElementById('contact-category').value,
-    email:            document.getElementById('contact-email').value.trim(),
-    phone:            document.getElementById('contact-phone').value.trim(),
-    company:          document.getElementById('contact-company').value.trim(),
-    website:          document.getElementById('contact-website').value.trim(),
-    notes:            document.getElementById('contact-notes').value.trim(),
-    photo:            document.getElementById('contact-photo-url').value.trim(),
-    lastMeeting:      document.getElementById('contact-last-meeting').value,
-    lastMeetingNote:  document.getElementById('contact-last-meeting-note').value.trim(),
-    games:            getGamesFromForm(),
+    name:           document.getElementById('contact-name').value.trim(),
+    category:       document.getElementById('contact-category').value,
+    email:          document.getElementById('contact-email').value.trim(),
+    phone:          document.getElementById('contact-phone').value.trim(),
+    company:        document.getElementById('contact-company').value.trim(),
+    website:        document.getElementById('contact-website').value.trim(),
+    notes:          document.getElementById('contact-notes').value.trim(),
+    photo:          document.getElementById('contact-photo-url').value.trim(),
+    relationStatus: document.getElementById('contact-relstatus').value || 'actif',
+    exchanges:      getExchangesFromForm(),
+    socials:        getSocialsFromForm(),
+    games:          getGamesFromForm(),
   };
   if (id) {
     const i = state.contacts.findIndex(x => x.id === id);
@@ -1053,6 +1463,9 @@ function resetPrototypeForm() {
   if (intEl) { intEl.checked = true; updateInterestUI(3); }
   populateTasksForm('proto', []);
   populateContactLinksForm([]);
+  populateDevLogForm([]);
+  const tagsEl = document.getElementById('prototype-tags');
+  if (tagsEl) tagsEl.value = '';
   document.getElementById('modal-prototype-title').textContent = 'Nouveau prototype';
 }
 
@@ -1077,6 +1490,10 @@ function editPrototype(id) {
 
   populateTasksForm('proto', p.tasks || []);
   populateContactLinksForm(p.contactLinks || []);
+  populateDevLogForm(p.devLog || []);
+
+  const tagsEl = document.getElementById('prototype-tags');
+  if (tagsEl) tagsEl.value = (p.tags || []).join(', ');
 
   // PDF
   _protoPdfData = p.pdf || null;
@@ -1098,6 +1515,8 @@ function submitPrototype(e) {
     : null;
   const newTasks = getTasksFromForm('proto');
   const newLinks = getContactLinksFromForm();
+  const tagsRaw = document.getElementById('prototype-tags')?.value.trim() || '';
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
   const data = {
     title:        document.getElementById('prototype-title').value.trim(),
     status:       document.getElementById('prototype-status').value,
@@ -1112,6 +1531,8 @@ function submitPrototype(e) {
     photo:        document.getElementById('proto-photo-url').value.trim(),
     pdf:          _protoPdfData,
     pdfName,
+    tags,
+    devLog:       getDevLogFromForm(),
   };
   if (id) {
     const i = state.prototypes.findIndex(x => x.id === id);
@@ -1172,12 +1593,25 @@ function openDetail(type, id) {
          </table></div>`
       : '';
 
-    const meetHtml = c.lastMeeting
-      ? `<div class="detail-section-title">Dernière rencontre</div>
-         <div class="detail-kv-grid">
-           <div class="detail-kv"><label>Date</label><span>${c.lastMeeting}</span></div>
-           ${c.lastMeetingNote ? `<div class="detail-kv" style="grid-column:1/-1"><label>Note</label><span>${esc(c.lastMeetingNote)}</span></div>` : ''}
+    // Exchanges timeline
+    const exchSorted = [...(c.exchanges||[])].sort((a,b) => b.date.localeCompare(a.date));
+    const meetHtml = exchSorted.length > 0
+      ? `<div class="detail-section-title">Historique des échanges</div>
+         <div class="exchange-list">${exchSorted.map(e => `
+           <div class="exchange-item">
+             <span class="exchange-date">${e.date}</span>
+             <span class="exchange-type">${esc(e.type||'rencontre')}</span>
+             <span class="exchange-note">${esc(e.note||'')}</span>
+           </div>`).join('')}
          </div>`
+      : '';
+
+    // Socials
+    const socialsDetailHtml = (c.socials||[]).length > 0
+      ? `<div class="detail-section-title">Réseaux sociaux</div>
+         <div class="social-links">${(c.socials||[]).map(s =>
+           `<a class="social-icon" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.type)} ↗</a>`
+         ).join('')}</div>`
       : '';
 
     el.innerHTML = `
@@ -1189,6 +1623,7 @@ function openDetail(type, id) {
             ${c.company ? `<div style="font-size:.8rem;color:var(--text-500)">${esc(c.company)}</div>` : ''}
           </div>
           <span class="badge badge-${c.category}" style="margin-left:auto;flex-shrink:0">${esc(c.category)}</span>
+          <span class="badge badge-${c.relationStatus||'actif'}" style="flex-shrink:0">${REL_STATUS_LABELS[c.relationStatus||'actif']}</span>
         </div>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
@@ -1208,6 +1643,7 @@ function openDetail(type, id) {
             <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
             <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
           </div>`).join('')}` : ''}
+        ${socialsDetailHtml}
         ${meetHtml}
         ${gamesHtml}
         ${c.notes ? `<div class="detail-section-title">Notes</div>
@@ -1305,8 +1741,16 @@ function openDetail(type, id) {
             <iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>
           </div>` : ''}
         ${contactLinksHtml}
+        ${(p.tags||[]).length > 0 ? `<div class="detail-section-title">Tags mécaniques</div>
+          <div class="tags-cloud">${(p.tags||[]).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
         ${p.notes ? `<div class="detail-section-title">Notes de développement</div>
           <div class="detail-notes">${esc(p.notes)}</div>` : ''}
+        ${(p.devLog||[]).length > 0 ? `<div class="detail-section-title">Journal de développement</div>
+          <div class="devlog-list">${[...(p.devLog||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(e => `
+            <div class="devlog-item">
+              <div class="devlog-date">${e.date}</div>
+              <div class="devlog-note">${esc(e.note)}</div>
+            </div>`).join('')}</div>` : ''}
         <div class="detail-actions">
           <button class="btn-save" onclick="closeModal('detail');editPrototype('${p.id}')">Modifier</button>
           <button class="btn-cancel" onclick="closeModal('detail');confirmDelete('prototype','${p.id}')">Supprimer</button>
@@ -1455,9 +1899,10 @@ document.getElementById('contacts-urgency-filter').addEventListener('change', e 
   state.contactsUrgency = e.target.value; renderContacts();
 });
 document.getElementById('contacts-filter-reset').addEventListener('click', () => {
-  state.contactsCat = ''; state.contactsUrgency = '';
+  state.contactsCat = ''; state.contactsUrgency = ''; state.contactsRelStatus = '';
   document.getElementById('contacts-cat-filter').value = '';
   document.getElementById('contacts-urgency-filter').value = '';
+  document.getElementById('contacts-relstatus-filter').value = '';
   renderContacts();
 });
 document.getElementById('contacts-sort').addEventListener('change', e => {
@@ -1476,6 +1921,7 @@ document.getElementById('contacts-view-grid').addEventListener('click', () => {
   state.contactsView = 'grid';
   document.getElementById('contacts-view-grid').classList.add('active');
   document.getElementById('contacts-view-list').classList.remove('active');
+  document.getElementById('contacts-view-kanban').classList.remove('active');
   document.getElementById('contacts-zoom-wrap').style.display = '';
   renderContacts();
 });
@@ -1483,8 +1929,20 @@ document.getElementById('contacts-view-list').addEventListener('click', () => {
   state.contactsView = 'list';
   document.getElementById('contacts-view-list').classList.add('active');
   document.getElementById('contacts-view-grid').classList.remove('active');
+  document.getElementById('contacts-view-kanban').classList.remove('active');
   document.getElementById('contacts-zoom-wrap').style.display = 'none';
   renderContacts();
+});
+document.getElementById('contacts-view-kanban').addEventListener('click', () => {
+  state.contactsView = 'kanban';
+  document.getElementById('contacts-view-kanban').classList.add('active');
+  document.getElementById('contacts-view-grid').classList.remove('active');
+  document.getElementById('contacts-view-list').classList.remove('active');
+  document.getElementById('contacts-zoom-wrap').style.display = 'none';
+  renderContacts();
+});
+document.getElementById('contacts-relstatus-filter').addEventListener('change', e => {
+  state.contactsRelStatus = e.target.value; renderContacts();
 });
 
 // ── Prototypes ────────────────────────────────────
@@ -1501,9 +1959,10 @@ document.getElementById('prototypes-interest-filter').addEventListener('change',
   state.prototypesInterest = e.target.value; renderPrototypes();
 });
 document.getElementById('prototypes-filter-reset').addEventListener('click', () => {
-  state.prototypesStatus = ''; state.prototypesInterest = '';
+  state.prototypesStatus = ''; state.prototypesInterest = ''; state.prototypesTag = '';
   document.getElementById('prototypes-status-filter').value = '';
   document.getElementById('prototypes-interest-filter').value = '';
+  document.getElementById('prototypes-tag-filter').value = '';
   renderPrototypes();
 });
 document.getElementById('prototypes-sort').addEventListener('change', e => {
@@ -1522,6 +1981,7 @@ document.getElementById('prototypes-view-grid').addEventListener('click', () => 
   state.prototypesView = 'grid';
   document.getElementById('prototypes-view-grid').classList.add('active');
   document.getElementById('prototypes-view-list').classList.remove('active');
+  document.getElementById('prototypes-view-timeline').classList.remove('active');
   document.getElementById('prototypes-zoom-wrap').style.display = '';
   renderPrototypes();
 });
@@ -1529,8 +1989,40 @@ document.getElementById('prototypes-view-list').addEventListener('click', () => 
   state.prototypesView = 'list';
   document.getElementById('prototypes-view-list').classList.add('active');
   document.getElementById('prototypes-view-grid').classList.remove('active');
+  document.getElementById('prototypes-view-timeline').classList.remove('active');
   document.getElementById('prototypes-zoom-wrap').style.display = 'none';
   renderPrototypes();
+});
+document.getElementById('prototypes-view-timeline').addEventListener('click', () => {
+  state.prototypesView = 'timeline';
+  document.getElementById('prototypes-view-timeline').classList.add('active');
+  document.getElementById('prototypes-view-grid').classList.remove('active');
+  document.getElementById('prototypes-view-list').classList.remove('active');
+  document.getElementById('prototypes-zoom-wrap').style.display = 'none';
+  renderPrototypes();
+});
+document.getElementById('prototypes-compare-toggle').addEventListener('click', toggleCompareMode);
+document.getElementById('prototypes-tag-filter').addEventListener('input', e => {
+  state.prototypesTag = e.target.value; renderPrototypes();
+});
+
+// Task quick filter pills
+document.querySelectorAll('.task-filter-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.tasksFilter = btn.dataset.filter;
+    document.querySelectorAll('.task-filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // also toggle showDone checkbox if needed
+    const showDoneEl = document.getElementById('tasks-show-done');
+    if (state.tasksFilter === 'done' && showDoneEl) showDoneEl.checked = true;
+    else if (showDoneEl) showDoneEl.checked = false;
+    renderTasks();
+  });
+});
+
+// Compare modal close on overlay click
+document.getElementById('modal-compare')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-compare')) closeModal('compare');
 });
 
 // ═══════════════════════════════════════════════════
