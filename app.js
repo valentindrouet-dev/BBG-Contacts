@@ -1562,6 +1562,8 @@ document.addEventListener('keydown', e => {
     );
     document.body.style.overflow = '';
   }
+  if (e.key === 'ArrowLeft'  && !document.getElementById('modal-detail').classList.contains('hidden')) navigateDetail(-1);
+  if (e.key === 'ArrowRight' && !document.getElementById('modal-detail').classList.contains('hidden')) navigateDetail(1);
 });
 
 // ── Contact form ──────────────────────────────────
@@ -1780,7 +1782,24 @@ document.getElementById('btn-confirm-delete').addEventListener('click', () => {
 });
 
 // ── Detail view ───────────────────────────────────
+let _detailType = null, _detailId = null;
+
+function navigateDetail(dir) {
+  if (!_detailType || !_detailId) return;
+  const list = _detailType === 'contact'
+    ? filteredContacts()
+    : filteredPrototypes();
+  const ids = list.map(x => x.id || x.itemId);
+  const idx = ids.indexOf(_detailId);
+  if (idx === -1) return;
+  const next = idx + dir;
+  if (next < 0 || next >= ids.length) return;
+  openDetail(_detailType, ids[next]);
+}
+
 function openDetail(type, id) {
+  _detailType = type;
+  _detailId = id;
   const el = document.getElementById('modal-detail-content');
 
   if (type === 'contact') {
@@ -1839,8 +1858,17 @@ function openDetail(type, id) {
          }).join('')}</div>`
       : '';
 
+    const _cList = filteredContacts();
+    const _cIdx  = _cList.findIndex(x => x.id === id);
+    const _cNav  = `<div class="detail-nav-bar">
+      <button class="detail-nav-btn" onclick="navigateDetail(-1)" ${_cIdx <= 0 ? 'disabled' : ''}>&#8592;</button>
+      <span class="detail-nav-count">${_cIdx + 1} / ${_cList.length}</span>
+      <button class="detail-nav-btn" onclick="navigateDetail(1)" ${_cIdx >= _cList.length - 1 ? 'disabled' : ''}>&#8594;</button>
+    </div>`;
+
     el.innerHTML = `
       <div class="modal-header">
+        ${_cNav}
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${avatar}
           <div style="min-width:0">
@@ -1924,8 +1952,17 @@ function openDetail(type, id) {
       return rows ? `<div class="detail-section-title">Contacts associés</div>${rows}` : '';
     })();
 
+    const _pList = filteredPrototypes();
+    const _pIdx  = _pList.findIndex(x => x.id === id);
+    const _pNav  = `<div class="detail-nav-bar">
+      <button class="detail-nav-btn" onclick="navigateDetail(-1)" ${_pIdx <= 0 ? 'disabled' : ''}>&#8592;</button>
+      <span class="detail-nav-count">${_pIdx + 1} / ${_pList.length}</span>
+      <button class="detail-nav-btn" onclick="navigateDetail(1)" ${_pIdx >= _pList.length - 1 ? 'disabled' : ''}>&#8594;</button>
+    </div>`;
+
     el.innerHTML = `
       <div class="modal-header">
+        ${_pNav}
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${p.photo
             ? `<img src="${esc(p.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" />`
@@ -2023,6 +2060,7 @@ function openDetail(type, id) {
 
   document.getElementById('modal-detail').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  el.scrollTop = 0;
   // Load PDF inline after DOM update
   const openId = type === 'prototype' ? id : null;
   if (openId) {

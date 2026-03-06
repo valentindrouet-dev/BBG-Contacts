@@ -1583,3 +1583,22 @@ a:hover { color: var(--primary-700); }
   .form-row { grid-template-columns: 1fr; }
   .filter-grid { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════
+   DETAIL NAV (prev/next)
+═══════════════════════════════════════════════════ */
+.detail-nav-bar {
+  display: flex; align-items: center; gap: .4rem;
+  flex-shrink: 0; margin-right: .5rem;
+}
+.detail-nav-btn {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--rx); padding: .2rem .55rem;
+  font-size: .95rem; cursor: pointer; color: var(--text-700);
+  line-height: 1; transition: background .12s, opacity .12s;
+}
+.detail-nav-btn:hover:not(:disabled) { background: var(--border); }
+.detail-nav-btn:disabled { opacity: .35; cursor: default; }
+.detail-nav-count {
+  font-size: .75rem; color: var(--text-500); white-space: nowrap; min-width: 2.5rem; text-align: center;
+}
