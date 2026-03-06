@@ -460,14 +460,26 @@ a:hover { color: var(--primary-700); }
 /* Urgency emoji (bottom-left of media, visible on all urgency levels) */
 .card-urg-emoji {
   position: absolute;
-  bottom: 0.25rem;
+  bottom: 0.3rem;
   left: 0.3rem;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   line-height: 1;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.35));
+  background: rgba(255,255,255,0.92);
+  border-radius: 50%;
+  width: 1.55rem;
+  height: 1.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.22);
   pointer-events: none;
   user-select: none;
 }
+/* tint the bubble by urgency level */
+.card-urg-emoji[data-urg="critique"] { background: rgba(254,202,202,0.95); }
+.card-urg-emoji[data-urg="urgent"]   { background: rgba(254,240,138,0.95); }
+.card-urg-emoji[data-urg="normal"]   { background: rgba(255,255,255,0.92); }
+.card-urg-emoji[data-urg="faible"]   { background: rgba(226,232,240,0.92); }
 
 /* External link (top-right) */
 .card-ext-link {
@@ -1450,6 +1462,100 @@ a:hover { color: var(--primary-700); }
   margin: 1rem 0 .4rem; padding-bottom: .35rem;
   border-bottom: 1px solid var(--border);
 }
+
+/* ═══════════════════════════════════════════════════
+   FAVORITES
+═══════════════════════════════════════════════════ */
+.card-fav-btn {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  background: rgba(255,255,255,0.88);
+  border: none;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: .9rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  opacity: 0;
+  transition: opacity .15s;
+  z-index: 5;
+}
+.card:hover .card-fav-btn, .card-fav-btn.active { opacity: 1; }
+.card-fav-btn.active { color: #f59e0b; }
+
+/* ═══════════════════════════════════════════════════
+   VIDEO LIST (in detail modal)
+═══════════════════════════════════════════════════ */
+.video-list { display: flex; flex-direction: column; gap: .6rem; margin-top: .35rem; }
+.video-item { display: flex; align-items: flex-start; gap: .75rem; }
+.video-thumb {
+  width: 80px; height: 45px; border-radius: 6px; object-fit: cover;
+  flex-shrink: 0; background: var(--bg); border: 1px solid var(--border);
+}
+.video-thumb-placeholder {
+  width: 80px; height: 45px; border-radius: 6px; background: var(--bg);
+  border: 1px solid var(--border); display: flex; align-items: center;
+  justify-content: center; font-size: 1.25rem; flex-shrink: 0;
+}
+.video-info { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.video-title { font-size: .82rem; font-weight: 600; color: var(--text-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.video-link { font-size: .78rem; color: var(--primary-600); text-decoration: none; }
+.video-link:hover { text-decoration: underline; }
+/* tiny video badge on cards */
+.card-video-badge {
+  position: absolute;
+  bottom: 0.3rem;
+  right: 0.3rem;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: .65rem;
+  border-radius: 4px;
+  padding: .1rem .3rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════
+   AGENDA PAGE
+═══════════════════════════════════════════════════ */
+.agenda-month-header {
+  font-size: .75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-400);
+  margin: 1.25rem 0 .5rem; padding-bottom: .35rem;
+  border-bottom: 2px solid var(--border);
+}
+.agenda-entry {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .55rem .75rem; border-radius: var(--rx-lg);
+  cursor: pointer; transition: background .12s;
+  border-bottom: 1px solid var(--border);
+}
+.agenda-entry:last-child { border-bottom: none; }
+.agenda-entry:hover { background: var(--bg); }
+.agenda-date {
+  font-size: .78rem; font-weight: 600; color: var(--text-500);
+  min-width: 5.5rem; flex-shrink: 0;
+}
+.agenda-type-badge { flex-shrink: 0; }
+.agenda-contact-wrap { display: flex; align-items: center; gap: .45rem; min-width: 0; flex-shrink: 0; }
+.agenda-avatar {
+  width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
+  flex-shrink: 0;
+}
+.agenda-contact-name { font-size: .82rem; font-weight: 600; color: var(--primary-600); white-space: nowrap; }
+.agenda-note { font-size: .8rem; color: var(--text-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+
+/* ═══════════════════════════════════════════════════
+   COSTS (prototype)
+═══════════════════════════════════════════════════ */
+.costs-total-row { font-weight: 700; border-top: 2px solid var(--border); }
+.costs-total-row td { padding-top: .5rem; color: var(--text-800); }
 
 /* ═══════════════════════════════════════════════════
    RESPONSIVE

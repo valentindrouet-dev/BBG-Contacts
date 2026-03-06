@@ -29,6 +29,8 @@ const state = {
   compareMode:        false,
   selectedForCompare: [],
   tasksFilter:        'all',
+  contactsFavoriteOnly: false,
+  agendaSortAsc:      false,
 };
 
 // ── STORAGE ────────────────────────────────────────
@@ -50,7 +52,9 @@ function migrateContact(c) {
       ? [{ id: uid(), date: c.lastMeeting, type: 'rencontre', note: c.lastMeetingNote || '' }]
       : [];
   }
-  if (!Array.isArray(c.socials)) c.socials = [];
+  if (!Array.isArray(c.socials))  c.socials  = [];
+  if (!Array.isArray(c.videos))   c.videos   = [];
+  if (typeof c.favorite === 'undefined') c.favorite = false;
   return c;
 }
 const STATUS_MIGRATE = { concept: 'proto', test: 'proto', finalisation: 'production', publié: 'sorti' };
@@ -68,6 +72,8 @@ function migratePrototype(p) {
   if (!Array.isArray(p.devLog))  p.devLog  = [];
   if (!Array.isArray(p.photos))  p.photos  = [];
   if (!Array.isArray(p.tags))    p.tags    = [];
+  if (!Array.isArray(p.videos))  p.videos  = [];
+  if (!Array.isArray(p.costs))   p.costs   = [];
   return p;
 }
 
@@ -206,11 +212,12 @@ function switchPage(page) {
   document.querySelectorAll('.nav-tab').forEach(b =>
     b.classList.toggle('active', b.dataset.page === page)
   );
-  // Show/hide Ajouter button (not relevant on tasks page)
-  document.getElementById('btn-add').style.display = page === 'tasks' ? 'none' : '';
+  // Show/hide Ajouter button (not on tasks or agenda)
+  document.getElementById('btn-add').style.display = (page === 'tasks' || page === 'agenda') ? 'none' : '';
   if (page === 'contacts')   renderContacts();
   if (page === 'prototypes') renderPrototypes();
   if (page === 'tasks')      renderTasks();
+  if (page === 'agenda')     renderAgenda();
 }
 
 // ═══════════════════════════════════════════════════
@@ -225,6 +232,7 @@ function filteredContacts() {
     (c.email   || '').toLowerCase().includes(q)
   );
   if (state.contactsCat) list = list.filter(c => c.category === state.contactsCat);
+  if (state.contactsFavoriteOnly) list = list.filter(c => c.favorite);
   if (state.contactsUrgency === 'none') {
     list = list.filter(c => !(c.tasks || []).some(t => !t.done));
   } else if (state.contactsUrgency) {
@@ -411,10 +419,18 @@ function contactCard(c, zoom) {
       isMin ? (cat.charAt(0)||'?').toUpperCase() : esc(cat)
     }</span>`;
 
-  // Urgency emoji visible on all cards with pending tasks
+  // Urgency bubble (with colored background)
   const urgEmoji = topTask
-    ? `<span class="card-urg-emoji" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
+    ? `<span class="card-urg-emoji" data-urg="${urg}" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
     : '';
+
+  // Favorite star button
+  const favBtn = `<button class="card-fav-btn${c.favorite ? ' active' : ''}"
+    onclick="event.stopPropagation();toggleFavorite('${c.id}')" title="${c.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${c.favorite ? '⭐' : '☆'}</button>`;
+
+  // Video badge
+  const videoBadge = (c.videos||[]).length > 0
+    ? `<span class="card-video-badge">🎬 ${c.videos.length}</span>` : '';
 
   const extLink = !isMin && c.website
     ? `<a class="card-ext-link" href="${esc(c.website)}" target="_blank" rel="noopener"
@@ -481,7 +497,7 @@ function contactCard(c, zoom) {
   return `<div class="card card-hover card-bg-${cat}${doneClass}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
     <div class="card-media card-media-${cat}">
-      ${mediaContent}${badge}${urgEmoji}${extLink}${editBtn}
+      ${favBtn}${mediaContent}${badge}${urgEmoji}${videoBadge}${extLink}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -648,8 +664,11 @@ function prototypeCard(p, zoom) {
     : `<span class="card-game-icon">${icon}</span>`;
 
   const urgEmoji = topTask
-    ? `<span class="card-urg-emoji" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
+    ? `<span class="card-urg-emoji" data-urg="${urg}" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
     : '';
+
+  const pVideoBadge = (p.videos||[]).length > 0
+    ? `<span class="card-video-badge">🎬 ${p.videos.length}</span>` : '';
 
   // Title always visible
   let body = `<div class="card-min-name" title="${esc(p.title)}">${esc(p.title)}</div>`;
@@ -688,7 +707,7 @@ function prototypeCard(p, zoom) {
   return `<div class="card card-hover${doneClass}"
     onclick="${state.compareMode ? '' : `openDetail('prototype','${p.id}')`}" title="${esc(p.title)}" style="${state.compareMode ? 'cursor:default' : ''}">
     <div class="card-media card-media-${p.status}">
-      ${compareCheck}${mediaContent}${badge}${urgEmoji}${editBtn}
+      ${compareCheck}${mediaContent}${badge}${urgEmoji}${pVideoBadge}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -928,8 +947,9 @@ function toggleFilterPanel(page) {
 function updateFilterCount(page) {
   let active = 0;
   if (page === 'contacts') {
-    if (state.contactsCat)     active++;
-    if (state.contactsUrgency) active++;
+    if (state.contactsCat)          active++;
+    if (state.contactsUrgency)      active++;
+    if (state.contactsFavoriteOnly) active++;
   } else {
     if (state.prototypesStatus)   active++;
     if (state.prototypesInterest) active++;
@@ -1250,6 +1270,174 @@ function populateDevLogForm(devLog = []) {
 }
 
 // ═══════════════════════════════════════════════════
+// FAVORITES
+// ═══════════════════════════════════════════════════
+function toggleFavorite(id) {
+  const c = state.contacts.find(x => x.id === id);
+  if (!c) return;
+  c.favorite = !c.favorite;
+  saveState();
+  renderContacts();
+}
+
+function onFavoriteFilterChange() {
+  const cb = document.getElementById('contacts-favorite-filter');
+  state.contactsFavoriteOnly = cb ? cb.checked : false;
+  updateFilterCount('contacts');
+  renderContacts();
+}
+
+// ═══════════════════════════════════════════════════
+// VIDEO HELPERS (contacts + prototypes)
+// ═══════════════════════════════════════════════════
+function getYoutubeId(url) {
+  const m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function addVideoRow(prefix, video = {}) {
+  const tbody = document.getElementById(`${prefix}-videos-body`);
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const vid = video.id || uid();
+  tr.dataset.videoId = vid;
+  tr.innerHTML = `
+    <td><input type="text" placeholder="https://youtube.com/watch?v=…" value="${esc(video.url || '')}" /></td>
+    <td><input type="text" placeholder="Titre de la vidéo" value="${esc(video.title || '')}" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getVideosFromForm(prefix) {
+  const tbody = document.getElementById(`${prefix}-videos-body`);
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => {
+    const inputs = tr.querySelectorAll('input[type="text"]');
+    return {
+      id:    tr.dataset.videoId || uid(),
+      url:   inputs[0]?.value.trim() || '',
+      title: inputs[1]?.value.trim() || '',
+    };
+  }).filter(v => v.url);
+}
+
+function populateVideosForm(prefix, videos = []) {
+  const tbody = document.getElementById(`${prefix}-videos-body`);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  videos.forEach(v => addVideoRow(prefix, v));
+}
+
+// ═══════════════════════════════════════════════════
+// COSTS HELPERS (prototype)
+// ═══════════════════════════════════════════════════
+function addCostRow(cost = {}) {
+  const tbody = document.getElementById('proto-costs-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const cid = cost.id || uid();
+  tr.dataset.costId = cid;
+  tr.innerHTML = `
+    <td><input type="text" placeholder="ex : illustration, impression…" value="${esc(cost.description || '')}" /></td>
+    <td><input type="number" min="0" step="0.01" placeholder="0.00" value="${cost.price != null ? cost.price : ''}" style="width:100%" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getCostsFromForm() {
+  const tbody = document.getElementById('proto-costs-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
+    id:          tr.dataset.costId || uid(),
+    description: tr.querySelector('input[type="text"]')?.value.trim() || '',
+    price:       parseFloat(tr.querySelector('input[type="number"]')?.value) || 0,
+  })).filter(c => c.description);
+}
+
+function populateCostsForm(costs = []) {
+  const tbody = document.getElementById('proto-costs-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  costs.forEach(c => addCostRow(c));
+}
+
+// ═══════════════════════════════════════════════════
+// AGENDA
+// ═══════════════════════════════════════════════════
+function renderAgenda() {
+  const listEl  = document.getElementById('agenda-list');
+  const emptyEl = document.getElementById('agenda-empty');
+
+  // Gather all exchanges
+  const entries = [];
+  state.contacts.forEach(c => {
+    (c.exchanges || []).forEach(e => {
+      entries.push({
+        ...e,
+        contactId:   c.id,
+        contactName: c.name,
+        contactCat:  c.category,
+        contactPhoto: c.photo,
+      });
+    });
+  });
+
+  document.getElementById('nav-agenda-count').textContent = entries.length;
+  document.getElementById('agenda-count').textContent =
+    `${entries.length} échange${entries.length !== 1 ? 's' : ''}`;
+
+  if (entries.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+
+  // Sort
+  entries.sort((a, b) => state.agendaSortAsc
+    ? a.date.localeCompare(b.date)
+    : b.date.localeCompare(a.date)
+  );
+
+  // Group by month
+  const groups = {};
+  entries.forEach(e => {
+    const d = new Date(e.date);
+    const key = isNaN(d) ? 'Date inconnue' : d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    (groups[key] = groups[key] || []).push(e);
+  });
+
+  const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
+
+  let html = '';
+  for (const [month, evts] of Object.entries(groups)) {
+    html += `<div class="agenda-month-header">${month}</div>`;
+    evts.forEach(e => {
+      const d = new Date(e.date);
+      const dateStr = isNaN(d) ? e.date : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+      const avatarHtml = e.contactPhoto
+        ? `<img src="${esc(e.contactPhoto)}" class="agenda-avatar" alt="" />`
+        : `<div class="list-avatar list-avatar-${e.contactCat}" style="width:24px;height:24px;font-size:.6rem;flex-shrink:0">${initials(e.contactName)}</div>`;
+      const emoji = EXCH_EMOJI[e.type] || '📝';
+      html += `<div class="agenda-entry" onclick="openDetail('contact','${e.contactId}')">
+        <span class="agenda-date">${dateStr}</span>
+        <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">${emoji} ${esc(e.type||'autre')}</span></span>
+        <div class="agenda-contact-wrap">${avatarHtml}<span class="agenda-contact-name">${esc(e.contactName)}</span></div>
+        ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
+      </div>`;
+    });
+  }
+  listEl.innerHTML = html;
+}
+
+function toggleAgendaSort() {
+  state.agendaSortAsc = !state.agendaSortAsc;
+  const ico = document.getElementById('agenda-sort-icon');
+  if (ico) ico.innerHTML = state.agendaSortAsc ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>';
+  renderAgenda();
+}
+
+// ═══════════════════════════════════════════════════
 // COMPARATOR
 // ═══════════════════════════════════════════════════
 function toggleCompareMode() {
@@ -1364,6 +1552,9 @@ function resetContactForm() {
   populateGamesForm([]);
   populateExchangesForm([]);
   populateSocialsForm([]);
+  populateVideosForm('contact', []);
+  const favEl = document.getElementById('contact-favorite');
+  if (favEl) favEl.checked = false;
   document.getElementById('modal-contact-title').textContent = 'Nouveau contact';
 }
 
@@ -1384,6 +1575,9 @@ function editContact(id) {
   populateGamesForm(c.games || []);
   populateExchangesForm(c.exchanges || []);
   populateSocialsForm(c.socials || []);
+  populateVideosForm('contact', c.videos || []);
+  const favEl = document.getElementById('contact-favorite');
+  if (favEl) favEl.checked = !!c.favorite;
   document.getElementById('modal-contact-title').textContent = 'Modifier le contact';
   openModal('contact');
 }
@@ -1402,8 +1596,10 @@ function submitContact(e) {
     notes:          document.getElementById('contact-notes').value.trim(),
     photo:     document.getElementById('contact-photo-url').value.trim(),
     exchanges: getExchangesFromForm(),
-    socials:        getSocialsFromForm(),
-    games:          getGamesFromForm(),
+    socials:   getSocialsFromForm(),
+    videos:    getVideosFromForm('contact'),
+    games:     getGamesFromForm(),
+    favorite:  document.getElementById('contact-favorite')?.checked || false,
   };
   if (id) {
     const i = state.contacts.findIndex(x => x.id === id);
@@ -1436,6 +1632,8 @@ function resetPrototypeForm() {
   populateTasksForm('proto', []);
   populateContactLinksForm([]);
   populateDevLogForm([]);
+  populateVideosForm('proto', []);
+  populateCostsForm([]);
   const tagsEl = document.getElementById('prototype-tags');
   if (tagsEl) tagsEl.value = '';
   document.getElementById('modal-prototype-title').textContent = 'Nouveau prototype';
@@ -1463,6 +1661,8 @@ function editPrototype(id) {
   populateTasksForm('proto', p.tasks || []);
   populateContactLinksForm(p.contactLinks || []);
   populateDevLogForm(p.devLog || []);
+  populateVideosForm('proto', p.videos || []);
+  populateCostsForm(p.costs || []);
 
   const tagsEl = document.getElementById('prototype-tags');
   if (tagsEl) tagsEl.value = (p.tags || []).join(', ');
@@ -1504,7 +1704,9 @@ function submitPrototype(e) {
     pdf:          _protoPdfData,
     pdfName,
     tags,
-    devLog:       getDevLogFromForm(),
+    devLog:  getDevLogFromForm(),
+    videos:  getVideosFromForm('proto'),
+    costs:   getCostsFromForm(),
   };
   if (id) {
     const i = state.prototypes.findIndex(x => x.id === id);
@@ -1586,6 +1788,24 @@ function openDetail(type, id) {
          ).join('')}</div>`
       : '';
 
+    // Videos
+    const videosDetailHtml = (c.videos||[]).length > 0
+      ? `<div class="detail-section-title">Vidéos</div>
+         <div class="video-list">${(c.videos||[]).map(v => {
+           const ytId = getYoutubeId(v.url);
+           const thumb = ytId
+             ? `<img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" class="video-thumb" alt="" />`
+             : `<div class="video-thumb-placeholder">🎬</div>`;
+           return `<div class="video-item">
+             <a href="${esc(v.url)}" target="_blank" rel="noopener">${thumb}</a>
+             <div class="video-info">
+               <span class="video-title">${esc(v.title || v.url)}</span>
+               <a class="video-link" href="${esc(v.url)}" target="_blank" rel="noopener">Ouvrir ↗</a>
+             </div>
+           </div>`;
+         }).join('')}</div>`
+      : '';
+
     el.innerHTML = `
       <div class="modal-header">
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
@@ -1615,6 +1835,7 @@ function openDetail(type, id) {
             <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
           </div>`).join('')}` : ''}
         ${socialsDetailHtml}
+        ${videosDetailHtml}
         ${meetHtml}
         ${gamesHtml}
         ${c.notes ? `<div class="detail-section-title">Notes</div>
@@ -1714,6 +1935,40 @@ function openDetail(type, id) {
               <div class="devlog-date">${e.date}</div>
               <div class="devlog-note">${esc(e.note)}</div>
             </div>`).join('')}</div>` : ''}
+        ${(p.videos||[]).length > 0 ? `<div class="detail-section-title">Vidéos</div>
+          <div class="video-list">${(p.videos||[]).map(v => {
+            const ytId = getYoutubeId(v.url);
+            const thumb = ytId
+              ? `<img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" class="video-thumb" alt="" />`
+              : `<div class="video-thumb-placeholder">🎬</div>`;
+            return `<div class="video-item">
+              <a href="${esc(v.url)}" target="_blank" rel="noopener">${thumb}</a>
+              <div class="video-info">
+                <span class="video-title">${esc(v.title || v.url)}</span>
+                <a class="video-link" href="${esc(v.url)}" target="_blank" rel="noopener">Ouvrir ↗</a>
+              </div>
+            </div>`;
+          }).join('')}</div>` : ''}
+        ${(() => {
+          const costs = p.costs || [];
+          if (!costs.length) return '';
+          const total = costs.reduce((s, c) => s + (c.price || 0), 0);
+          return `<div class="detail-section-title">Coûts</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.3rem">
+              <thead><tr style="color:var(--text-500)">
+                <th style="text-align:left;padding:.2rem .4rem;width:70%">Description</th>
+                <th style="text-align:right;padding:.2rem .4rem">Prix</th>
+              </tr></thead>
+              <tbody>${costs.map(c => `<tr>
+                <td style="padding:.25rem .4rem">${esc(c.description)}</td>
+                <td style="padding:.25rem .4rem;text-align:right">${c.price != null ? Number(c.price).toFixed(2) + ' €' : '—'}</td>
+              </tr>`).join('')}
+              <tr class="costs-total-row">
+                <td style="padding:.25rem .4rem;font-weight:700">Total</td>
+                <td style="padding:.25rem .4rem;text-align:right;font-weight:700">${total.toFixed(2)} €</td>
+              </tr></tbody>
+            </table>`;
+        })()}
         ${p.pdf ? `<div class="detail-section-title">Règles du jeu</div>
           <div class="pdf-viewer-wrap">
             <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
@@ -1755,14 +2010,17 @@ function exportExcel(type) {
       const topT = getTopTask(item);
       return {
         Nom: item.name, Catégorie: item.category,
+        Favori: item.favorite ? 'oui' : 'non',
         Email: item.email||'', Téléphone: item.phone||'',
         Entreprise: item.company||'', 'Site web': item.website||'',
+        Photo: item.photo||'',
         'Tâche principale': topT ? topT.text : '',
         'Urgence principale': topT ? topT.urgency : '',
         'Nombre de tâches': (item.tasks||[]).length,
-        'Dernière rencontre': item.lastMeeting||'',
-        'Note rencontre': item.lastMeetingNote||'',
         Notes: item.notes||'',
+        Échanges: JSON.stringify(item.exchanges||[]),
+        Réseaux: JSON.stringify(item.socials||[]),
+        Vidéos: JSON.stringify(item.videos||[]),
       };
     } else {
       const topT = getTopTask(item);
@@ -1770,6 +2028,7 @@ function exportExcel(type) {
         const c = state.contacts.find(x => x.id === l.contactId);
         return c ? `${c.name}${l.role ? ' ('+l.role+')' : ''}` : '';
       }).filter(Boolean).join(', ');
+      const totalCost = (item.costs||[]).reduce((s,c) => s + (c.price||0), 0);
       return {
         Titre: item.title, Statut: item.status,
         Genre: item.genre||'', Joueurs: item.players||'',
@@ -1779,7 +2038,14 @@ function exportExcel(type) {
         'Urgence principale': topT ? topT.urgency : '',
         'Nombre de tâches': (item.tasks||[]).length,
         Description: item.description||'',
-        Contacts: contactNames, Notes: item.notes||'',
+        Notes: item.notes||'',
+        Tags: (item.tags||[]).join(', '),
+        Contacts: contactNames,
+        'Coût total (€)': totalCost.toFixed(2),
+        Photo: item.photo||'',
+        Vidéos: JSON.stringify(item.videos||[]),
+        Coûts: JSON.stringify(item.costs||[]),
+        'Journal dev': JSON.stringify(item.devLog||[]),
       };
     }
   }));
@@ -1798,6 +2064,7 @@ function importExcel(event, type) {
       const wb   = XLSX.read(e.target.result, { type: 'binary' });
       const ws   = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws);
+      const tryParseJSON = (s, fallback=[]) => { try { return JSON.parse(s) || fallback; } catch { return fallback; } };
       if (type === 'contacts') {
         const imported = rows.map(r => {
           const tasks = [];
@@ -1805,11 +2072,14 @@ function importExcel(event, type) {
           return {
             id: uid(), createdAt: today(),
             name: r['Nom']||'', category: r['Catégorie']||'auteur',
+            favorite: r['Favori'] === 'oui',
             email: r['Email']||'', phone: r['Téléphone']||'',
             company: r['Entreprise']||'', website: r['Site web']||'',
+            photo: r['Photo']||'',
             tasks,
-            lastMeeting: r['Dernière rencontre']||'',
-            lastMeetingNote: r['Note rencontre']||'',
+            exchanges: tryParseJSON(r['Échanges']),
+            socials: tryParseJSON(r['Réseaux']),
+            videos: tryParseJSON(r['Vidéos']),
             notes: r['Notes']||'', games: [],
           };
         });
@@ -1821,13 +2091,18 @@ function importExcel(event, type) {
           if (r['Tâche principale']) tasks.push({ id: uid(), text: r['Tâche principale'], urgency: r['Urgence principale']||'normal', done: false });
           return {
             id: uid(), createdAt: today(),
-            title: r['Titre']||'', status: r['Statut']||'concept',
+            title: r['Titre']||'', status: r['Statut']||'proto',
             genre: r['Genre']||'', players: r['Joueurs']||'',
             duration: r['Durée']||'', age: r['Âge']||'',
             interest: parseInt(r['Intérêt'])||3,
             tasks, contactLinks: [],
             description: r['Description']||'',
             notes: r['Notes']||'',
+            tags: r['Tags'] ? r['Tags'].split(',').map(t=>t.trim()).filter(Boolean) : [],
+            photo: r['Photo']||'',
+            videos: tryParseJSON(r['Vidéos']),
+            costs: tryParseJSON(r['Coûts']),
+            devLog: tryParseJSON(r['Journal dev']),
           };
         });
         state.prototypes = [...imported, ...state.prototypes];
@@ -1870,9 +2145,12 @@ document.getElementById('contacts-urgency-filter').addEventListener('change', e 
   state.contactsUrgency = e.target.value; renderContacts();
 });
 document.getElementById('contacts-filter-reset').addEventListener('click', () => {
-  state.contactsCat = ''; state.contactsUrgency = '';
+  state.contactsCat = ''; state.contactsUrgency = ''; state.contactsFavoriteOnly = false;
   document.getElementById('contacts-cat-filter').value = '';
   document.getElementById('contacts-urgency-filter').value = '';
+  const favEl = document.getElementById('contacts-favorite-filter');
+  if (favEl) favEl.checked = false;
+  updateFilterCount('contacts');
   renderContacts();
 });
 document.getElementById('contacts-sort').addEventListener('change', e => {
