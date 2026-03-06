@@ -1488,8 +1488,8 @@ a:hover { color: var(--primary-700); }
 ═══════════════════════════════════════════════════ */
 .card-company-logo {
   position: absolute;
-  bottom: 0.3rem;
-  right: 0.3rem;
+  top: 0.4rem;
+  left: 0.4rem;
   width: 1.6rem;
   height: 1.6rem;
   border-radius: 50%;

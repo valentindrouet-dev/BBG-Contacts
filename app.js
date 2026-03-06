@@ -414,10 +414,15 @@ function contactCard(c, zoom) {
     ? `<img src="${esc(c.photo)}" class="card-photo" alt="" />`
     : `<div class="card-avatar card-avatar-${cat}">${initials(c.name)}</div>`;
 
-  const badge = `<span class="badge badge-${cat} card-badge"
-    style="${isMin ? 'font-size:.6rem;padding:.1rem .35rem' : ''}">${
-      isMin ? (cat.charAt(0)||'?').toUpperCase() : esc(cat)
-    }</span>`;
+  // Top-left: company logo if set, otherwise category letter badge
+  const badge = c.companyLogo
+    ? `<img src="${esc(c.companyLogo)}" class="card-company-logo"
+        alt="${esc(c.company||'')}"
+        onerror="this.style.display='none'" />`
+    : `<span class="badge badge-${cat} card-badge"
+        style="${isMin ? 'font-size:.6rem;padding:.1rem .35rem' : ''}">${
+          isMin ? (cat.charAt(0)||'?').toUpperCase() : esc(cat)
+        }</span>`;
 
   // Urgency bubble (with colored background)
   const urgEmoji = topTask
@@ -431,13 +436,6 @@ function contactCard(c, zoom) {
   // Video badge
   const videoBadge = (c.videos||[]).length > 0
     ? `<span class="card-video-badge">🎬 ${c.videos.length}</span>` : '';
-
-  // Company logo bubble (bottom-right, only when logo URL set)
-  const companyLogoBubble = c.companyLogo
-    ? `<img src="${esc(c.companyLogo)}" class="card-company-logo"
-        alt="${esc(c.company||'')}"
-        onerror="this.style.display='none'" />`
-    : '';
 
   const extLink = !isMin && c.website
     ? `<a class="card-ext-link" href="${esc(c.website)}" target="_blank" rel="noopener"
@@ -504,7 +502,7 @@ function contactCard(c, zoom) {
   return `<div class="card card-hover card-bg-${cat}${doneClass}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
     <div class="card-media card-media-${cat}">
-      ${favBtn}${mediaContent}${badge}${urgEmoji}${companyLogoBubble}${videoBadge}${extLink}${editBtn}
+      ${favBtn}${mediaContent}${badge}${urgEmoji}${videoBadge}${extLink}${editBtn}
     </div>
     ${body}
   </div>`;
