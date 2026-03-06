@@ -759,12 +759,14 @@ function renderTasks() {
   state.contacts.forEach(c => {
     (c.tasks || []).forEach(t => {
       tasks.push({ itemId: c.id, taskId: t.id, type: 'contact', name: c.name,
+        category: c.category || 'auteur',
         task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
     });
   });
   state.prototypes.forEach(p => {
     (p.tasks || []).forEach(t => {
       tasks.push({ itemId: p.id, taskId: t.id, type: 'prototype', name: p.title,
+        category: 'prototype',
         task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
     });
   });
@@ -820,10 +822,17 @@ function renderTasks() {
   }
   emptyEl.classList.add('hidden');
 
+  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'prototype'];
+  const CAT_TASK_LABELS = { ...CAT_LABELS, prototype: 'Prototypes' };
+
   // Sort
   tasks.sort((a, b) => {
-    if (sortBy === 'urgency') return URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency];
-    if (sortBy === 'source')  return a.type.localeCompare(b.type) || a.name.localeCompare(b.name, 'fr');
+    if (sortBy === 'urgency')  return URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency];
+    if (sortBy === 'source')   return a.type.localeCompare(b.type) || a.name.localeCompare(b.name, 'fr');
+    if (sortBy === 'category') {
+      const ca = CAT_TASK_ORDER.indexOf(a.category), cb = CAT_TASK_ORDER.indexOf(b.category);
+      return ca - cb || a.name.localeCompare(b.name, 'fr');
+    }
     return a.name.localeCompare(b.name, 'fr');
   });
 
@@ -854,6 +863,18 @@ function renderTasks() {
       </div>
       ${g.tasks.map(t => taskCard(t)).join('')}
     `).join('');
+  } else if (sortBy === 'category') {
+    // Group by contact category or prototype
+    const groups = {};
+    tasks.forEach(t => { (groups[t.category] = groups[t.category] || []).push(t); });
+    listEl.innerHTML = CAT_TASK_ORDER
+      .filter(cat => groups[cat])
+      .map(cat => `
+        <div class="task-group-header">
+          <span>${CAT_TASK_LABELS[cat] || cat}</span>
+        </div>
+        ${groups[cat].map(t => taskCard(t)).join('')}
+      `).join('');
   } else {
     listEl.innerHTML = tasks.map(t => taskCard(t)).join('');
   }
