@@ -21,7 +21,7 @@ const state = {
   prototypesStatus:  '',
   prototypesInterest:'',
   prototypesTag:     '',
-  prototypesSort:    'status',
+  prototypesSort:    'interest',
   prototypesSortAsc: true,
   prototypesView:    'grid',
   prototypesZoom:    1,
@@ -433,8 +433,8 @@ function contactCard(c, zoom) {
           isMin ? (cat.charAt(0)||'?').toUpperCase() : esc(cat)
         }</span>`;
 
-  // Urgency bubble (with colored background)
-  const urgEmoji = topTask
+  // Urgency bubble — only for urgent/critique
+  const urgEmoji = (topTask && (urg === 'urgent' || urg === 'critique'))
     ? `<span class="card-urg-emoji" data-urg="${urg}" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
     : '';
 
@@ -677,7 +677,7 @@ function prototypeCard(p, zoom) {
     ? `<img src="${esc(p.photo)}" class="card-photo" alt="" />`
     : `<span class="card-game-icon">${icon}</span>`;
 
-  const urgEmoji = topTask
+  const urgEmoji = (topTask && (urg === 'urgent' || urg === 'critique'))
     ? `<span class="card-urg-emoji" data-urg="${urg}" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
     : '';
 
@@ -1448,7 +1448,7 @@ function renderAgenda() {
       html += `<div class="agenda-entry" onclick="openDetail('contact','${e.contactId}')">
         <span class="agenda-date">${dateStr}</span>
         <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">${emoji} ${esc(e.type||'autre')}</span></span>
-        <div class="agenda-contact-wrap">${avatarHtml}<span class="agenda-contact-name">${esc(e.contactName)}</span></div>
+        <div class="agenda-contact-wrap">${avatarHtml}<span class="agenda-contact-name badge-${e.contactCat}">${esc(e.contactName)}</span></div>
         ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
       </div>`;
     });

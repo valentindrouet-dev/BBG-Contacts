@@ -1559,7 +1559,13 @@ a:hover { color: var(--primary-700); }
   width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
   flex-shrink: 0;
 }
-.agenda-contact-name { font-size: .82rem; font-weight: 600; color: var(--primary-600); white-space: nowrap; }
+.agenda-contact-name { font-size: .82rem; font-weight: 600; color: var(--primary-600); white-space: nowrap; background: none !important; padding: 0 !important; }
+.agenda-contact-name.badge-auteur       { color: #1e40af; }
+.agenda-contact-name.badge-éditeur,
+.agenda-contact-name.badge-editeur      { color: #9d174d; }
+.agenda-contact-name.badge-distributeur { color: #115e59; }
+.agenda-contact-name.badge-illustrateur { color: #6b21a8; }
+.agenda-contact-name.badge-fabricant    { color: #9a3412; }
 .agenda-note { font-size: .8rem; color: var(--text-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 
 /* ═══════════════════════════════════════════════════
