@@ -15,7 +15,7 @@ const state = {
   contactsSort:      'category',
   contactsSortAsc:   true,
   contactsView:      'grid',
-  contactsZoom:      2,
+  contactsZoom:      1,
 
   prototypesSearch:  '',
   prototypesStatus:  '',
@@ -2135,13 +2135,11 @@ document.getElementById('btn-add').addEventListener('click', () =>
 document.getElementById('contacts-search').addEventListener('input', e => {
   state.contactsSearch = e.target.value; renderContacts();
 });
-document.getElementById('contacts-filter-toggle').addEventListener('click', () =>
-  toggleFilterPanel('contacts')
-);
-document.getElementById('contacts-cat-filter').addEventListener('change', e => {
+// Filter panel removed; cat/urgency inputs kept hidden for JS compat
+document.getElementById('contacts-cat-filter')?.addEventListener('change', e => {
   state.contactsCat = e.target.value; renderContacts();
 });
-document.getElementById('contacts-urgency-filter').addEventListener('change', e => {
+document.getElementById('contacts-urgency-filter')?.addEventListener('change', e => {
   state.contactsUrgency = e.target.value; renderContacts();
 });
 document.getElementById('contacts-filter-reset').addEventListener('click', () => {
@@ -2275,6 +2273,16 @@ document.getElementById('modal-compare')?.addEventListener('click', e => {
 // ═══════════════════════════════════════════════════
 loadState();
 updateInterestUI(3);
+// Update all nav counts immediately so they show correct numbers before tab switch
+(function updateAllNavCounts() {
+  document.getElementById('nav-contacts-count').textContent = state.contacts.length;
+  document.getElementById('nav-prototypes-count').textContent = state.prototypes.length;
+  const pendingTasks = state.contacts.reduce((n, c) => n + (c.tasks||[]).filter(t => !t.done).length, 0)
+    + state.prototypes.reduce((n, p) => n + (p.tasks||[]).filter(t => !t.done).length, 0);
+  document.getElementById('nav-tasks-count').textContent = pendingTasks;
+  const agendaCount = state.contacts.reduce((n, c) => n + (c.exchanges||[]).length, 0);
+  document.getElementById('nav-agenda-count').textContent = agendaCount;
+})();
 // Sync UI controls to default state
 document.getElementById('contacts-sort').value = state.contactsSort;
 document.getElementById('contacts-zoom').value = state.contactsZoom;

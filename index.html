@@ -109,57 +109,19 @@
       </div>
     </div>
 
-    <div class="panel mb-4" id="contacts-filter-panel">
-      <button class="filter-toggle" id="contacts-filter-toggle">
-        <div class="filter-toggle-left">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-500)">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-          </svg>
-          <span>Filtres</span>
-          <span class="filter-active-count hidden" id="contacts-filter-count">0 actif(s)</span>
-        </div>
-        <svg class="chevron-icon" id="contacts-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
-      <div class="filter-body" id="contacts-filter-body" style="display:none">
-        <div class="filter-grid">
-          <div class="filter-field">
-            <label>Catégorie</label>
-            <select id="contacts-cat-filter">
-              <option value="">Toutes</option>
-              <option value="auteur">Auteur</option>
-              <option value="illustrateur">Illustrateur</option>
-              <option value="editeur">Éditeur</option>
-              <option value="distributeur">Distributeur</option>
-              <option value="fabricant">Fabricant</option>
-            </select>
-          </div>
-          <div class="filter-field">
-            <label>Urgence tâche</label>
-            <select id="contacts-urgency-filter">
-              <option value="">Toutes</option>
-              <option value="critique">Critique</option>
-              <option value="urgent">Urgent</option>
-              <option value="normal">Normal</option>
-              <option value="faible">Faible</option>
-              <option value="none">Sans tâche</option>
-            </select>
-          </div>
-          <div class="filter-field" style="display:flex;align-items:center;gap:.5rem">
-            <label style="margin:0;display:flex;align-items:center;gap:.4rem;cursor:pointer">
-              <input type="checkbox" id="contacts-favorite-filter" onchange="onFavoriteFilterChange()" style="width:15px;height:15px;accent-color:var(--primary-600);cursor:pointer" />
-              ⭐ Favoris uniquement
-            </label>
-          </div>
-        </div>
-        <button class="btn-reset hidden" id="contacts-filter-reset">Réinitialiser les filtres</button>
-      </div>
-    </div>
+    <!-- Hidden filter inputs (kept for JS compatibility) -->
+    <select id="contacts-cat-filter" style="display:none"></select>
+    <select id="contacts-urgency-filter" style="display:none"></select>
+    <span id="contacts-filter-count" class="hidden"></span>
+    <button id="contacts-filter-reset" class="hidden"></button>
 
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="contacts-count">0 contact</p>
       <div class="toolbar-right">
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--text-600);cursor:pointer;white-space:nowrap;padding:.3rem .5rem;border-radius:var(--rx-lg);border:1px solid var(--border-input);background:var(--surface)">
+          <input type="checkbox" id="contacts-favorite-filter" onchange="onFavoriteFilterChange()" style="width:14px;height:14px;accent-color:#f59e0b;cursor:pointer" />
+          ⭐ Favoris
+        </label>
         <div class="zoom-wrap" id="contacts-zoom-wrap">
           <button class="zoom-btn" onclick="zoomPage('contacts',-1)" title="Réduire">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>

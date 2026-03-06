@@ -481,11 +481,11 @@ a:hover { color: var(--primary-700); }
 .card-urg-emoji[data-urg="normal"]   { background: rgba(255,255,255,0.92); }
 .card-urg-emoji[data-urg="faible"]   { background: rgba(226,232,240,0.92); }
 
-/* External link (top-right) */
+/* External link (below fav button, top-right) */
 .card-ext-link {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 2.2rem;
+  right: 0.4rem;
   padding: 0.375rem;
   background: rgba(255,255,255,0.9);
   border-radius: var(--rx-full);
@@ -1469,7 +1469,7 @@ a:hover { color: var(--primary-700); }
 .card-fav-btn {
   position: absolute;
   top: 0.35rem;
-  left: 0.35rem;
+  right: 0.35rem;
   background: rgba(255,255,255,0.88);
   border: none;
   border-radius: 50%;
