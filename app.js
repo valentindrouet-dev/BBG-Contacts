@@ -917,20 +917,20 @@ function renderTasks() {
     (c.tasks || []).forEach(t => {
       tasks.push({ itemId: c.id, taskId: t.id, type: 'contact', name: c.name,
         category: c.category || 'auteur',
-        task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
     });
   });
   state.prototypes.forEach(p => {
     (p.tasks || []).forEach(t => {
       tasks.push({ itemId: p.id, taskId: t.id, type: 'prototype', name: p.title,
         category: 'prototype',
-        task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate });
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
     });
   });
   (state.standaloneTasks || []).forEach(t => {
     tasks.push({ itemId: t.id, taskId: t.id, type: 'standalone', name: 'Tâche libre',
       category: 'standalone',
-      task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate });
+      task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
   });
 
   const total   = tasks.length;
@@ -1045,6 +1045,9 @@ function renderTasks() {
 function taskCard(t) {
   const typeEmoji = t.type === 'standalone' ? '📋' : (t.type === 'contact' ? '👤' : '🎲');
   const dueBadge = t.dueDate ? `<span class="task-due${t.dueDate < today() ? ' overdue' : ''}">${t.dueDate}</span>` : '';
+  const doneAtBadge = (t.done && t.doneAt)
+    ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR', {day:'2-digit',month:'short'})}</span>`
+    : '';
   const clickBody = t.type === 'standalone'
     ? `onclick="editStandaloneTask('${t.itemId}')"`
     : `onclick="openDetail('${t.type}','${t.itemId}')"`;
@@ -1057,22 +1060,27 @@ function taskCard(t) {
     <div class="task-body" ${clickBody}>
       <span class="task-source">${typeEmoji} ${esc(t.name)}</span>
       <span class="task-text">${esc(t.task)}</span>
-      <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span>${dueBadge}</span>
+      <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span>${dueBadge}${doneAtBadge}</span>
     </div>
     ${delBtn}
   </div>`;
 }
 
+function setTaskDone(t, done) {
+  t.done = done;
+  t.doneAt = done ? new Date().toISOString() : undefined;
+}
+
 function toggleTaskDone(type, itemId, taskId) {
   if (type === 'standalone') {
     const t = (state.standaloneTasks || []).find(x => x.id === itemId);
-    if (t) t.done = !t.done;
+    if (t) setTaskDone(t, !t.done);
     saveState();
   } else if (type === 'contact') {
     const c = state.contacts.find(x => x.id === itemId);
     if (c) {
       const t = (c.tasks || []).find(x => x.id === taskId);
-      if (t) t.done = !t.done;
+      if (t) setTaskDone(t, !t.done);
     }
     saveState();
     renderContacts();
@@ -1080,7 +1088,7 @@ function toggleTaskDone(type, itemId, taskId) {
     const p = state.prototypes.find(x => x.id === itemId);
     if (p) {
       const t = (p.tasks || []).find(x => x.id === taskId);
-      if (t) t.done = !t.done;
+      if (t) setTaskDone(t, !t.done);
     }
     saveState();
     renderPrototypes();
@@ -2194,6 +2202,7 @@ function openDetail(type, id) {
               onchange="toggleTaskDone('contact','${c.id}','${t.id}');openDetail('contact','${c.id}')" />
             <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
             <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
+            ${(t.done && t.doneAt) ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>` : ''}
           </div>`).join('')}` : ''}
         ${socialsDetailHtml}
         ${videosDetailHtml}
@@ -2293,6 +2302,7 @@ function openDetail(type, id) {
               onchange="toggleTaskDone('prototype','${p.id}','${t.id}');openDetail('prototype','${p.id}')" />
             <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
             <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
+            ${(t.done && t.doneAt) ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>` : ''}
           </div>`).join('')}` : ''}
         ${contactLinksHtml}
         ${(p.tags||[]).length > 0 ? `<div class="detail-section-title">Tags mécaniques</div>
