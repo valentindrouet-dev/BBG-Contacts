@@ -157,7 +157,7 @@ const CAT_LABELS = {
 
 const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exceptionnel'];
 
-const SOCIAL_TYPES = ['LinkedIn', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
+const SOCIAL_TYPES = ['LinkedIn', 'Facebook', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
 const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'autre'];
 const STATUS_ORDER = ['proto', 'signé', 'développement', 'production', 'sorti'];
 
