@@ -1724,3 +1724,13 @@ a:hover { color: var(--primary-700); }
   background: #dcfce7; border-radius: var(--rx); padding: .1rem .35rem;
   white-space: nowrap;
 }
+
+/* Inline add button in toolbar */
+.btn-add-inline {
+  padding: .3rem .75rem;
+  font-size: .8rem;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  white-space: nowrap;
+}

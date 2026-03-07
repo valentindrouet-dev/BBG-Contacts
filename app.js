@@ -231,8 +231,6 @@ function switchPage(page) {
   document.querySelectorAll('.nav-tab').forEach(b =>
     b.classList.toggle('active', b.dataset.page === page)
   );
-  // Show/hide Ajouter button (not on tasks, agenda or home)
-  document.getElementById('btn-add').style.display = ['tasks','agenda','home'].includes(page) ? 'none' : '';
   if (page === 'home')       renderDashboard();
   if (page === 'contacts')   renderContacts();
   if (page === 'prototypes') renderPrototypes();
@@ -2567,10 +2565,6 @@ document.querySelectorAll('.nav-tab').forEach(btn =>
   btn.addEventListener('click', () => switchPage(btn.dataset.page))
 );
 
-// Add button
-document.getElementById('btn-add').addEventListener('click', () =>
-  openModal(state.activePage === 'contacts' ? 'contact' : 'prototype')
-);
 
 // ── Contacts ──────────────────────────────────────
 document.getElementById('contacts-search').addEventListener('input', e => {

@@ -64,12 +64,7 @@
           <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
       </button>
-      <button class="btn-primary" id="btn-add">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Ajouter
-      </button>
     </div>
-
   </div>
 </header>
 
@@ -137,7 +132,13 @@
     <button id="contacts-filter-reset" class="hidden"></button>
 
     <div class="toolbar mb-4">
-      <p class="toolbar-count" id="contacts-count">0 contact</p>
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <p class="toolbar-count" id="contacts-count">0 contact</p>
+        <button class="btn-primary btn-add-inline" onclick="openModal('contact')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouveau
+        </button>
+      </div>
       <div class="toolbar-right">
         <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--text-600);cursor:pointer;white-space:nowrap;padding:.3rem .5rem;border-radius:var(--rx-lg);border:1px solid var(--border-input);background:var(--surface)">
           <input type="checkbox" id="contacts-favorite-filter" onchange="onFavoriteFilterChange()" style="width:14px;height:14px;accent-color:#f59e0b;cursor:pointer" />
@@ -256,7 +257,13 @@
     </div>
 
     <div class="toolbar mb-4">
-      <p class="toolbar-count" id="prototypes-count">0 prototype</p>
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <p class="toolbar-count" id="prototypes-count">0 prototype</p>
+        <button class="btn-primary btn-add-inline" onclick="openModal('prototype')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouveau
+        </button>
+      </div>
       <div class="toolbar-right">
         <div class="zoom-wrap" id="prototypes-zoom-wrap">
           <button class="zoom-btn" onclick="zoomPage('prototypes',-1)" title="Réduire">
