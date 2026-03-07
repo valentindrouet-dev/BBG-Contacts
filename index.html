@@ -20,7 +20,13 @@
     </div>
 
     <nav class="nav-tabs">
-      <button class="nav-tab active" data-page="contacts">
+      <button class="nav-tab active" data-page="home">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        Accueil
+      </button>
+      <button class="nav-tab" data-page="contacts">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -85,6 +91,14 @@
         <input type="file" accept=".xlsx,.xls,.csv" class="ie-file-input" onchange="importExcel(event,'prototypes')" />
       </label>
     </div>
+    <div class="ie-separator"></div>
+    <div class="ie-group">
+      <span class="ie-label" style="font-weight:600;color:var(--primary-700)">💾 Sauvegarde complète</span>
+      <button class="btn-ie btn-ie-backup" onclick="exportBackup()">↓ Sauvegarder (JSON)</button>
+      <label class="btn-ie btn-ie-backup">↑ Restaurer
+        <input type="file" accept=".json" class="ie-file-input" onchange="importBackup(event)" />
+      </label>
+    </div>
     <button class="ie-close" onclick="toggleImportExport()">✕</button>
   </div>
 </div>
@@ -95,9 +109,16 @@
 <main class="main">
 
   <!-- ╔═════════════════════════════════╗
+       ║        PAGE — ACCUEIL          ║
+       ╚═════════════════════════════════╝ -->
+  <div class="page" id="page-home">
+    <div id="dashboard-content"></div>
+  </div>
+
+  <!-- ╔═════════════════════════════════╗
        ║        PAGE — CONTACTS         ║
        ╚═════════════════════════════════╝ -->
-  <div class="page active" id="page-contacts">
+  <div class="page" id="page-contacts">
 
     <div class="panel panel-pad mb-4">
       <div class="search-wrap">
@@ -338,6 +359,8 @@
        ╚═════════════════════════════════╝ -->
   <div class="page" id="page-agenda">
 
+    <div id="agenda-stats" class="agenda-stats-block mb-4"></div>
+
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="agenda-count">0 échange</p>
       <div class="toolbar-right">
@@ -495,7 +518,7 @@
         <label>Tâches</label>
         <div class="game-list-wrap">
           <table class="task-list-table">
-            <thead><tr><th style="width:58%">Description</th><th style="width:32%">Urgence</th><th style="width:10%"></th></tr></thead>
+            <thead><tr><th style="width:45%">Description</th><th style="width:25%">Urgence</th><th style="width:20%">Échéance</th><th style="width:10%"></th></tr></thead>
             <tbody id="contact-tasks-body"></tbody>
           </table>
         </div>
@@ -654,7 +677,7 @@
         <label>Tâches</label>
         <div class="game-list-wrap">
           <table class="task-list-table">
-            <thead><tr><th style="width:58%">Description</th><th style="width:32%">Urgence</th><th style="width:10%"></th></tr></thead>
+            <thead><tr><th style="width:45%">Description</th><th style="width:25%">Urgence</th><th style="width:20%">Échéance</th><th style="width:10%"></th></tr></thead>
             <tbody id="proto-tasks-body"></tbody>
           </table>
         </div>
@@ -717,6 +740,21 @@
         <button type="button" class="btn-add-row" onclick="addCostRow()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Ajouter un coût
+        </button>
+      </div>
+
+      <!-- Sessions de test -->
+      <div class="form-group full">
+        <label>Sessions de test</label>
+        <div class="game-list-wrap">
+          <table class="task-list-table">
+            <thead><tr><th style="width:22%">Date</th><th style="width:20%">Joueurs</th><th style="width:48%">Commentaires</th><th style="width:10%"></th></tr></thead>
+            <tbody id="proto-test-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addTestRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter une session
         </button>
       </div>
 

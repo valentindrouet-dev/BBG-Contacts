@@ -7,7 +7,7 @@
 const state = {
   contacts:   [],
   prototypes: [],
-  activePage: 'contacts',
+  activePage: 'home',
 
   contactsSearch:    '',
   contactsCat:       '',
@@ -73,7 +73,8 @@ function migratePrototype(p) {
   if (!Array.isArray(p.photos))  p.photos  = [];
   if (!Array.isArray(p.tags))    p.tags    = [];
   if (!Array.isArray(p.videos))  p.videos  = [];
-  if (!Array.isArray(p.costs))   p.costs   = [];
+  if (!Array.isArray(p.costs))        p.costs        = [];
+  if (!Array.isArray(p.testSessions)) p.testSessions = [];
   return p;
 }
 
@@ -221,12 +222,121 @@ function switchPage(page) {
   document.querySelectorAll('.nav-tab').forEach(b =>
     b.classList.toggle('active', b.dataset.page === page)
   );
-  // Show/hide Ajouter button (not on tasks or agenda)
-  document.getElementById('btn-add').style.display = (page === 'tasks' || page === 'agenda') ? 'none' : '';
+  // Show/hide Ajouter button (not on tasks, agenda or home)
+  document.getElementById('btn-add').style.display = ['tasks','agenda','home'].includes(page) ? 'none' : '';
+  if (page === 'home')       renderDashboard();
   if (page === 'contacts')   renderContacts();
   if (page === 'prototypes') renderPrototypes();
   if (page === 'tasks')      renderTasks();
   if (page === 'agenda')     renderAgenda();
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+function renderDashboard() {
+  const el = document.getElementById('dashboard-content');
+  if (!el) return;
+
+  const today_str = today();
+  const pendingTasks = [
+    ...state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'contact', _name: c.name, _id: c.id}))),
+    ...state.prototypes.flatMap(p => (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id}))),
+  ].sort((a,b) => (URGENCY_ORDER[a.urgency||'normal']||99) - (URGENCY_ORDER[b.urgency||'normal']||99));
+
+  const urgentTasks = pendingTasks.filter(t => t.urgency === 'urgent' || t.urgency === 'critique');
+
+  // Recent exchanges (last 5)
+  const allExchanges = state.contacts.flatMap(c =>
+    (c.exchanges||[]).map(e => ({...e, _name: c.name, _id: c.id, _cat: c.category}))
+  ).sort((a,b) => b.date.localeCompare(a.date)).slice(0, 5);
+
+  // Due today/overdue tasks
+  const dueNow = pendingTasks.filter(t => t.dueDate && t.dueDate <= today_str)
+    .sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+
+  // Top protos (by interest, not sorti)
+  const topProtos = [...state.prototypes]
+    .filter(p => p.status !== 'sorti')
+    .sort((a,b) => (b.interest||3) - (a.interest||3))
+    .slice(0, 4);
+
+  const EXCH_EMOJI = { rencontre:'🤝', email:'📧', appel:'📞', salon:'🎪', message:'💬', autre:'📝' };
+  const totalExch = state.contacts.reduce((n,c) => n + (c.exchanges||[]).length, 0);
+
+  el.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <h2 class="dash-title">Bonjour 👋</h2>
+        <p class="dash-date">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+      </div>
+    </div>
+
+    <div class="dash-stats">
+      <div class="dash-stat-card" onclick="switchPage('contacts')">
+        <div class="dash-stat-num">${state.contacts.length}</div>
+        <div class="dash-stat-label">Contacts</div>
+      </div>
+      <div class="dash-stat-card" onclick="switchPage('prototypes')">
+        <div class="dash-stat-num">${state.prototypes.length}</div>
+        <div class="dash-stat-label">Prototypes</div>
+      </div>
+      <div class="dash-stat-card${urgentTasks.length > 0 ? ' dash-stat-alert' : ''}" onclick="switchPage('tasks')">
+        <div class="dash-stat-num">${pendingTasks.length}</div>
+        <div class="dash-stat-label">Tâches en attente</div>
+      </div>
+      <div class="dash-stat-card" onclick="switchPage('agenda')">
+        <div class="dash-stat-num">${totalExch}</div>
+        <div class="dash-stat-label">Échanges</div>
+      </div>
+    </div>
+
+    ${dueNow.length > 0 ? `
+    <div class="dash-section">
+      <div class="dash-section-title">🔔 Échéances dépassées ou du jour</div>
+      ${dueNow.map(t => `
+        <div class="dash-task-row dash-task-due" onclick="switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')">
+          <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
+          <span class="dash-task-text">${esc(t.text)}</span>
+          <span class="dash-task-source">${esc(t._name)}</span>
+          <span class="dash-task-date" style="color:#dc2626">${t.dueDate}</span>
+        </div>`).join('')}
+    </div>` : ''}
+
+    ${urgentTasks.length > 0 ? `
+    <div class="dash-section">
+      <div class="dash-section-title">⚠️ Tâches urgentes / critiques</div>
+      ${urgentTasks.slice(0,5).map(t => `
+        <div class="dash-task-row" onclick="switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')">
+          <span class="badge badge-urgence-${t.urgency}">${URGENCY_EMOJI[t.urgency]||''} ${t.urgency}</span>
+          <span class="dash-task-text">${esc(t.text)}</span>
+          <span class="dash-task-source">${esc(t._name)}</span>
+        </div>`).join('')}
+    </div>` : `<div class="dash-section"><p style="color:var(--text-500);font-size:.875rem">✅ Aucune tâche urgente en cours.</p></div>`}
+
+    <div class="dash-cols">
+      <div class="dash-section" style="flex:1;min-width:0">
+        <div class="dash-section-title">📅 Derniers échanges</div>
+        ${allExchanges.length === 0 ? `<p style="color:var(--text-500);font-size:.875rem">Aucun échange enregistré.</p>` :
+          allExchanges.map(e => `
+          <div class="dash-task-row" onclick="openDetail('contact','${e._id}')">
+            <span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">${EXCH_EMOJI[e.type]||'📝'} ${esc(e.type||'autre')}</span>
+            <span class="dash-task-text agenda-contact-name badge-${e._cat}">${esc(e._name)}</span>
+            <span class="dash-task-date">${e.date}</span>
+          </div>`).join('')}
+      </div>
+
+      <div class="dash-section" style="flex:1;min-width:0">
+        <div class="dash-section-title">🎮 Prototypes à suivre</div>
+        ${topProtos.length === 0 ? `<p style="color:var(--text-500);font-size:.875rem">Aucun prototype.</p>` :
+          topProtos.map(p => `
+          <div class="dash-task-row" onclick="openDetail('prototype','${p.id}')">
+            <span class="badge badge-${p.status}" style="font-size:.7rem">${esc(p.status)}</span>
+            <span class="dash-task-text">${esc(p.title)}</span>
+            <span class="dash-task-date">${'⭐'.repeat(p.interest||3)}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1138,6 +1248,7 @@ function addTaskRow(prefix, task = {}) {
   tr.innerHTML = `
     <td><input type="text" placeholder="Description de la tâche…" value="${esc(task.text || '')}" /></td>
     <td><select>${opts}</select></td>
+    <td><input type="date" value="${esc(task.dueDate || '')}" style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
     <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
   tbody.appendChild(tr);
 }
@@ -1146,11 +1257,14 @@ function getTasksFromForm(prefix) {
   const tbody = document.getElementById(`${prefix}-tasks-body`);
   if (!tbody) return [];
   return Array.from(tbody.querySelectorAll('tr')).map(tr => {
-    const inputs = tr.querySelectorAll('input[type="text"], select');
+    const text    = tr.querySelector('input[type="text"]')?.value.trim() || '';
+    const urgency = tr.querySelector('select')?.value || 'normal';
+    const dueDate = tr.querySelector('input[type="date"]')?.value || '';
     return {
       id:      tr.dataset.taskId || uid(),
-      text:    inputs[0]?.value.trim() || '',
-      urgency: inputs[1]?.value || 'normal',
+      text,
+      urgency,
+      dueDate: dueDate || undefined,
       done:    false,
     };
   }).filter(t => t.text);
@@ -1388,8 +1502,75 @@ function populateCostsForm(costs = []) {
 }
 
 // ═══════════════════════════════════════════════════
+// TEST SESSIONS (prototype)
+// ═══════════════════════════════════════════════════
+function addTestRow(session = {}) {
+  const tbody = document.getElementById('proto-test-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.dataset.testId = session.id || uid();
+  tr.innerHTML = `
+    <td><input type="date" value="${esc(session.date || '')}" style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
+    <td><input type="number" min="1" max="99" placeholder="nb" value="${session.players != null ? session.players : ''}" style="font-size:.8rem;padding:.25rem .35rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
+    <td><input type="text" placeholder="Retours, impressions…" value="${esc(session.comments || '')}" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getTestSessionsFromForm() {
+  const tbody = document.getElementById('proto-test-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
+    id:       tr.dataset.testId || uid(),
+    date:     tr.querySelector('input[type="date"]')?.value || '',
+    players:  parseInt(tr.querySelector('input[type="number"]')?.value) || null,
+    comments: tr.querySelector('input[type="text"]')?.value.trim() || '',
+  })).filter(s => s.date || s.comments);
+}
+
+function populateTestSessionsForm(sessions = []) {
+  const tbody = document.getElementById('proto-test-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  sessions.forEach(s => addTestRow(s));
+}
+
+// ═══════════════════════════════════════════════════
 // AGENDA
 // ═══════════════════════════════════════════════════
+function renderAgendaStats(entries) {
+  const statsEl = document.getElementById('agenda-stats');
+  if (!statsEl) return;
+  if (entries.length === 0) { statsEl.innerHTML = ''; return; }
+
+  // Build last 12 months buckets
+  const now  = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
+    const label = d.toLocaleDateString('fr-FR', { month: 'short' });
+    months.push({ key, label, count: 0 });
+  }
+  entries.forEach(e => {
+    const m = (e.date || '').slice(0, 7);
+    const bucket = months.find(b => b.key === m);
+    if (bucket) bucket.count++;
+  });
+
+  const max = Math.max(...months.map(m => m.count), 1);
+  statsEl.innerHTML = `
+    <div class="agenda-stats-title">Activité sur 12 mois</div>
+    <div class="agenda-bar-chart">
+      ${months.map(m => `
+        <div class="agenda-bar-col">
+          <div class="agenda-bar-val">${m.count > 0 ? m.count : ''}</div>
+          <div class="agenda-bar" style="height:${Math.round((m.count / max) * 52)}px" title="${m.count} échange(s) en ${m.key}"></div>
+          <div class="agenda-bar-label">${m.label}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
 function renderAgenda() {
   const listEl  = document.getElementById('agenda-list');
   const emptyEl = document.getElementById('agenda-empty');
@@ -1411,6 +1592,8 @@ function renderAgenda() {
   document.getElementById('nav-agenda-count').textContent = entries.length;
   document.getElementById('agenda-count').textContent =
     `${entries.length} échange${entries.length !== 1 ? 's' : ''}`;
+
+  renderAgendaStats(entries);
 
   if (entries.length === 0) {
     listEl.innerHTML = '';
@@ -1435,7 +1618,28 @@ function renderAgenda() {
 
   const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
 
+  // Due-date tasks section
+  const today_d = today();
+  const dueTasks = [
+    ...state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done && t.dueDate).map(t => ({...t, _type:'contact', _name:c.name, _id:c.id, _cat:c.category}))),
+    ...state.prototypes.flatMap(p => (p.tasks||[]).filter(t => !t.done && t.dueDate).map(t => ({...t, _type:'prototype', _name:p.title, _id:p.id, _cat:null}))),
+  ].sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+
   let html = '';
+  if (dueTasks.length > 0) {
+    html += `<div class="agenda-month-header">📋 Échéances des tâches</div>`;
+    dueTasks.forEach(t => {
+      const isOverdue = t.dueDate < today_d;
+      const dateLabel = new Date(t.dueDate).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+      html += `<div class="agenda-entry" onclick="openDetail('${t._type}','${t._id}')">
+        <span class="agenda-date" style="${isOverdue ? 'color:#dc2626;font-weight:700' : ''}">${dateLabel}${isOverdue ? ' ⚠' : ''}</span>
+        <span class="agenda-type-badge"><span class="badge badge-urgence-${t.urgency||'normal'}" style="font-size:.7rem">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span></span>
+        <div class="agenda-contact-wrap"><span class="agenda-contact-name${t._cat ? ' badge-'+t._cat : ''}">${esc(t._name)}</span></div>
+        <span class="agenda-note">— ${esc(t.text)}</span>
+      </div>`;
+    });
+  }
+
   for (const [month, evts] of Object.entries(groups)) {
     html += `<div class="agenda-month-header">${month}</div>`;
     evts.forEach(e => {
@@ -1664,6 +1868,7 @@ function resetPrototypeForm() {
   populateDevLogForm([]);
   populateVideosForm('proto', []);
   populateCostsForm([]);
+  populateTestSessionsForm([]);
   const tagsEl = document.getElementById('prototype-tags');
   if (tagsEl) tagsEl.value = '';
   document.getElementById('modal-prototype-title').textContent = 'Nouveau prototype';
@@ -1693,6 +1898,7 @@ function editPrototype(id) {
   populateDevLogForm(p.devLog || []);
   populateVideosForm('proto', p.videos || []);
   populateCostsForm(p.costs || []);
+  populateTestSessionsForm(p.testSessions || []);
 
   const tagsEl = document.getElementById('prototype-tags');
   if (tagsEl) tagsEl.value = (p.tags || []).join(', ');
@@ -1739,9 +1945,10 @@ function submitPrototype(e) {
     pdfName,
     pdfUrl,
     tags,
-    devLog:  getDevLogFromForm(),
-    videos:  getVideosFromForm('proto'),
-    costs:   getCostsFromForm(),
+    devLog:       getDevLogFromForm(),
+    videos:       getVideosFromForm('proto'),
+    costs:        getCostsFromForm(),
+    testSessions: getTestSessionsFromForm(),
   };
   if (id) {
     const i = state.prototypes.findIndex(x => x.id === id);
@@ -2039,6 +2246,19 @@ function openDetail(type, id) {
               </tr></tbody>
             </table>`;
         })()}
+        ${(p.testSessions||[]).length > 0 ? `<div class="detail-section-title">Sessions de test</div>
+          <table style="width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.3rem">
+            <thead><tr style="color:var(--text-500)">
+              <th style="text-align:left;padding:.2rem .4rem">Date</th>
+              <th style="text-align:center;padding:.2rem .4rem">Joueurs</th>
+              <th style="text-align:left;padding:.2rem .4rem">Commentaires</th>
+            </tr></thead>
+            <tbody>${[...(p.testSessions||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(s => `<tr>
+              <td style="padding:.25rem .4rem;white-space:nowrap">${s.date ? new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
+              <td style="padding:.25rem .4rem;text-align:center">${s.players != null ? s.players + '👤' : '—'}</td>
+              <td style="padding:.25rem .4rem">${esc(s.comments||'')}</td>
+            </tr>`).join('')}</tbody>
+          </table>` : ''}
         ${(p.pdf || p.pdfUrl) ? `<div class="detail-section-title">Règles du jeu</div>
           <div class="pdf-viewer-wrap">
             <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
@@ -2075,6 +2295,47 @@ function openDetail(type, id) {
 function toggleImportExport() {
   const panel = document.getElementById('import-export-panel');
   panel.style.display = panel.style.display === 'none' ? '' : 'none';
+}
+
+function exportBackup() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    contacts:   state.contacts,
+    prototypes: state.prototypes,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `BBG-sauvegarde-${today()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data.contacts) || !Array.isArray(data.prototypes)) {
+        alert('Fichier invalide : contacts ou prototypes manquants.');
+        return;
+      }
+      if (!confirm(`Restaurer la sauvegarde du ${data.exportedAt ? new Date(data.exportedAt).toLocaleString('fr-FR') : 'date inconnue'} ?\n\n${data.contacts.length} contact(s), ${data.prototypes.length} prototype(s).\n\nATTENTION : les données actuelles seront remplacées.`)) return;
+      state.contacts   = data.contacts.map(migrateContact);
+      state.prototypes = data.prototypes.map(migratePrototype);
+      saveState();
+      switchPage(state.activePage);
+      alert('Restauration effectuée avec succès !');
+    } catch(e) {
+      alert('Erreur lors de la lecture du fichier : ' + e.message);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 function exportExcel(type) {
@@ -2363,4 +2624,4 @@ document.getElementById('contacts-sort').value = state.contactsSort;
 document.getElementById('contacts-zoom').value = state.contactsZoom;
 document.getElementById('prototypes-sort').value = state.prototypesSort;
 document.getElementById('prototypes-zoom').value = state.prototypesZoom;
-switchPage('contacts');
+switchPage('home');
