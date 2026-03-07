@@ -1677,3 +1677,43 @@ a:hover { color: var(--primary-700); }
   border-radius: 3px 3px 0 0; transition: height .3s;
 }
 .agenda-bar-label { font-size: .6rem; color: var(--text-400); white-space: nowrap; }
+
+/* ═══════════════════════════════════════════════════
+   STANDALONE TASKS
+═══════════════════════════════════════════════════ */
+.task-del-btn {
+  background: none; border: none; color: var(--text-400);
+  font-size: .85rem; cursor: pointer; padding: .2rem .4rem;
+  flex-shrink: 0; border-radius: var(--rx);
+  transition: color .12s, background .12s;
+}
+.task-del-btn:hover { color: #dc2626; background: #fee2e2; }
+.task-due { font-size: .7rem; color: var(--text-500); margin-left: .25rem; }
+.task-due.overdue { color: #dc2626; font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════
+   AGENDA CATEGORY FILTERS
+═══════════════════════════════════════════════════ */
+.agenda-cat-filters {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .4rem;
+}
+.agenda-cat-filter-label {
+  font-size: .75rem; color: var(--text-500); font-weight: 600; margin-right: .2rem;
+}
+.agenda-cat-chip {
+  display: flex; align-items: center; gap: .3rem;
+  font-size: .75rem; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rx-lg); padding: .2rem .6rem;
+  transition: border-color .12s, background .12s;
+}
+.agenda-cat-chip:has(input:checked) {
+  background: var(--primary-50, #eff6ff);
+  border-color: var(--primary-400);
+  color: var(--primary-700);
+  font-weight: 600;
+}
+.agenda-cat-chip input { display: none; }
+
+/* modal-narrow for standalone task */
+.modal-narrow { max-width: 440px; }

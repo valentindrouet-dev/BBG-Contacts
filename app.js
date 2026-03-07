@@ -26,17 +26,20 @@ const state = {
   prototypesView:    'grid',
   prototypesZoom:    1,
 
+  standaloneTasks:    [],
   compareMode:        false,
   selectedForCompare: [],
   tasksFilter:        'all',
   contactsFavoriteOnly: false,
   agendaSortAsc:      false,
+  agendaCatFilters:   [],   // [] = toutes catégories
 };
 
 // ── STORAGE ────────────────────────────────────────
 function saveState() {
-  localStorage.setItem('bbg-contacts',   JSON.stringify(state.contacts));
-  localStorage.setItem('bbg-prototypes', JSON.stringify(state.prototypes));
+  localStorage.setItem('bbg-contacts',         JSON.stringify(state.contacts));
+  localStorage.setItem('bbg-prototypes',       JSON.stringify(state.prototypes));
+  localStorage.setItem('bbg-standalone-tasks', JSON.stringify(state.standaloneTasks));
 }
 // ── Data migration ──────────────────────────────
 function migrateContact(c) {
@@ -80,9 +83,10 @@ function migratePrototype(p) {
 
 function loadState() {
   // SAFE load: never overwrite localStorage on error to avoid data loss
-  let c, p;
+  let c, p, s;
   try { c = localStorage.getItem('bbg-contacts'); } catch(e) {}
   try { p = localStorage.getItem('bbg-prototypes'); } catch(e) {}
+  try { s = localStorage.getItem('bbg-standalone-tasks'); } catch(e) {}
 
   try {
     state.contacts = (c ? JSON.parse(c) : SEED_CONTACTS).map(migrateContact);
@@ -95,6 +99,11 @@ function loadState() {
   } catch(e) {
     console.error('Prototypes parse error', e);
     state.prototypes = SEED_PROTOTYPES.map(migratePrototype);
+  }
+  try {
+    state.standaloneTasks = s ? JSON.parse(s) : [];
+  } catch(e) {
+    state.standaloneTasks = [];
   }
   // Only seed if truly empty (no existing localStorage data)
   if (!c) saveState();
@@ -242,9 +251,14 @@ function renderDashboard() {
   const pendingTasks = [
     ...state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'contact', _name: c.name, _id: c.id}))),
     ...state.prototypes.flatMap(p => (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id}))),
-  ].sort((a,b) => (URGENCY_ORDER[a.urgency||'normal']||99) - (URGENCY_ORDER[b.urgency||'normal']||99));
+    ...(state.standaloneTasks||[]).filter(t => !t.done).map(t => ({...t, _from:'standalone', _name:'Tâche libre', _id:t.id})),
+  ].sort((a,b) => {
+    const oa = URGENCY_ORDER[a.urgency||'normal'] ?? 99;
+    const ob = URGENCY_ORDER[b.urgency||'normal'] ?? 99;
+    return oa - ob;
+  });
 
-  const urgentTasks = pendingTasks.filter(t => t.urgency === 'urgent' || t.urgency === 'critique');
+  const urgentTasks = pendingTasks.filter(t => t.urgency === 'critique' || t.urgency === 'urgent');
 
   // Recent exchanges (last 5)
   const allExchanges = state.contacts.flatMap(c =>
@@ -305,7 +319,7 @@ function renderDashboard() {
 
     ${urgentTasks.length > 0 ? `
     <div class="dash-section">
-      <div class="dash-section-title">⚠️ Tâches urgentes / critiques</div>
+      <div class="dash-section-title">🚨 Tâches critiques &amp; urgentes</div>
       ${urgentTasks.slice(0,5).map(t => `
         <div class="dash-task-row" onclick="switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')">
           <span class="badge badge-urgence-${t.urgency}">${URGENCY_EMOJI[t.urgency]||''} ${t.urgency}</span>
@@ -910,8 +924,13 @@ function renderTasks() {
     (p.tasks || []).forEach(t => {
       tasks.push({ itemId: p.id, taskId: t.id, type: 'prototype', name: p.title,
         category: 'prototype',
-        task: t.text, urgency: t.urgency || 'normal', done: t.done || false });
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate });
     });
+  });
+  (state.standaloneTasks || []).forEach(t => {
+    tasks.push({ itemId: t.id, taskId: t.id, type: 'standalone', name: 'Tâche libre',
+      category: 'standalone',
+      task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate });
   });
 
   const total   = tasks.length;
@@ -965,12 +984,12 @@ function renderTasks() {
   }
   emptyEl.classList.add('hidden');
 
-  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'prototype'];
-  const CAT_TASK_LABELS = { ...CAT_LABELS, prototype: 'Prototypes' };
+  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'prototype', 'standalone'];
+  const CAT_TASK_LABELS = { ...CAT_LABELS, prototype: 'Prototypes', standalone: 'Tâches libres' };
 
   // Sort
   tasks.sort((a, b) => {
-    if (sortBy === 'urgency')  return URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency];
+    if (sortBy === 'urgency')  return (URGENCY_ORDER[a.urgency] ?? 99) - (URGENCY_ORDER[b.urgency] ?? 99);
     if (sortBy === 'source')   return a.type.localeCompare(b.type) || a.name.localeCompare(b.name, 'fr');
     if (sortBy === 'category') {
       const ca = CAT_TASK_ORDER.indexOf(a.category), cb = CAT_TASK_ORDER.indexOf(b.category);
@@ -1024,20 +1043,32 @@ function renderTasks() {
 }
 
 function taskCard(t) {
-  const typeEmoji = t.type === 'contact' ? '👤' : '🎲';
+  const typeEmoji = t.type === 'standalone' ? '📋' : (t.type === 'contact' ? '👤' : '🎲');
+  const dueBadge = t.dueDate ? `<span class="task-due${t.dueDate < today() ? ' overdue' : ''}">${t.dueDate}</span>` : '';
+  const clickBody = t.type === 'standalone'
+    ? `onclick="editStandaloneTask('${t.itemId}')"`
+    : `onclick="openDetail('${t.type}','${t.itemId}')"`;
+  const delBtn = t.type === 'standalone'
+    ? `<button class="task-del-btn" onclick="event.stopPropagation();deleteStandaloneTask('${t.itemId}')" title="Supprimer">✕</button>`
+    : '';
   return `<div class="task-card${t.done ? ' done' : ''}">
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
       onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.itemId}','${t.taskId}')" />
-    <div class="task-body" onclick="openDetail('${t.type}','${t.itemId}')">
+    <div class="task-body" ${clickBody}>
       <span class="task-source">${typeEmoji} ${esc(t.name)}</span>
       <span class="task-text">${esc(t.task)}</span>
-      <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span></span>
+      <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span>${dueBadge}</span>
     </div>
+    ${delBtn}
   </div>`;
 }
 
 function toggleTaskDone(type, itemId, taskId) {
-  if (type === 'contact') {
+  if (type === 'standalone') {
+    const t = (state.standaloneTasks || []).find(x => x.id === itemId);
+    if (t) t.done = !t.done;
+    saveState();
+  } else if (type === 'contact') {
     const c = state.contacts.find(x => x.id === itemId);
     if (c) {
       const t = (c.tasks || []).find(x => x.id === taskId);
@@ -1055,6 +1086,53 @@ function toggleTaskDone(type, itemId, taskId) {
     renderPrototypes();
   }
   if (state.activePage === 'tasks') renderTasks();
+  if (state.activePage === 'home') renderDashboard();
+}
+
+function deleteStandaloneTask(id) {
+  state.standaloneTasks = (state.standaloneTasks || []).filter(t => t.id !== id);
+  saveState();
+  renderTasks();
+}
+
+function editStandaloneTask(id) {
+  const t = (state.standaloneTasks || []).find(x => x.id === id);
+  if (!t) return;
+  openStandaloneTaskModal(t);
+}
+
+function openStandaloneTaskModal(task = null) {
+  const modal = document.getElementById('modal-standalone-task');
+  if (!modal) return;
+  const isEdit = task && task.id;
+  document.getElementById('standalone-task-id').value    = isEdit ? task.id : '';
+  document.getElementById('standalone-task-text').value  = isEdit ? (task.text || '') : '';
+  document.getElementById('standalone-task-urgency').value = isEdit ? (task.urgency || 'normal') : 'normal';
+  document.getElementById('standalone-task-due').value   = isEdit ? (task.dueDate || '') : '';
+  document.getElementById('standalone-task-modal-title').textContent = isEdit ? 'Modifier la tâche' : 'Nouvelle tâche';
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('standalone-task-text').focus();
+}
+
+function submitStandaloneTask(e) {
+  e.preventDefault();
+  const id      = document.getElementById('standalone-task-id').value;
+  const text    = document.getElementById('standalone-task-text').value.trim();
+  const urgency = document.getElementById('standalone-task-urgency').value;
+  const dueDate = document.getElementById('standalone-task-due').value || undefined;
+  if (!text) return;
+  if (id) {
+    const t = (state.standaloneTasks || []).find(x => x.id === id);
+    if (t) { t.text = text; t.urgency = urgency; t.dueDate = dueDate; }
+  } else {
+    state.standaloneTasks = state.standaloneTasks || [];
+    state.standaloneTasks.unshift({ id: uid(), text, urgency, dueDate, done: false });
+  }
+  saveState();
+  closeModal('standalone-task');
+  renderTasks();
+  if (state.activePage === 'home') renderDashboard();
 }
 
 // ═══════════════════════════════════════════════════
@@ -1590,12 +1668,17 @@ function renderAgenda() {
   });
 
   document.getElementById('nav-agenda-count').textContent = entries.length;
+
+  // Category filter (checkboxes)
+  const activeCats = state.agendaCatFilters || [];
+  const filtered = activeCats.length > 0 ? entries.filter(e => activeCats.includes(e.contactCat)) : entries;
+
   document.getElementById('agenda-count').textContent =
-    `${entries.length} échange${entries.length !== 1 ? 's' : ''}`;
+    `${filtered.length} échange${filtered.length !== 1 ? 's' : ''}${activeCats.length ? ` (filtré${filtered.length !== 1 ? 's' : ''})` : ''}`;
 
-  renderAgendaStats(entries);
+  renderAgendaStats(entries);  // stats always on full dataset
 
-  if (entries.length === 0) {
+  if (filtered.length === 0) {
     listEl.innerHTML = '';
     emptyEl.classList.remove('hidden');
     return;
@@ -1603,14 +1686,14 @@ function renderAgenda() {
   emptyEl.classList.add('hidden');
 
   // Sort
-  entries.sort((a, b) => state.agendaSortAsc
+  filtered.sort((a, b) => state.agendaSortAsc
     ? a.date.localeCompare(b.date)
     : b.date.localeCompare(a.date)
   );
 
   // Group by month
   const groups = {};
-  entries.forEach(e => {
+  filtered.forEach(e => {
     const d = new Date(e.date);
     const key = isNaN(d) ? 'Date inconnue' : d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
     (groups[key] = groups[key] || []).push(e);
@@ -1658,6 +1741,16 @@ function renderAgenda() {
     });
   }
   listEl.innerHTML = html;
+}
+
+function onAgendaCatFilter(checkbox) {
+  const val = checkbox.value;
+  if (checkbox.checked) {
+    if (!state.agendaCatFilters.includes(val)) state.agendaCatFilters.push(val);
+  } else {
+    state.agendaCatFilters = state.agendaCatFilters.filter(v => v !== val);
+  }
+  renderAgenda();
 }
 
 function toggleAgendaSort() {
@@ -1761,7 +1854,7 @@ document.querySelectorAll('.modal-overlay').forEach(ov =>
 );
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['contact','prototype','detail','confirm','compare'].forEach(t =>
+    ['contact','prototype','detail','confirm','compare','standalone-task'].forEach(t =>
       document.getElementById('modal-' + t)?.classList.add('hidden')
     );
     document.body.style.overflow = '';
@@ -2301,8 +2394,9 @@ function exportBackup() {
   const data = {
     version: 1,
     exportedAt: new Date().toISOString(),
-    contacts:   state.contacts,
-    prototypes: state.prototypes,
+    contacts:        state.contacts,
+    prototypes:      state.prototypes,
+    standaloneTasks: state.standaloneTasks,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
@@ -2325,8 +2419,9 @@ function importBackup(event) {
         return;
       }
       if (!confirm(`Restaurer la sauvegarde du ${data.exportedAt ? new Date(data.exportedAt).toLocaleString('fr-FR') : 'date inconnue'} ?\n\n${data.contacts.length} contact(s), ${data.prototypes.length} prototype(s).\n\nATTENTION : les données actuelles seront remplacées.`)) return;
-      state.contacts   = data.contacts.map(migrateContact);
-      state.prototypes = data.prototypes.map(migratePrototype);
+      state.contacts        = data.contacts.map(migrateContact);
+      state.prototypes      = data.prototypes.map(migratePrototype);
+      state.standaloneTasks = Array.isArray(data.standaloneTasks) ? data.standaloneTasks : [];
       saveState();
       switchPage(state.activePage);
       alert('Restauration effectuée avec succès !');
@@ -2614,7 +2709,8 @@ updateInterestUI(3);
   document.getElementById('nav-contacts-count').textContent = state.contacts.length;
   document.getElementById('nav-prototypes-count').textContent = state.prototypes.length;
   const pendingTasks = state.contacts.reduce((n, c) => n + (c.tasks||[]).filter(t => !t.done).length, 0)
-    + state.prototypes.reduce((n, p) => n + (p.tasks||[]).filter(t => !t.done).length, 0);
+    + state.prototypes.reduce((n, p) => n + (p.tasks||[]).filter(t => !t.done).length, 0)
+    + (state.standaloneTasks||[]).filter(t => !t.done).length;
   document.getElementById('nav-tasks-count').textContent = pendingTasks;
   const agendaCount = state.contacts.reduce((n, c) => n + (c.exchanges||[]).length, 0);
   document.getElementById('nav-agenda-count').textContent = agendaCount;

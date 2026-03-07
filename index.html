@@ -328,6 +328,10 @@
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="tasks-count">0 tâche</p>
       <div class="toolbar-right">
+        <button class="btn-primary" style="padding:.35rem .8rem;font-size:.8rem" onclick="openStandaloneTaskModal()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:.3rem"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouvelle tâche
+        </button>
         <div class="sort-wrap">
           <select class="sort-select" id="tasks-sort" onchange="renderTasks()">
             <option value="urgency">Urgence</option>
@@ -360,6 +364,15 @@
   <div class="page" id="page-agenda">
 
     <div id="agenda-stats" class="agenda-stats-block mb-4"></div>
+
+    <div class="agenda-cat-filters mb-4">
+      <span class="agenda-cat-filter-label">Filtrer :</span>
+      <label class="agenda-cat-chip"><input type="checkbox" value="auteur"       onchange="onAgendaCatFilter(this)" /> Auteur</label>
+      <label class="agenda-cat-chip"><input type="checkbox" value="éditeur"      onchange="onAgendaCatFilter(this)" /> Éditeur</label>
+      <label class="agenda-cat-chip"><input type="checkbox" value="distributeur" onchange="onAgendaCatFilter(this)" /> Distributeur</label>
+      <label class="agenda-cat-chip"><input type="checkbox" value="illustrateur" onchange="onAgendaCatFilter(this)" /> Illustrateur</label>
+      <label class="agenda-cat-chip"><input type="checkbox" value="fabricant"    onchange="onAgendaCatFilter(this)" /> Fabricant</label>
+    </div>
 
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="agenda-count">0 échange</p>
@@ -830,6 +843,46 @@
       <button class="modal-close" onclick="closeModal('compare')">✕</button>
     </div>
     <div id="compare-modal-content" style="padding:1.25rem 1.5rem;overflow-x:auto"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — TÂCHE LIBRE
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-standalone-task">
+  <div class="modal modal-narrow" id="modal-standalone-task-content">
+    <form onsubmit="submitStandaloneTask(event)">
+      <div class="modal-header">
+        <h2 id="standalone-task-modal-title">Nouvelle tâche</h2>
+        <button type="button" class="modal-close" onclick="closeModal('standalone-task')">✕</button>
+      </div>
+      <div style="padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:.9rem">
+        <input type="hidden" id="standalone-task-id" />
+        <div class="form-group full">
+          <label>Description <span style="color:var(--primary-600)">*</span></label>
+          <input type="text" id="standalone-task-text" placeholder="Ex: Payer l'URSSAF, préparer Cannes…" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Urgence</label>
+            <select id="standalone-task-urgency">
+              <option value="faible">Faible</option>
+              <option value="normal" selected>Normal</option>
+              <option value="urgent">Urgent</option>
+              <option value="critique">Critique</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Échéance</label>
+            <input type="date" id="standalone-task-due" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('standalone-task')">Annuler</button>
+        <button type="submit" class="btn-save">Enregistrer</button>
+      </div>
+    </form>
   </div>
 </div>
 
