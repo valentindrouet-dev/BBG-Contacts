@@ -1593,9 +1593,13 @@ function addTestRow(session = {}) {
   if (!tbody) return;
   const tr = document.createElement('tr');
   tr.dataset.testId = session.id || uid();
+  const ratingOpts = [1,2,3,4,5].map(n =>
+    `<option value="${n}" ${(session.rating||0) === n ? 'selected':''}>${'⭐'.repeat(n)}</option>`
+  ).join('');
   tr.innerHTML = `
     <td><input type="date" value="${esc(session.date || '')}" style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
     <td><input type="number" min="1" max="99" placeholder="nb" value="${session.players != null ? session.players : ''}" style="font-size:.8rem;padding:.25rem .35rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
+    <td><select style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit"><option value="">—</option>${ratingOpts}</select></td>
     <td><input type="text" placeholder="Retours, impressions…" value="${esc(session.comments || '')}" /></td>
     <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
   tbody.appendChild(tr);
@@ -1608,6 +1612,7 @@ function getTestSessionsFromForm() {
     id:       tr.dataset.testId || uid(),
     date:     tr.querySelector('input[type="date"]')?.value || '',
     players:  parseInt(tr.querySelector('input[type="number"]')?.value) || null,
+    rating:   parseInt(tr.querySelector('select')?.value) || null,
     comments: tr.querySelector('input[type="text"]')?.value.trim() || '',
   })).filter(s => s.date || s.comments);
 }
@@ -2347,19 +2352,30 @@ function openDetail(type, id) {
               </tr></tbody>
             </table>`;
         })()}
-        ${(p.testSessions||[]).length > 0 ? `<div class="detail-section-title">Sessions de test</div>
+        ${(() => {
+          const sessions = (p.testSessions||[]);
+          if (!sessions.length) return '';
+          const rated = sessions.filter(s => s.rating);
+          const avg = rated.length ? (rated.reduce((sum,s) => sum + s.rating, 0) / rated.length) : null;
+          const avgStars = avg !== null
+            ? `<span class="test-avg-badge" title="${avg.toFixed(1)}/5">${'⭐'.repeat(Math.round(avg))} <span style="font-size:.72rem;color:var(--text-500)">${avg.toFixed(1)}/5 (${rated.length} noté${rated.length>1?'s':''})</span></span>`
+            : '';
+          return `<div class="detail-section-title" style="display:flex;align-items:center;gap:.6rem">Sessions de test ${avgStars}</div>
           <table style="width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.3rem">
             <thead><tr style="color:var(--text-500)">
               <th style="text-align:left;padding:.2rem .4rem">Date</th>
               <th style="text-align:center;padding:.2rem .4rem">Joueurs</th>
+              <th style="text-align:center;padding:.2rem .4rem">Note</th>
               <th style="text-align:left;padding:.2rem .4rem">Commentaires</th>
             </tr></thead>
-            <tbody>${[...(p.testSessions||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(s => `<tr>
+            <tbody>${[...sessions].sort((a,b)=>b.date.localeCompare(a.date)).map(s => `<tr>
               <td style="padding:.25rem .4rem;white-space:nowrap">${s.date ? new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
               <td style="padding:.25rem .4rem;text-align:center">${s.players != null ? s.players + '👤' : '—'}</td>
+              <td style="padding:.25rem .4rem;text-align:center">${s.rating ? '⭐'.repeat(s.rating) : '—'}</td>
               <td style="padding:.25rem .4rem">${esc(s.comments||'')}</td>
             </tr>`).join('')}</tbody>
-          </table>` : ''}
+          </table>`;
+        })()}
         ${(p.pdf || p.pdfUrl) ? `<div class="detail-section-title">Règles du jeu</div>
           <div class="pdf-viewer-wrap">
             <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
