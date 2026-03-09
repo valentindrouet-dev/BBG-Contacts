@@ -38,7 +38,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
-        Prototypes
+        Jeux
         <span class="nav-count" id="nav-prototypes-count">0</span>
       </button>
       <button class="nav-tab" data-page="tasks">
@@ -311,9 +311,9 @@
 
     <div class="empty-state hidden" id="prototypes-empty">
       <div class="empty-icon">🎮</div>
-      <h3>Aucun prototype</h3>
-      <p>Commencez par ajouter votre premier prototype de jeu de société.</p>
-      <button class="btn-primary" onclick="openModal('prototype')">Ajouter un prototype</button>
+      <h3>Aucun jeu</h3>
+      <p>Commencez par ajouter votre premier jeu.</p>
+      <button class="btn-primary" onclick="openModal('prototype')">Ajouter un jeu</button>
     </div>
 
   </div><!-- /page-prototypes -->
@@ -359,7 +359,7 @@
     <div class="empty-state hidden" id="tasks-empty">
       <div class="empty-icon">✅</div>
       <h3>Aucune tâche en cours</h3>
-      <p>Ajoutez des tâches depuis les fiches contacts ou prototypes.</p>
+      <p>Ajoutez des tâches depuis les fiches contacts ou jeux.</p>
     </div>
 
   </div><!-- /page-tasks -->
@@ -373,7 +373,11 @@
     <div id="agenda-stats" class="agenda-stats-block mb-4"></div>
 
     <div class="agenda-cat-filters mb-4">
-      <span class="agenda-cat-filter-label">Filtrer :</span>
+      <span class="agenda-cat-filter-label">Afficher :</span>
+      <label class="agenda-cat-chip agenda-src-chip"><input type="checkbox" value="contacts" onchange="onAgendaSourceFilter(this)" /> 👤 Contacts</label>
+      <label class="agenda-cat-chip agenda-src-chip"><input type="checkbox" value="jeux"     onchange="onAgendaSourceFilter(this)" /> 🎮 Jeux</label>
+      <span class="agenda-cat-filter-sep"></span>
+      <span class="agenda-cat-filter-label">Catégorie :</span>
       <label class="agenda-cat-chip"><input type="checkbox" value="auteur"       onchange="onAgendaCatFilter(this)" /> Auteur</label>
       <label class="agenda-cat-chip"><input type="checkbox" value="editeur"      onchange="onAgendaCatFilter(this)" /> Éditeur</label>
       <label class="agenda-cat-chip"><input type="checkbox" value="distributeur" onchange="onAgendaCatFilter(this)" /> Distributeur</label>
@@ -846,7 +850,7 @@
 <div class="modal-overlay hidden" id="modal-compare">
   <div class="modal" style="max-width:860px">
     <div class="modal-header">
-      <h2>Comparaison de prototypes</h2>
+      <h2>Comparaison de jeux</h2>
       <button class="modal-close" onclick="closeModal('compare')">✕</button>
     </div>
     <div id="compare-modal-content" style="padding:1.25rem 1.5rem;overflow-x:auto"></div>

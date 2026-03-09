@@ -33,6 +33,7 @@ const state = {
   contactsFavoriteOnly: false,
   agendaSortAsc:      false,
   agendaCatFilters:   [],   // [] = toutes catégories
+  agendaSourceFilter: [],   // [] = tout, 'contacts', 'jeux'
 };
 
 // ── STORAGE ────────────────────────────────────────
@@ -339,7 +340,7 @@ function renderDashboard() {
       </div>
 
       <div class="dash-section" style="flex:1;min-width:0">
-        <div class="dash-section-title">🎮 Prototypes à suivre</div>
+        <div class="dash-section-title">🎮 Jeux à suivre</div>
         ${topProtos.length === 0 ? `<p style="color:var(--text-500);font-size:.875rem">Aucun prototype.</p>` :
           topProtos.map(p => `
           <div class="dash-task-row" onclick="openDetail('prototype','${p.id}')">
@@ -715,7 +716,7 @@ function renderPrototypes() {
 
   document.getElementById('nav-prototypes-count').textContent = state.prototypes.length;
   document.getElementById('prototypes-count').textContent =
-    `${list.length} prototype${list.length !== 1 ? 's' : ''}`;
+    `${list.length} jeu${list.length !== 1 ? 'x' : ''}`;
 
   updateFilterCount('prototypes');
 
@@ -1680,12 +1681,19 @@ function renderAgenda() {
 
   document.getElementById('nav-agenda-count').textContent = entries.length;
 
-  // Category filter (checkboxes)
+  // Source filter (Contacts / Jeux)
+  const activeSrc = state.agendaSourceFilter || [];
+  const showContacts = activeSrc.length === 0 || activeSrc.includes('contacts');
+  const showJeux     = activeSrc.length === 0 || activeSrc.includes('jeux');
+
+  // Category filter (checkboxes) — only applies to contact exchanges
   const activeCats = state.agendaCatFilters || [];
-  const filtered = activeCats.length > 0 ? entries.filter(e => activeCats.includes(e.contactCat)) : entries;
+  const filtered = showContacts
+    ? (activeCats.length > 0 ? entries.filter(e => activeCats.includes(e.contactCat)) : entries)
+    : [];
 
   document.getElementById('agenda-count').textContent =
-    `${filtered.length} échange${filtered.length !== 1 ? 's' : ''}${activeCats.length ? ` (filtré${filtered.length !== 1 ? 's' : ''})` : ''}`;
+    `${filtered.length} échange${filtered.length !== 1 ? 's' : ''}${activeCats.length || activeSrc.length ? ' (filtré)' : ''}`;
 
   renderAgendaStats(entries);  // stats always on full dataset
 
@@ -1712,11 +1720,11 @@ function renderAgenda() {
 
   const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
 
-  // Due-date tasks section
+  // Due-date tasks section (filtered by source)
   const today_d = today();
   const dueTasks = [
-    ...state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done && t.dueDate).map(t => ({...t, _type:'contact', _name:c.name, _id:c.id, _cat:c.category}))),
-    ...state.prototypes.flatMap(p => (p.tasks||[]).filter(t => !t.done && t.dueDate).map(t => ({...t, _type:'prototype', _name:p.title, _id:p.id, _cat:null}))),
+    ...(showContacts ? state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done && t.dueDate).map(t => ({...t, _type:'contact', _name:c.name, _id:c.id, _cat:c.category}))) : []),
+    ...(showJeux     ? state.prototypes.flatMap(p => (p.tasks||[]).filter(t => !t.done && t.dueDate).map(t => ({...t, _type:'prototype', _name:p.title, _id:p.id, _cat:null}))) : []),
   ].sort((a,b) => a.dueDate.localeCompare(b.dueDate));
 
   let html = '';
@@ -1752,6 +1760,16 @@ function renderAgenda() {
     });
   }
   listEl.innerHTML = html;
+}
+
+function onAgendaSourceFilter(checkbox) {
+  const val = checkbox.value;
+  if (checkbox.checked) {
+    if (!state.agendaSourceFilter.includes(val)) state.agendaSourceFilter.push(val);
+  } else {
+    state.agendaSourceFilter = state.agendaSourceFilter.filter(v => v !== val);
+  }
+  renderAgenda();
 }
 
 function onAgendaCatFilter(checkbox) {

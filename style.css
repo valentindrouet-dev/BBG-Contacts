@@ -1737,3 +1737,7 @@ a:hover { color: var(--primary-700); }
 
 /* test session average badge */
 .test-avg-badge { font-size: .82rem; font-weight: 400; }
+
+/* Agenda source filter chips (Contacts / Jeux) */
+.agenda-src-chip { font-weight: 600; }
+.agenda-cat-filter-sep { width: 1px; height: 1.2rem; background: var(--border); display: inline-block; margin: 0 .2rem; }
