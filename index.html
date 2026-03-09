@@ -352,11 +352,11 @@
           Afficher terminées
         </label>
         <label class="tasks-show-done-label">
-          <input type="checkbox" id="tasks-filter-contacts" onchange="renderTasks()" />
+          <input type="checkbox" id="tasks-filter-contacts" value="contacts" onchange="onTasksSourceFilter(this)" />
           👤 Contacts
         </label>
         <label class="tasks-show-done-label">
-          <input type="checkbox" id="tasks-filter-jeux" onchange="renderTasks()" />
+          <input type="checkbox" id="tasks-filter-jeux" value="jeux" onchange="onTasksSourceFilter(this)" />
           🎮 Jeux
         </label>
       </div>

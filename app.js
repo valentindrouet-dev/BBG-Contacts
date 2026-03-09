@@ -30,6 +30,7 @@ const state = {
   compareMode:        false,
   selectedForCompare: [],
   tasksFilter:        'all',
+  tasksSourceFilter:  [],   // [] = tout, 'contacts', 'jeux'
   contactsFavoriteOnly: false,
   agendaSortAsc:      false,
   agendaCatFilters:   [],   // [] = toutes catégories
@@ -932,13 +933,12 @@ function renderTasks() {
       task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
   });
 
-  // Source filter checkboxes
-  const filterContacts = document.getElementById('tasks-filter-contacts')?.checked;
-  const filterJeux     = document.getElementById('tasks-filter-jeux')?.checked;
-  if (filterContacts || filterJeux) {
+  // Source filter (state-based)
+  const srcFilter = state.tasksSourceFilter || [];
+  if (srcFilter.length > 0) {
     tasks = tasks.filter(t => {
-      if (filterContacts && (t.type === 'contact' || t.type === 'standalone')) return true;
-      if (filterJeux     && t.type === 'prototype') return true;
+      if (srcFilter.includes('contacts') && (t.type === 'contact' || t.type === 'standalone')) return true;
+      if (srcFilter.includes('jeux') && t.type === 'prototype') return true;
       return false;
     });
   }
@@ -1771,6 +1771,16 @@ function renderAgenda() {
     });
   }
   listEl.innerHTML = html;
+}
+
+function onTasksSourceFilter(checkbox) {
+  const val = checkbox.value;
+  if (checkbox.checked) {
+    if (!state.tasksSourceFilter.includes(val)) state.tasksSourceFilter.push(val);
+  } else {
+    state.tasksSourceFilter = state.tasksSourceFilter.filter(v => v !== val);
+  }
+  renderTasks();
 }
 
 function onAgendaSourceFilter(checkbox) {
