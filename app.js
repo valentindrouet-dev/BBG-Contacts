@@ -932,6 +932,17 @@ function renderTasks() {
       task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
   });
 
+  // Source filter checkboxes
+  const filterContacts = document.getElementById('tasks-filter-contacts')?.checked;
+  const filterJeux     = document.getElementById('tasks-filter-jeux')?.checked;
+  if (filterContacts || filterJeux) {
+    tasks = tasks.filter(t => {
+      if (filterContacts && (t.type === 'contact' || t.type === 'standalone')) return true;
+      if (filterJeux     && t.type === 'prototype') return true;
+      return false;
+    });
+  }
+
   const total   = tasks.length;
   const pending = tasks.filter(t => !t.done).length;
   document.getElementById('nav-tasks-count').textContent = pending;
