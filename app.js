@@ -62,7 +62,7 @@ function migrateContact(c) {
   if (typeof c.favorite === 'undefined') c.favorite = false;
   return c;
 }
-const STATUS_MIGRATE = { concept: 'proto', test: 'proto', finalisation: 'production', publié: 'sorti' };
+const STATUS_MIGRATE = { concept: 'tester', test: 'tester', proto: 'tester', signé: 'développement', finalisation: 'production', publié: 'sorti' };
 
 function migratePrototype(p) {
   if (!Array.isArray(p.tasks)) {
@@ -147,7 +147,11 @@ const ICONS = {
 };
 
 const PROTO_ICONS = {
-  proto: '🧩', signé: '✍️', développement: '🔧', production: '🏭', sorti: '🚀'
+  pnp: '⏳', imprimer: '🖨️', tester: '🧪', développement: '🔧', production: '🏭', sorti: '🚀', abandonné: '❌'
+};
+const STATUS_LABELS = {
+  pnp: 'En attente de PNP', imprimer: 'À Imprimer', tester: 'À tester',
+  développement: 'En Développement', production: 'En Production', sorti: 'Sorti', abandonné: 'Abandonné'
 };
 
 const URGENCY_EMOJI = { faible: '💤', normal: '📌', urgent: '⚠️', critique: '🚨' };
@@ -161,7 +165,7 @@ const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exception
 
 const SOCIAL_TYPES = ['LinkedIn', 'Facebook', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
 const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'autre'];
-const STATUS_ORDER = ['proto', 'signé', 'développement', 'production', 'sorti'];
+const STATUS_ORDER = ['pnp', 'imprimer', 'tester', 'développement', 'production', 'sorti', 'abandonné'];
 
 // ── Task helpers ───────────────────────────────────
 function getTopTask(item) {
@@ -345,7 +349,7 @@ function renderDashboard() {
         ${topProtos.length === 0 ? `<p style="color:var(--text-500);font-size:.875rem">Aucun prototype.</p>` :
           topProtos.map(p => `
           <div class="dash-task-row" onclick="openDetail('prototype','${p.id}')">
-            <span class="badge badge-${p.status}" style="font-size:.7rem">${esc(p.status)}</span>
+            <span class="badge badge-${p.status}" style="font-size:.7rem">${PROTO_ICONS[p.status]||'🎮'} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
             <span class="dash-task-text">${esc(p.title)}</span>
             <span class="dash-task-date">${'⭐'.repeat(p.interest||3)}</span>
           </div>`).join('')}
@@ -407,7 +411,10 @@ function filteredPrototypes() {
     let cmp = 0;
     switch (state.prototypesSort) {
       case 'title':     cmp = a.title.localeCompare(b.title, 'fr'); break;
-      case 'status':    cmp = a.status.localeCompare(b.status, 'fr'); break;
+      case 'status': {
+        const sa = STATUS_ORDER.indexOf(a.status); const sb = STATUS_ORDER.indexOf(b.status);
+        cmp = (sa === -1 ? 99 : sa) - (sb === -1 ? 99 : sb); break;
+      }
       case 'createdAt': cmp = (a.createdAt||'').localeCompare(b.createdAt||''); break;
       case 'interest':  cmp = (b.interest||3) - (a.interest||3); break;
       case 'urgency': {
@@ -747,7 +754,21 @@ function renderPrototypes() {
     hideAll();
     gridEl.style.display = '';
     gridEl.dataset.zoom = state.prototypesZoom;
-    gridEl.innerHTML = list.map(p => prototypeCard(p, state.prototypesZoom)).join('');
+    if (state.prototypesSort === 'status') {
+      let html = '';
+      let curStatus = null;
+      for (const p of list) {
+        if (p.status !== curStatus) {
+          curStatus = p.status;
+          const icon = PROTO_ICONS[curStatus] || '🎮';
+          html += `<div class="cat-group-header">${icon} ${STATUS_LABELS[curStatus] || curStatus}</div>`;
+        }
+        html += prototypeCard(p, state.prototypesZoom);
+      }
+      gridEl.innerHTML = html;
+    } else {
+      gridEl.innerHTML = list.map(p => prototypeCard(p, state.prototypesZoom)).join('');
+    }
   }
 }
 
@@ -758,7 +779,7 @@ function buildPrototypesTimeline(list) {
     const icon  = PROTO_ICONS[status] || '🎮';
     return `<div class="timeline-col">
       <div class="timeline-col-header" style="background:var(--card-media-${status},#f1f5f9)">
-        <span>${icon}</span><span>${status}</span>
+        <span>${icon}</span><span>${STATUS_LABELS[status] || status}</span>
         <span class="badge badge-${status}" style="font-size:.65rem;margin-left:auto">${items.length}</span>
       </div>
       ${items.length === 0 ? '<div class="timeline-empty">—</div>' :
@@ -790,9 +811,10 @@ function prototypeCard(p, zoom) {
   const stars = '⭐'.repeat(p.interest || 3);
   const hasUrgentTask = topTask && (urg === 'urgent' || urg === 'critique');
 
+  const statusLabel = STATUS_LABELS[p.status] || p.status;
   const badge = isMin
-    ? `<span class="badge badge-${p.status} card-badge" style="font-size:.6rem;padding:.1rem .35rem">${esc(p.status.charAt(0).toUpperCase())}</span>`
-    : `<span class="badge badge-${p.status} card-badge">${esc(p.status)}</span>`;
+    ? `<span class="badge badge-${p.status} card-badge" style="font-size:.6rem;padding:.1rem .35rem">${icon}</span>`
+    : `<span class="badge badge-${p.status} card-badge">${icon} ${esc(statusLabel)}</span>`;
 
   const editBtn = `<button class="card-edit-btn" ${isMin ? 'style="padding:.2rem"' : ''}
     onclick="event.stopPropagation();editPrototype('${p.id}')" title="Modifier">${ICONS.pencil}</button>`;
@@ -886,7 +908,7 @@ function buildPrototypesTable(list) {
       return `<tr onclick="openDetail('prototype','${p.id}')">
         <td class="col-avatar"><span class="list-proto-icon">${PROTO_ICONS[p.status]||'🎮'}</span></td>
         <td class="td-fw">${esc(p.title)}</td>
-        <td><span class="badge badge-${p.status}">${esc(p.status)}</span></td>
+        <td><span class="badge badge-${p.status}">${PROTO_ICONS[p.status]||'🎮'} ${esc(STATUS_LABELS[p.status]||p.status)}</span></td>
         <td style="font-size:.85rem">${'⭐'.repeat(p.interest||3)}</td>
         <td>${taskCell}</td>
         <td class="td-muted">${esc(p.genre||'')}</td>
@@ -2266,7 +2288,7 @@ function openDetail(type, id) {
                   <span style="font-size:1rem">${PROTO_ICONS[p.status]||'🎮'}</span>
                   <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(p.title)}</span>
                   ${role ? `<span style="font-size:.75rem;color:var(--text-500)">(${esc(role)})</span>` : ''}
-                  <span class="badge badge-${p.status}" style="margin-left:auto">${esc(p.status)}</span>
+                  <span class="badge badge-${p.status}" style="margin-left:auto">${PROTO_ICONS[p.status]||'🎮'} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
                 </div>`;
               }).join('')}
             </div>`;
@@ -2322,7 +2344,7 @@ function openDetail(type, id) {
             <div style="font-size:1.05rem;font-weight:700;color:var(--text-800);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</div>
             ${p.genre ? `<div style="font-size:.8rem;color:var(--text-500)">${esc(p.genre)}</div>` : ''}
           </div>
-          <span class="badge badge-${p.status}" style="margin-left:auto;flex-shrink:0">${esc(p.status)}</span>
+          <span class="badge badge-${p.status}" style="margin-left:auto;flex-shrink:0">${icon} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
         </div>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
