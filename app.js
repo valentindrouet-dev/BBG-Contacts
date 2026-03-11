@@ -273,6 +273,11 @@ function renderDashboard() {
   const dueNow = pendingTasks.filter(t => t.dueDate && t.dueDate <= today_str)
     .sort((a,b) => a.dueDate.localeCompare(b.dueDate));
 
+  // Upcoming tasks (future due dates)
+  const upcomingTasks = pendingTasks
+    .filter(t => t.dueDate && t.dueDate > today_str)
+    .sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+
   // Top protos (by interest, not sorti)
   const topProtos = [...state.prototypes]
     .filter(p => p.status !== 'sorti')
@@ -319,6 +324,28 @@ function renderDashboard() {
           <span class="dash-task-source">${esc(t._name)}</span>
           <span class="dash-task-date" style="color:#dc2626">${t.dueDate}</span>
         </div>`).join('')}
+    </div>` : ''}
+
+    ${upcomingTasks.length > 0 ? `
+    <div class="dash-section">
+      <div class="dash-section-title">📆 Tâches à venir</div>
+      ${upcomingTasks.map(t => {
+        const days = Math.ceil((new Date(t.dueDate) - new Date(today_str)) / 86400000);
+        const dayLabel = days === 1 ? 'demain' : `dans ${days} j`;
+        const dayColor = days <= 3 ? '#ea580c' : days <= 7 ? '#ca8a04' : '#16a34a';
+        const dateLabel = new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
+        const nav = t._from === 'standalone'
+          ? "switchPage('tasks')"
+          : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+        return `
+        <div class="dash-task-row" onclick="${nav}">
+          <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
+          <span class="dash-task-text">${esc(t.text)}</span>
+          <span class="dash-task-source">${esc(t._name)}</span>
+          <span class="dash-task-date">${dateLabel}</span>
+          <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
+        </div>`;
+      }).join('')}
     </div>` : ''}
 
     ${urgentTasks.length > 0 ? `

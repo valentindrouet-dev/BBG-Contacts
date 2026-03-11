@@ -1654,6 +1654,7 @@ a:hover { color: var(--primary-700); }
 .dash-task-text   { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-700); }
 .dash-task-source { font-size: .75rem; color: var(--text-500); white-space: nowrap; flex-shrink: 0; }
 .dash-task-date   { font-size: .72rem; color: var(--text-400); white-space: nowrap; flex-shrink: 0; }
+.dash-days-badge  { font-size: .72rem; font-weight: 600; padding: .1rem .45rem; border-radius: var(--rx-full); white-space: nowrap; flex-shrink: 0; }
 
 .dash-cols { display: flex; gap: 1rem; flex-wrap: wrap; }
 
