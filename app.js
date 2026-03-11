@@ -21,7 +21,7 @@ const state = {
   prototypesStatus:  '',
   prototypesInterest:'',
   prototypesTag:     '',
-  prototypesSort:    'interest',
+  prototypesSort:    'status',
   prototypesSortAsc: true,
   prototypesView:    'grid',
   prototypesZoom:    1,
@@ -147,11 +147,11 @@ const ICONS = {
 };
 
 const PROTO_ICONS = {
-  pnp: '⏳', imprimer: '🖨️', tester: '🧪', développement: '🔧', production: '🏭', sorti: '🚀', abandonné: '❌'
+  pnp: '⏳', imprimer: '🖨️', tester: '🧪', développement: '🔧', production: '🏭', standby: '💤', sorti: '🚀', abandonné: '❌'
 };
 const STATUS_LABELS = {
   pnp: 'En attente de PNP', imprimer: 'À Imprimer', tester: 'À tester',
-  développement: 'En Développement', production: 'En Production', sorti: 'Sorti', abandonné: 'Abandonné'
+  développement: 'En Développement', production: 'En Production', standby: 'Standby', sorti: 'Sorti', abandonné: 'Abandonné'
 };
 
 const URGENCY_EMOJI = { faible: '💤', normal: '📌', urgent: '⚠️', critique: '🚨' };
@@ -165,7 +165,7 @@ const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exception
 
 const SOCIAL_TYPES = ['LinkedIn', 'Facebook', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
 const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'autre'];
-const STATUS_ORDER = ['pnp', 'imprimer', 'tester', 'développement', 'production', 'sorti', 'abandonné'];
+const STATUS_ORDER = ['développement', 'tester', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné'];
 
 // ── Task helpers ───────────────────────────────────
 function getTopTask(item) {
