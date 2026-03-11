@@ -1727,12 +1727,21 @@ a:hover { color: var(--primary-700); }
 
 /* Inline add button in toolbar */
 .btn-add-inline {
-  padding: .3rem .75rem;
-  font-size: .8rem;
+  padding: .4rem .9rem;
+  font-size: .875rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: .3rem;
+  gap: .35rem;
   white-space: nowrap;
+  background: var(--primary-600);
+  color: #ffffff;
+  border-color: var(--primary-600);
+  box-shadow: 0 1px 4px rgba(37, 99, 235, .35);
+}
+.btn-add-inline:hover {
+  background: var(--primary-700);
+  border-color: var(--primary-700);
 }
 
 /* test session average badge */
