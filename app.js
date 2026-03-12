@@ -2352,7 +2352,7 @@ function buildEvalPanel(p) {
 
     <div style="margin-top:1.25rem;display:flex;gap:.6rem;flex-wrap:wrap">
       <button class="btn-save" onclick="openEvalReport('${p.id}')">📄 Générer le rapport auteur</button>
-      <button class="btn-evaluated${p.status==='évalué'?' active':''}" onclick="markProtoEvalued('${p.id}')">✅ Jeu Évalué</button>
+      <button class="btn-evaluated${p.status==='évalué'?' active':''}" onclick="markProtoEvalued('${p.id}')">${p.status==='évalué' ? '↩ Repasser en À évaluer' : '✅ Jeu Évalué'}</button>
     </div>
   </div>`;
 }
