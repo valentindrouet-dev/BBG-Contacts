@@ -911,6 +911,20 @@
   </div>
 </div>
 
+<!-- MODAL — RAPPORT ÉVALUATION -->
+<div class="modal-overlay hidden" id="eval-report-overlay">
+  <div class="modal modal-wide" style="max-width:680px">
+    <div class="modal-header">
+      <h2 style="font-size:.9rem;letter-spacing:.04em">RAPPORT D'ÉVALUATION — BIG BUDI GAMES</h2>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <button class="btn-save" style="padding:.3rem .8rem;font-size:.8rem" id="eval-copy-btn" onclick="copyEvalReport()">📋 Copier</button>
+        <button class="modal-close" onclick="document.getElementById('eval-report-overlay').classList.add('hidden')">✕</button>
+      </div>
+    </div>
+    <div id="eval-report-content" style="padding:1.25rem 1.5rem;overflow-y:auto;max-height:72vh"></div>
+  </div>
+</div>
+
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>

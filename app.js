@@ -2202,7 +2202,238 @@ document.getElementById('btn-confirm-delete').addEventListener('click', () => {
 });
 
 // ── Detail view ───────────────────────────────────
-let _detailType = null, _detailId = null;
+let _detailType = null, _detailId = null, _detailTab = 'fiche';
+
+// ── Evaluation constants ──────────────────────────
+const EVAL_PRIMARY = [
+  'Originalité de la mécanique',
+  'Potentiel commercial',
+  'Rejouabilité',
+  'Adéquation ligne éditoriale BBG',
+  'Durée de partie adaptée',
+];
+const EVAL_SECONDARY = [
+  'Qualité du matériel/proto',
+  'Clarté des règles',
+  'Équilibre',
+  'Interaction entre joueurs',
+  'Thématique',
+];
+
+function getEval(p) {
+  const ev = p.evaluation || {};
+  return {
+    primary:     Array.isArray(ev.primary)   ? ev.primary   : EVAL_PRIMARY.map(() => ({ score: 0, comment: '' })),
+    secondary:   Array.isArray(ev.secondary) ? ev.secondary : EVAL_SECONDARY.map(() => ({ score: 0, comment: '' })),
+    strengths:   ev.strengths   || '',
+    improvements:ev.improvements|| '',
+    questions:   ev.questions   || '',
+    suggestions: ev.suggestions || '',
+    status:      ev.status      || '',
+    nextSteps:   ev.nextSteps   || '',
+    date:        ev.date        || '',
+  };
+}
+
+function setEvalScore(protoId, type, idx, score) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) return;
+  if (!p.evaluation) p.evaluation = {};
+  const key = type === 'primary' ? 'primary' : 'secondary';
+  const defs = type === 'primary' ? EVAL_PRIMARY : EVAL_SECONDARY;
+  if (!Array.isArray(p.evaluation[key])) p.evaluation[key] = defs.map(() => ({ score: 0, comment: '' }));
+  const cur = p.evaluation[key][idx]?.score || 0;
+  p.evaluation[key][idx].score = cur === score ? 0 : score;
+  saveState();
+  renderEvalPanel(protoId);
+}
+
+function saveEvalField(protoId, path, value) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) return;
+  if (!p.evaluation) p.evaluation = {};
+  const ev = p.evaluation;
+  const parts = path.split('.');
+  if (parts.length === 3) {
+    const key = parts[0], idx = parseInt(parts[1]), field = parts[2];
+    const defs = key === 'primary' ? EVAL_PRIMARY : EVAL_SECONDARY;
+    if (!Array.isArray(ev[key])) ev[key] = defs.map(() => ({ score: 0, comment: '' }));
+    if (!ev[key][idx]) ev[key][idx] = { score: 0, comment: '' };
+    ev[key][idx][field] = value;
+  } else {
+    ev[path] = value;
+  }
+  saveState();
+}
+
+function renderEvalPanel(protoId) {
+  const panel = document.getElementById('detail-panel-test');
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (panel && p) panel.innerHTML = buildEvalPanel(p);
+}
+
+function switchDetailTab(tab) {
+  _detailTab = tab;
+  const fiche = document.getElementById('detail-panel-fiche');
+  const test  = document.getElementById('detail-panel-test');
+  if (fiche) fiche.classList.toggle('hidden', tab !== 'fiche');
+  if (test)  test.classList.toggle('hidden', tab !== 'test');
+  document.querySelectorAll('.detail-tab').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab)
+  );
+}
+
+function buildEvalPanel(p) {
+  const ev = getEval(p);
+  const total = ev.primary.reduce((s, c) => s + (c.score || 0), 0);
+  const pct = Math.round(total / 25 * 100);
+  const authors = (p.contactLinks || []).map(l => {
+    const c = state.contacts.find(x => x.id === l.contactId);
+    return c ? c.name : '';
+  }).filter(Boolean).join(', ');
+
+  const stars = (type, idx, score) =>
+    [1,2,3,4,5].map(n =>
+      `<button class="eval-star-btn${(score||0) >= n ? ' on' : ''}" onclick="setEvalScore('${p.id}','${type}',${idx},${n})">★</button>`
+    ).join('');
+
+  const trows = (names, arr, type) => names.map((name, i) => `
+    <tr>
+      <td class="eval-td-name">${esc(name)}</td>
+      <td><div class="eval-star-row">${stars(type, i, arr[i]?.score || 0)}</div></td>
+      <td><input type="text" class="eval-comment-input" value="${esc(arr[i]?.comment || '')}"
+        onblur="saveEvalField('${p.id}','${type}.${i}.comment',this.value)" placeholder="Commentaire…" /></td>
+    </tr>`).join('');
+
+  const ta = (field, val, rows) =>
+    `<textarea class="eval-textarea" rows="${rows}"
+      onblur="saveEvalField('${p.id}','${field}',this.value)">${esc(val || '')}</textarea>`;
+
+  return `<div class="eval-panel">
+    <div class="eval-panel-title">GRILLE D'ÉVALUATION DE PROTOTYPE — BIG BUDI GAMES</div>
+
+    <div class="eval-block-title">INFORMATIONS DU PROTOTYPE</div>
+    <div class="eval-info-grid">
+      <span class="eval-info-label">Titre du jeu</span><span>${esc(p.title)}</span>
+      ${authors  ? `<span class="eval-info-label">Auteur(s)</span><span>${esc(authors)}</span>`  : ''}
+      ${p.genre  ? `<span class="eval-info-label">Type de jeu</span><span>${esc(p.genre)}</span>` : ''}
+      ${p.players? `<span class="eval-info-label">Joueurs</span><span>${esc(p.players)}</span>`   : ''}
+      ${p.duration?`<span class="eval-info-label">Durée</span><span>${esc(p.duration)}</span>`    : ''}
+      ${p.age    ? `<span class="eval-info-label">Âge</span><span>${esc(p.age)} ans+</span>`      : ''}
+      <span class="eval-info-label">Date d'évaluation</span>
+      <span><input type="date" class="form-input" style="padding:.15rem .4rem;font-size:.8rem;width:auto"
+        value="${esc(ev.date)}" onchange="saveEvalField('${p.id}','date',this.value)" /></span>
+    </div>
+
+    <div class="eval-block-title">CRITÈRES D'ÉVALUATION <span style="font-weight:400;font-size:.7rem">(1 à 5 étoiles)</span></div>
+    <table class="eval-table">
+      <thead><tr><th>Critère</th><th style="width:115px">Note (/5)</th><th>Commentaires</th></tr></thead>
+      <tbody>${trows(EVAL_PRIMARY, ev.primary, 'primary')}</tbody>
+    </table>
+    <div class="eval-score-bar">
+      <span class="eval-score-label">SCORE TOTAL</span>
+      <span class="eval-score-num">${total}</span>
+      <span class="eval-score-max">/25 points</span>
+      <span class="eval-score-pct">${pct}%</span>
+    </div>
+
+    <div class="eval-block-title">CRITÈRES SECONDAIRES <span style="font-weight:400;font-size:.7rem">(Optionnel)</span></div>
+    <table class="eval-table">
+      <thead><tr><th>Critère</th><th style="width:115px">Note (/5)</th><th>Commentaires</th></tr></thead>
+      <tbody>${trows(EVAL_SECONDARY, ev.secondary, 'secondary')}</tbody>
+    </table>
+
+    <div class="eval-block-title">ANALYSE DÉTAILLÉE</div>
+    <div class="eval-analysis-grid">
+      <div><label class="eval-label">Points forts</label>${ta('strengths', ev.strengths, 4)}</div>
+      <div><label class="eval-label">Points à améliorer</label>${ta('improvements', ev.improvements, 4)}</div>
+      <div><label class="eval-label">Questions pour l'auteur</label>${ta('questions', ev.questions, 3)}</div>
+      <div><label class="eval-label">Suggestions d'amélioration</label>${ta('suggestions', ev.suggestions, 3)}</div>
+    </div>
+
+    <div class="eval-block-title">DÉCISION FINALE</div>
+    <div class="eval-decision-grid">
+      <div>
+        <label class="eval-label">Statut</label>
+        <select class="form-select" style="width:100%;font-size:.82rem"
+          onchange="saveEvalField('${p.id}','status',this.value)">
+          <option value="">— Choisir —</option>
+          ${["Intéressant – à suivre","En attente de modifications","Refusé","Accepté pour publication"].map(o =>
+            `<option value="${o}"${ev.status === o ? ' selected' : ''}>${o}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="eval-label">Prochaines étapes</label>
+        ${ta('nextSteps', ev.nextSteps, 2)}
+      </div>
+    </div>
+
+    <div style="margin-top:1.25rem">
+      <button class="btn-save" onclick="openEvalReport('${p.id}')">📄 Générer le rapport auteur</button>
+    </div>
+  </div>`;
+}
+
+function openEvalReport(protoId) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) return;
+  const ev = getEval(p);
+  const authors = (p.contactLinks || []).map(l => {
+    const c = state.contacts.find(x => x.id === l.contactId);
+    return c ? c.name : '';
+  }).filter(Boolean).join(', ');
+  const dateStr = ev.date
+    ? new Date(ev.date).toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })
+    : new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const total = ev.primary.reduce((s, c) => s + (c.score || 0), 0);
+  const pct = Math.round(total / 25 * 100);
+
+  const sec = (title, body) => body
+    ? `<div class="eval-report-section"><div class="eval-report-section-title">${title}</div><div class="eval-report-section-body">${esc(body).replace(/\n/g,'<br>')}</div></div>`
+    : '';
+
+  const content = document.getElementById('eval-report-content');
+  if (!content) return;
+  content.innerHTML = `<div class="eval-report">
+    <div class="eval-report-header">RAPPORT D'ÉVALUATION — BIG BUDI GAMES</div>
+    <div class="eval-report-meta">
+      <div><strong>Date :</strong> ${esc(dateStr)}</div>
+      <div><strong>Titre du jeu :</strong> ${esc(p.title)}</div>
+      ${authors ? `<div><strong>Auteur :</strong> ${esc(authors)}</div>` : ''}
+    </div>
+    <p class="eval-report-salut">Madame, Monsieur,</p>
+    <p class="eval-report-intro">Nous avons eu le plaisir d'analyser votre prototype <em>« ${esc(p.title)} »</em>. Veuillez trouver ci-dessous notre retour détaillé :</p>
+    ${sec('POINTS FORTS', ev.strengths)}
+    ${sec("SUGGESTIONS D'AMÉLIORATION", ev.improvements)}
+    ${sec('QUESTIONS', ev.questions)}
+    <div class="eval-report-section">
+      <div class="eval-report-section-title">CONCLUSION</div>
+      <div class="eval-report-section-body">
+        ${ev.suggestions ? esc(ev.suggestions).replace(/\n/g,'<br>') + '<br><br>' : ''}
+        <strong>Score global :</strong> ${total}/25 (${pct}%)
+        ${ev.status   ? `<br><strong>Décision :</strong> ${esc(ev.status)}`                             : ''}
+        ${ev.nextSteps? `<br><strong>Prochaines étapes :</strong> ${esc(ev.nextSteps).replace(/\n/g,'<br>')}` : ''}
+      </div>
+    </div>
+    <div class="eval-report-footer">
+      <p>Cordialement,</p>
+      <p><strong>L'équipe Big Budi Games</strong></p>
+    </div>
+  </div>`;
+  document.getElementById('eval-report-overlay').classList.remove('hidden');
+}
+
+function copyEvalReport() {
+  const content = document.getElementById('eval-report-content');
+  if (!content) return;
+  navigator.clipboard.writeText(content.innerText).then(() => {
+    const btn = document.getElementById('eval-copy-btn');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
 
 function navigateDetail(dir) {
   if (!_detailType || !_detailId) return;
@@ -2421,6 +2652,11 @@ function openDetail(type, id) {
         <button class="btn-edit-detail" onclick="closeModal('detail');editPrototype('${p.id}')" title="Modifier">${ICONS.pencil}</button>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
+      <div class="detail-tab-bar">
+        <button class="detail-tab${_detailTab==='fiche'?' active':''}" data-tab="fiche" onclick="switchDetailTab('fiche')">📋 Fiche</button>
+        <button class="detail-tab${_detailTab==='test'?' active':''}" data-tab="test" onclick="switchDetailTab('test')">🧪 Test Proto</button>
+      </div>
+      <div id="detail-panel-fiche"${_detailTab!=='fiche'?' class="hidden"':''}>
       <div class="detail-inner">
         ${p.description ? `<div class="detail-section-title">Description</div>
           <div class="detail-notes">${esc(p.description)}</div>` : ''}
@@ -2551,6 +2787,10 @@ function openDetail(type, id) {
         <div class="detail-actions">
           <button class="btn-cancel" onclick="closeModal('detail');confirmDelete('prototype','${p.id}')">Supprimer</button>
         </div>
+      </div>
+      </div>
+      <div id="detail-panel-test"${_detailTab!=='test'?' class="hidden"':''}>
+        ${buildEvalPanel(p)}
       </div>`;
   }
 
