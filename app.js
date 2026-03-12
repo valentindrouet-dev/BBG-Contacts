@@ -1802,27 +1802,7 @@ function renderAgenda() {
 
   const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
 
-  // Due-date tasks section (filtered by source)
-  const today_d = today();
-  const dueTasks = [
-    ...(showContacts ? state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done && t.dueDate).map(t => ({...t, _type:'contact', _name:c.name, _id:c.id, _cat:c.category}))) : []),
-    ...(showJeux     ? state.prototypes.flatMap(p => (p.tasks||[]).filter(t => !t.done && t.dueDate).map(t => ({...t, _type:'prototype', _name:p.title, _id:p.id, _cat:null}))) : []),
-  ].sort((a,b) => a.dueDate.localeCompare(b.dueDate));
-
   let html = '';
-  if (dueTasks.length > 0) {
-    html += `<div class="agenda-month-header">📋 Échéances des tâches</div>`;
-    dueTasks.forEach(t => {
-      const isOverdue = t.dueDate < today_d;
-      const dateLabel = new Date(t.dueDate).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
-      html += `<div class="agenda-entry" onclick="openDetail('${t._type}','${t._id}')">
-        <span class="agenda-date" style="${isOverdue ? 'color:#dc2626;font-weight:700' : ''}">${dateLabel}${isOverdue ? ' ⚠' : ''}</span>
-        <span class="agenda-type-badge"><span class="badge badge-urgence-${t.urgency||'normal'}" style="font-size:.7rem">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span></span>
-        <div class="agenda-contact-wrap"><span class="agenda-contact-name${t._cat ? ' badge-'+t._cat : ''}">${esc(t._name)}</span></div>
-        <span class="agenda-note">— ${esc(t.text)}</span>
-      </div>`;
-    });
-  }
 
   for (const [month, evts] of Object.entries(groups)) {
     html += `<div class="agenda-month-header">${month}</div>`;
