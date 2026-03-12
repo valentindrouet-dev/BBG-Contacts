@@ -664,12 +664,12 @@ function contactCard(c, zoom) {
   }
 
   const allDone = (c.tasks||[]).length > 0 && (c.tasks||[]).every(t => t.done);
-  const doneClass = allDone ? ' card-task-done' : '';
+  const allDoneEmoji = allDone ? `<span class="card-urg-emoji" data-urg="done" title="Toutes les tâches terminées">✅</span>` : '';
 
-  return `<div class="card card-hover card-bg-${cat}${doneClass}"
+  return `<div class="card card-hover card-bg-${cat}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
     <div class="card-media card-media-${cat}">
-      ${favBtn}${mediaContent}${badge}${urgEmoji}${videoBadge}${extLink}${editBtn}
+      ${favBtn}${mediaContent}${badge}${urgEmoji}${allDoneEmoji}${videoBadge}${extLink}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -883,7 +883,7 @@ function prototypeCard(p, zoom) {
   }
 
   const allDoneP = (p.tasks||[]).length > 0 && (p.tasks||[]).every(t => t.done);
-  const doneClass = allDoneP ? ' card-task-done' : '';
+  const allDoneEmoji = allDoneP ? `<span class="card-urg-emoji" data-urg="done" title="Toutes les tâches terminées">✅</span>` : '';
 
   const compareCheck = state.compareMode
     ? `<input type="checkbox" class="card-compare-check"
@@ -891,10 +891,10 @@ function prototypeCard(p, zoom) {
         onclick="event.stopPropagation();toggleCompareSelect('${p.id}',this)" />`
     : '';
 
-  return `<div class="card card-hover${doneClass}"
+  return `<div class="card card-hover"
     onclick="${state.compareMode ? '' : `openDetail('prototype','${p.id}')`}" title="${esc(p.title)}" style="${state.compareMode ? 'cursor:default' : ''}">
     <div class="card-media card-media-${p.status}">
-      ${compareCheck}${mediaContent}${badge}${urgEmoji}${pVideoBadge}${editBtn}
+      ${compareCheck}${mediaContent}${badge}${urgEmoji}${allDoneEmoji}${pVideoBadge}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -1154,6 +1154,27 @@ function toggleTaskDone(type, itemId, taskId) {
   }
   if (state.activePage === 'tasks') renderTasks();
   if (state.activePage === 'home') renderDashboard();
+}
+
+function saveQuickTask(type, id) {
+  const prefix = type === 'contact' ? 'qt-c' : 'qt-p';
+  const text = document.getElementById(prefix + '-text')?.value.trim();
+  if (!text) { document.getElementById(prefix + '-text')?.focus(); return; }
+  const urgency = document.getElementById(prefix + '-urg')?.value || 'normal';
+  const due = document.getElementById(prefix + '-date')?.value || undefined;
+  const task = { id: uid(), text, urgency, dueDate: due || undefined, done: false };
+  if (type === 'contact') {
+    const c = state.contacts.find(x => x.id === id);
+    if (c) { c.tasks = c.tasks || []; c.tasks.unshift(task); }
+    renderContacts();
+  } else {
+    const p = state.prototypes.find(x => x.id === id);
+    if (p) { p.tasks = p.tasks || []; p.tasks.unshift(task); }
+    renderPrototypes();
+  }
+  saveState();
+  if (state.activePage === 'home') renderDashboard();
+  openDetail(type, id);
 }
 
 function deleteStandaloneTask(id) {
@@ -2276,6 +2297,7 @@ function openDetail(type, id) {
           </div>
           <span class="badge badge-${c.category}" style="margin-left:auto;flex-shrink:0">${esc(c.category)}</span>
         </div>
+        <button class="btn-edit-detail" onclick="closeModal('detail');editContact('${c.id}')" title="Modifier">${ICONS.pencil}</button>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
       <div class="detail-inner">
@@ -2288,7 +2310,6 @@ function openDetail(type, id) {
         </div>
         ${(() => {
           const allT = c.tasks||[];
-          if (!allT.length) return '';
           const pending = allT.filter(t => !t.done);
           const done    = allT.filter(t => t.done);
           const row = t => `
@@ -2301,7 +2322,21 @@ function openDetail(type, id) {
             </div>`;
           const n = done.length;
           const showLbl = `Afficher ${n} tâche${n>1?'s':''} terminée${n>1?'s':''}`;
-          return `<div class="detail-section-title">Tâches</div>
+          return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">Tâches
+              <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('qt-c');f.classList.toggle('hidden');f.querySelector('input[type=text]').focus()">+ Tâche</button>
+            </div>
+            <div id="qt-c" class="quick-task-form hidden">
+              <input type="text" id="qt-c-text" placeholder="Description de la tâche…" class="form-input" style="flex:1;min-width:100px" />
+              <select id="qt-c-urg" class="form-select" style="width:auto">
+                <option value="normal">Normal</option>
+                <option value="urgent">Urgent</option>
+                <option value="critique">Critique</option>
+                <option value="faible">Faible</option>
+              </select>
+              <input type="date" id="qt-c-date" class="form-input" style="width:auto" />
+              <button onclick="saveQuickTask('contact','${c.id}')" class="btn-save" style="padding:.25rem .75rem;font-size:.8rem">Ajouter</button>
+              <button onclick="document.getElementById('qt-c').classList.add('hidden')" class="btn-cancel" style="padding:.25rem .5rem;font-size:.8rem">✕</button>
+            </div>
             ${pending.map(row).join('')}
             ${n ? `<button class="btn-show-done" onclick="var d=document.getElementById('done-c-${c.id}');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'${showLbl}':'Masquer les terminées'">${showLbl}</button>
             <div id="done-c-${c.id}" class="hidden">${done.map(row).join('')}</div>` : ''}`;
@@ -2332,7 +2367,6 @@ function openDetail(type, id) {
             </div>`;
         })()}
         <div class="detail-actions">
-          <button class="btn-save" onclick="closeModal('detail');editContact('${c.id}')">Modifier</button>
           <button class="btn-cancel" onclick="closeModal('detail');confirmDelete('contact','${c.id}')">Supprimer</button>
         </div>
       </div>`;
@@ -2384,6 +2418,7 @@ function openDetail(type, id) {
           </div>
           <span class="badge badge-${p.status}" style="margin-left:auto;flex-shrink:0">${icon} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
         </div>
+        <button class="btn-edit-detail" onclick="closeModal('detail');editPrototype('${p.id}')" title="Modifier">${ICONS.pencil}</button>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
       <div class="detail-inner">
@@ -2413,7 +2448,21 @@ function openDetail(type, id) {
             </div>`;
           const n = done.length;
           const showLbl = `Afficher ${n} tâche${n>1?'s':''} terminée${n>1?'s':''}`;
-          return `<div class="detail-section-title">Tâches</div>
+          return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">Tâches
+              <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('qt-p');f.classList.toggle('hidden');f.querySelector('input[type=text]').focus()">+ Tâche</button>
+            </div>
+            <div id="qt-p" class="quick-task-form hidden">
+              <input type="text" id="qt-p-text" placeholder="Description de la tâche…" class="form-input" style="flex:1;min-width:100px" />
+              <select id="qt-p-urg" class="form-select" style="width:auto">
+                <option value="normal">Normal</option>
+                <option value="urgent">Urgent</option>
+                <option value="critique">Critique</option>
+                <option value="faible">Faible</option>
+              </select>
+              <input type="date" id="qt-p-date" class="form-input" style="width:auto" />
+              <button onclick="saveQuickTask('prototype','${p.id}')" class="btn-save" style="padding:.25rem .75rem;font-size:.8rem">Ajouter</button>
+              <button onclick="document.getElementById('qt-p').classList.add('hidden')" class="btn-cancel" style="padding:.25rem .5rem;font-size:.8rem">✕</button>
+            </div>
             ${pending.map(row).join('')}
             ${n ? `<button class="btn-show-done" onclick="var d=document.getElementById('done-p-${p.id}');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'${showLbl}':'Masquer les terminées'">${showLbl}</button>
             <div id="done-p-${p.id}" class="hidden">${done.map(row).join('')}</div>` : ''}`;
@@ -2500,7 +2549,6 @@ function openDetail(type, id) {
               : `<iframe id="pdf-preview-frame-${p.id}" class="pdf-viewer-frame" title="Règles du jeu"></iframe>`}
           </div>` : ''}
         <div class="detail-actions">
-          <button class="btn-save" onclick="closeModal('detail');editPrototype('${p.id}')">Modifier</button>
           <button class="btn-cancel" onclick="closeModal('detail');confirmDelete('prototype','${p.id}')">Supprimer</button>
         </div>
       </div>`;
