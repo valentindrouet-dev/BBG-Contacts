@@ -2286,15 +2286,26 @@ function openDetail(type, id) {
           ${c.website? `<div class="detail-kv"><label>Site web</label>
             <a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website.replace(/^https?:\/\//,''))}</a></div>` : ''}
         </div>
-        ${(c.tasks||[]).length > 0 ? `<div class="detail-section-title">Tâches</div>
-          ${(c.tasks||[]).map(t => `
-          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.35rem;flex-wrap:wrap">
-            <input type="checkbox" ${t.done?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary-600)"
-              onchange="toggleTaskDone('contact','${c.id}','${t.id}');openDetail('contact','${c.id}')" />
-            <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
-            <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
-            ${(t.done && t.doneAt) ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>` : ''}
-          </div>`).join('')}` : ''}
+        ${(() => {
+          const allT = c.tasks||[];
+          if (!allT.length) return '';
+          const pending = allT.filter(t => !t.done);
+          const done    = allT.filter(t => t.done);
+          const row = t => `
+            <div class="detail-task-row">
+              <input type="checkbox" ${t.done?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary-600)"
+                onchange="toggleTaskDone('contact','${c.id}','${t.id}');openDetail('contact','${c.id}')" />
+              <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
+              <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
+              ${(t.done && t.doneAt) ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>` : ''}
+            </div>`;
+          const n = done.length;
+          const showLbl = `Afficher ${n} tâche${n>1?'s':''} terminée${n>1?'s':''}`;
+          return `<div class="detail-section-title">Tâches</div>
+            ${pending.map(row).join('')}
+            ${n ? `<button class="btn-show-done" onclick="var d=document.getElementById('done-c-${c.id}');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'${showLbl}':'Masquer les terminées'">${showLbl}</button>
+            <div id="done-c-${c.id}" class="hidden">${done.map(row).join('')}</div>` : ''}`;
+        })()}
         ${socialsDetailHtml}
         ${videosDetailHtml}
         ${meetHtml}
@@ -2379,22 +2390,34 @@ function openDetail(type, id) {
         ${p.description ? `<div class="detail-section-title">Description</div>
           <div class="detail-notes">${esc(p.description)}</div>` : ''}
         <div class="detail-section-title">Caractéristiques</div>
-        <div class="detail-kv-grid">
-          ${p.players  ? `<div class="detail-kv"><label>Joueurs</label><span>${esc(p.players)}</span></div>`  : ''}
-          ${p.duration ? `<div class="detail-kv"><label>Durée</label><span>${esc(p.duration)}</span></div>`   : ''}
-          ${p.age      ? `<div class="detail-kv"><label>Âge</label><span>${esc(p.age)}</span></div>`          : ''}
-          ${date       ? `<div class="detail-kv"><label>Date d'ajout</label><span>${date}</span></div>`        : ''}
-          <div class="detail-kv"><label>Intérêt</label><span>${'⭐'.repeat(p.interest||3)} ${INTEREST_LABELS[p.interest||3]}</span></div>
+        ${(p.players||p.duration||p.age) ? `<div class="detail-specs-inline">
+          ${p.players  ? `<span class="spec-chip">${ICONS.users} ${esc(p.players)} joueurs</span>` : ''}
+          ${p.duration ? `<span class="spec-chip">${ICONS.clock} ${esc(p.duration)}</span>` : ''}
+          ${p.age      ? `<span class="spec-chip">👶 dès ${esc(p.age)} ans</span>` : ''}
+        </div>` : ''}
+        <div class="detail-kv" style="margin-top:.4rem">
+          <label>Intérêt</label><span>${'⭐'.repeat(p.interest||3)} ${INTEREST_LABELS[p.interest||3]}</span>
         </div>
-        ${(p.tasks||[]).length > 0 ? `<div class="detail-section-title">Tâches</div>
-          ${(p.tasks||[]).map(t => `
-          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.35rem;flex-wrap:wrap">
-            <input type="checkbox" ${t.done?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary-600)"
-              onchange="toggleTaskDone('prototype','${p.id}','${t.id}');openDetail('prototype','${p.id}')" />
-            <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
-            <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
-            ${(t.done && t.doneAt) ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>` : ''}
-          </div>`).join('')}` : ''}
+        ${(() => {
+          const allT = p.tasks||[];
+          if (!allT.length) return '';
+          const pending = allT.filter(t => !t.done);
+          const done    = allT.filter(t => t.done);
+          const row = t => `
+            <div class="detail-task-row">
+              <input type="checkbox" ${t.done?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary-600)"
+                onchange="toggleTaskDone('prototype','${p.id}','${t.id}');openDetail('prototype','${p.id}')" />
+              <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
+              <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
+              ${(t.done && t.doneAt) ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>` : ''}
+            </div>`;
+          const n = done.length;
+          const showLbl = `Afficher ${n} tâche${n>1?'s':''} terminée${n>1?'s':''}`;
+          return `<div class="detail-section-title">Tâches</div>
+            ${pending.map(row).join('')}
+            ${n ? `<button class="btn-show-done" onclick="var d=document.getElementById('done-p-${p.id}');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'${showLbl}':'Masquer les terminées'">${showLbl}</button>
+            <div id="done-p-${p.id}" class="hidden">${done.map(row).join('')}</div>` : ''}`;
+        })()}
         ${contactLinksHtml}
         ${(p.tags||[]).length > 0 ? `<div class="detail-section-title">Tags mécaniques</div>
           <div class="tags-cloud">${(p.tags||[]).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}

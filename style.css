@@ -802,6 +802,14 @@ a:hover { color: var(--primary-700); }
   margin-bottom: 0.1rem;
 }
 .detail-kv span { font-size: 0.875rem; color: var(--text-800); }
+.detail-specs-inline { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .15rem; }
+.detail-task-row { display: flex; align-items: center; gap: .5rem; margin-top: .3rem; flex-wrap: wrap; }
+.btn-show-done {
+  margin-top: .4rem; font-size: .75rem; color: var(--text-400);
+  background: none; border: 1px dashed var(--border-input); border-radius: var(--rx-full);
+  padding: .2rem .7rem; cursor: pointer; transition: color var(--transition), border-color var(--transition);
+}
+.btn-show-done:hover { color: var(--text-700); border-color: var(--text-400); }
 .detail-section-title {
   font-size: 0.7rem;
   font-weight: 700;
@@ -1395,13 +1403,14 @@ a:hover { color: var(--primary-700); }
 ═══════════════════════════════════════════════════ */
 .devlog-list { display: flex; flex-direction: column; gap: .35rem; margin-top: .4rem; }
 .devlog-item {
-  padding: .45rem .65rem;
+  display: flex; align-items: baseline; gap: .6rem;
+  padding: .3rem .65rem;
   background: var(--bg); border: 1px solid var(--border);
   border-left: 3px solid var(--primary-500);
   border-radius: 0 var(--rx-lg) var(--rx-lg) 0;
   font-size: .825rem;
 }
-.devlog-date { font-size: .72rem; color: var(--text-400); margin-bottom: .1rem; }
+.devlog-date { font-size: .72rem; color: var(--text-400); white-space: nowrap; flex-shrink: 0; }
 .devlog-note { color: var(--text-700); line-height: 1.45; }
 
 /* ═══════════════════════════════════════════════════
