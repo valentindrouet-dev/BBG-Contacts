@@ -1120,7 +1120,7 @@ function taskCard(t) {
     <div class="task-body" ${clickBody}>
       <span class="task-source">${typeEmoji} ${esc(t.name)}</span>
       <span class="task-text">${esc(t.task)}</span>
-      <span class="task-meta"><span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span>${dueBadge}${doneAtBadge}</span>
+      <span class="task-meta">${dueBadge}${doneAtBadge}<span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span></span>
     </div>
     ${delBtn}
   </div>`;
