@@ -147,10 +147,11 @@ const ICONS = {
 };
 
 const PROTO_ICONS = {
-  pnp: '⏳', imprimer: '🖨️', tester: '🧪', développement: '🔧', production: '🏭', standby: '💤', sorti: '🚀', abandonné: '❌'
+  pnp: '⏳', imprimer: '🖨️', tester: '🧪', évalué: '✅',
+  développement: '🔧', production: '🏭', standby: '💤', sorti: '🚀', abandonné: '❌'
 };
 const STATUS_LABELS = {
-  pnp: 'En attente de PNP', imprimer: 'À Imprimer', tester: 'À tester',
+  pnp: 'En attente de PNP', imprimer: 'À Imprimer', tester: 'À tester', évalué: 'Évalué',
   développement: 'En Développement', production: 'En Production', standby: 'Standby', sorti: 'Sorti', abandonné: 'Abandonné'
 };
 
@@ -165,7 +166,7 @@ const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exception
 
 const SOCIAL_TYPES = ['LinkedIn', 'Facebook', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
 const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'autre'];
-const STATUS_ORDER = ['développement', 'tester', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné'];
+const STATUS_ORDER = ['développement', 'tester', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné'];
 
 // ── Task helpers ───────────────────────────────────
 function getTopTask(item) {
@@ -2369,8 +2370,9 @@ function buildEvalPanel(p) {
       </div>
     </div>
 
-    <div style="margin-top:1.25rem">
+    <div style="margin-top:1.25rem;display:flex;gap:.6rem;flex-wrap:wrap">
       <button class="btn-save" onclick="openEvalReport('${p.id}')">📄 Générer le rapport auteur</button>
+      <button class="btn-evaluated${p.status==='évalué'?' active':''}" onclick="markProtoEvalued('${p.id}')">✅ Jeu Évalué</button>
     </div>
   </div>`;
 }
@@ -2411,9 +2413,8 @@ function openEvalReport(protoId) {
       <div class="eval-report-section-title">CONCLUSION</div>
       <div class="eval-report-section-body">
         ${ev.suggestions ? esc(ev.suggestions).replace(/\n/g,'<br>') + '<br><br>' : ''}
-        <strong>Score global :</strong> ${total}/25 (${pct}%)
-        ${ev.status   ? `<br><strong>Décision :</strong> ${esc(ev.status)}`                             : ''}
-        ${ev.nextSteps? `<br><strong>Prochaines étapes :</strong> ${esc(ev.nextSteps).replace(/\n/g,'<br>')}` : ''}
+        ${ev.status   ? `<strong>Décision :</strong> ${esc(ev.status)}<br>`                                    : ''}
+        ${ev.nextSteps? `<strong>Prochaines étapes :</strong> ${esc(ev.nextSteps).replace(/\n/g,'<br>')}` : ''}
       </div>
     </div>
     <div class="eval-report-footer">
@@ -2433,6 +2434,16 @@ function copyEvalReport() {
     btn.textContent = '✓ Copié !';
     setTimeout(() => btn.textContent = orig, 2000);
   });
+}
+
+function markProtoEvalued(protoId) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) return;
+  p.status = p.status === 'évalué' ? 'tester' : 'évalué'; // toggle
+  saveState();
+  renderPrototypes();
+  if (state.activePage === 'home') renderDashboard();
+  openDetail('prototype', protoId);
 }
 
 function navigateDetail(dir) {
@@ -2652,10 +2663,17 @@ function openDetail(type, id) {
         <button class="btn-edit-detail" onclick="closeModal('detail');editPrototype('${p.id}')" title="Modifier">${ICONS.pencil}</button>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
-      <div class="detail-tab-bar">
-        <button class="detail-tab${_detailTab==='fiche'?' active':''}" data-tab="fiche" onclick="switchDetailTab('fiche')">📋 Fiche</button>
-        <button class="detail-tab${_detailTab==='test'?' active':''}" data-tab="test" onclick="switchDetailTab('test')">🧪 Test Proto</button>
-      </div>
+      ${(() => {
+        const ev = getEval(p);
+        const done = ev.primary.some(c => (c.score||0) > 0) || ev.status !== '';
+        const testLabel = done
+          ? `<span style="color:#16a34a;font-size:.72rem">✅ (Fait)</span>`
+          : `<span style="color:#dc2626;font-size:.72rem">🔴 (À Faire)</span>`;
+        return `<div class="detail-tab-bar">
+          <button class="detail-tab${_detailTab==='fiche'?' active':''}" data-tab="fiche" onclick="switchDetailTab('fiche')">📋 Fiche</button>
+          <button class="detail-tab${_detailTab==='test'?' active':''}" data-tab="test" onclick="switchDetailTab('test')">🧪 Test Proto ${testLabel}</button>
+        </div>`;
+      })()}
       <div id="detail-panel-fiche"${_detailTab!=='fiche'?' class="hidden"':''}>
       <div class="detail-inner">
         ${p.description ? `<div class="detail-section-title">Description</div>
