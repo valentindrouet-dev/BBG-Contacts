@@ -1681,9 +1681,10 @@ function addTestRow(session = {}) {
   ).join('');
   tr.innerHTML = `
     <td><input type="date" value="${esc(session.date || '')}" style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
+    <td><input type="text" class="test-version" placeholder="v1.0" value="${esc(session.version || '')}" style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
     <td><input type="number" min="1" max="99" placeholder="nb" value="${session.players != null ? session.players : ''}" style="font-size:.8rem;padding:.25rem .35rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
     <td><select style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit"><option value="">—</option>${ratingOpts}</select></td>
-    <td><input type="text" placeholder="Retours, impressions…" value="${esc(session.comments || '')}" /></td>
+    <td><input type="text" class="test-comments" placeholder="Retours, impressions…" value="${esc(session.comments || '')}" /></td>
     <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
   tbody.appendChild(tr);
 }
@@ -1694,9 +1695,10 @@ function getTestSessionsFromForm() {
   return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
     id:       tr.dataset.testId || uid(),
     date:     tr.querySelector('input[type="date"]')?.value || '',
+    version:  tr.querySelector('.test-version')?.value.trim() || '',
     players:  parseInt(tr.querySelector('input[type="number"]')?.value) || null,
     rating:   parseInt(tr.querySelector('select')?.value) || null,
-    comments: tr.querySelector('input[type="text"]')?.value.trim() || '',
+    comments: tr.querySelector('.test-comments')?.value.trim() || '',
   })).filter(s => s.date || s.comments);
 }
 
@@ -2502,15 +2504,9 @@ function openDetail(type, id) {
 
     const _cList = filteredContacts();
     const _cIdx  = _cList.findIndex(x => x.id === id);
-    const _cNav  = `<div class="detail-nav-bar">
-      <button class="detail-nav-btn" onclick="navigateDetail(-1)" ${_cIdx <= 0 ? 'disabled' : ''}>&#8592;</button>
-      <span class="detail-nav-count">${_cIdx + 1} / ${_cList.length}</span>
-      <button class="detail-nav-btn" onclick="navigateDetail(1)" ${_cIdx >= _cList.length - 1 ? 'disabled' : ''}>&#8594;</button>
-    </div>`;
 
     el.innerHTML = `
       <div class="modal-header">
-        ${_cNav}
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${avatar}
           <div style="min-width:0">
@@ -2592,6 +2588,8 @@ function openDetail(type, id) {
           <button class="btn-cancel" onclick="closeModal('detail');confirmDelete('contact','${c.id}')">Supprimer</button>
         </div>
       </div>`;
+    document.getElementById('detail-nav-prev').disabled = _cIdx <= 0;
+    document.getElementById('detail-nav-next').disabled = _cIdx >= _cList.length - 1;
 
   } else {
     const p = state.prototypes.find(x => x.id === id);
@@ -2621,15 +2619,9 @@ function openDetail(type, id) {
 
     const _pList = filteredPrototypes();
     const _pIdx  = _pList.findIndex(x => x.id === id);
-    const _pNav  = `<div class="detail-nav-bar">
-      <button class="detail-nav-btn" onclick="navigateDetail(-1)" ${_pIdx <= 0 ? 'disabled' : ''}>&#8592;</button>
-      <span class="detail-nav-count">${_pIdx + 1} / ${_pList.length}</span>
-      <button class="detail-nav-btn" onclick="navigateDetail(1)" ${_pIdx >= _pList.length - 1 ? 'disabled' : ''}>&#8594;</button>
-    </div>`;
 
     el.innerHTML = `
       <div class="modal-header">
-        ${_pNav}
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${p.photo
             ? `<img src="${esc(p.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" />`
@@ -2754,6 +2746,31 @@ function openDetail(type, id) {
           const avgStars = avg !== null
             ? `<span class="test-avg-badge" title="${avg.toFixed(1)}/5">${'⭐'.repeat(Math.round(avg))} <span style="font-size:.72rem;color:var(--text-500)">${avg.toFixed(1)}/5 (${rated.length} noté${rated.length>1?'s':''})</span></span>`
             : '';
+          // Group by version
+          const byVersion = {};
+          sessions.forEach(s => {
+            const v = (s.version||'').trim();
+            if (!byVersion[v]) byVersion[v] = [];
+            byVersion[v].push(s);
+          });
+          const versionKeys = Object.keys(byVersion).sort((a, b) => {
+            if (!a && b) return 1;
+            if (a && !b) return -1;
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+          });
+          const rows = versionKeys.map(v => {
+            const groupSessions = [...byVersion[v]].sort((a,b) => b.date.localeCompare(a.date));
+            const sep = `<tr><td colspan="4" style="padding:.35rem .4rem .1rem;border-top:1px solid var(--border)">
+              <span style="font-size:.7rem;font-weight:700;color:var(--text-400);text-transform:uppercase;letter-spacing:.06em">${v ? esc(v) : 'Sans version'}</span>
+            </td></tr>`;
+            const dataRows = groupSessions.map(s => `<tr>
+              <td style="padding:.25rem .4rem;white-space:nowrap">${s.date ? new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
+              <td style="padding:.25rem .4rem;text-align:center">${s.players != null ? s.players + '👤' : '—'}</td>
+              <td style="padding:.25rem .4rem;text-align:center">${s.rating ? '⭐'.repeat(s.rating) : '—'}</td>
+              <td style="padding:.25rem .4rem">${esc(s.comments||'')}</td>
+            </tr>`).join('');
+            return sep + dataRows;
+          }).join('');
           return `<div class="detail-section-title" style="display:flex;align-items:center;gap:.6rem">Sessions de test ${avgStars}</div>
           <table style="width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.3rem">
             <thead><tr style="color:var(--text-500)">
@@ -2762,12 +2779,7 @@ function openDetail(type, id) {
               <th style="text-align:center;padding:.2rem .4rem">Note</th>
               <th style="text-align:left;padding:.2rem .4rem">Commentaires</th>
             </tr></thead>
-            <tbody>${[...sessions].sort((a,b)=>b.date.localeCompare(a.date)).map(s => `<tr>
-              <td style="padding:.25rem .4rem;white-space:nowrap">${s.date ? new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
-              <td style="padding:.25rem .4rem;text-align:center">${s.players != null ? s.players + '👤' : '—'}</td>
-              <td style="padding:.25rem .4rem;text-align:center">${s.rating ? '⭐'.repeat(s.rating) : '—'}</td>
-              <td style="padding:.25rem .4rem">${esc(s.comments||'')}</td>
-            </tr>`).join('')}</tbody>
+            <tbody>${rows}</tbody>
           </table>`;
         })()}
         ${(p.pdf || p.pdfUrl) ? `<div class="detail-section-title">Règles du jeu</div>
@@ -2790,6 +2802,8 @@ function openDetail(type, id) {
       <div id="detail-panel-test"${_detailTab!=='test'?' class="hidden"':''}>
         ${buildEvalPanel(p)}
       </div>`;
+    document.getElementById('detail-nav-prev').disabled = _pIdx <= 0;
+    document.getElementById('detail-nav-next').disabled = _pIdx >= _pList.length - 1;
   }
 
   document.getElementById('modal-detail').classList.remove('hidden');

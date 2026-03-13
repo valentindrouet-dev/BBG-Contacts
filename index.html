@@ -787,7 +787,7 @@
         <label>Sessions de test</label>
         <div class="game-list-wrap">
           <table class="task-list-table">
-            <thead><tr><th style="width:18%">Date</th><th style="width:14%">Joueurs</th><th style="width:16%">Note</th><th style="width:42%">Commentaires</th><th style="width:10%"></th></tr></thead>
+            <thead><tr><th style="width:15%">Date</th><th style="width:13%">Version</th><th style="width:12%">Joueurs</th><th style="width:14%">Note</th><th style="width:36%">Commentaires</th><th style="width:10%"></th></tr></thead>
             <tbody id="proto-test-body"></tbody>
           </table>
         </div>
@@ -828,7 +828,9 @@
      MODAL — DETAIL (lecture)
 ═══════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="modal-detail">
+  <button class="detail-side-nav" id="detail-nav-prev" onclick="navigateDetail(-1)">&#8592;</button>
   <div class="modal modal-wide" id="modal-detail-content"></div>
+  <button class="detail-side-nav" id="detail-nav-next" onclick="navigateDetail(1)">&#8594;</button>
 </div>
 
 
