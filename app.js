@@ -1014,10 +1014,14 @@ function renderTasks() {
   });
   (state.festivals || []).forEach(f => {
     (f.presences || []).forEach(p => {
+      const ds = p.dateStart || p.date || '';
+      const de = p.dateEnd || '';
+      const fmt = d => d ? new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : null;
+      const period = (fmt(ds) && fmt(de) && fmt(ds) !== fmt(de)) ? `${fmt(ds)} → ${fmt(de)}` : (fmt(ds) || '');
       tasks.push({ itemId: f.id, taskId: p.id, type: 'festival', name: f.name,
         category: 'festival',
-        task: `Présence${p.note ? ' — ' + p.note : ''}`,
-        urgency: 'normal', done: p.done || false, dueDate: p.date, doneAt: p.doneAt });
+        task: `Présence${period ? ' · ' + period : ''}${p.note ? ' — ' + p.note : ''}`,
+        urgency: 'normal', done: p.done || false, dueDate: ds, doneAt: p.doneAt });
     });
   });
 
@@ -1817,8 +1821,8 @@ function festivalCard(f, zoom) {
   const participating = f.participating
     ? `<span style="position:absolute;top:.4rem;right:.4rem;background:rgba(22,163,74,.9);color:#fff;border-radius:var(--rx);padding:.1rem .4rem;font-size:.65rem;font-weight:700">✓ Participe</span>`
     : '';
-  const protoBadge = f.protos
-    ? `<span style="position:absolute;bottom:.35rem;left:.35rem;background:rgba(255,255,255,.9);border-radius:var(--rx);padding:.1rem .4rem;font-size:.65rem;font-weight:600;color:var(--primary-700)">🎲 Protos</span>`
+  const dateBadge = f.dateStart
+    ? `<span style="position:absolute;bottom:.35rem;left:.35rem;background:rgba(255,255,255,.9);border-radius:var(--rx);padding:.1rem .4rem;font-size:.65rem;font-weight:600;color:var(--text-700)">${new Date(f.dateStart).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>`
     : '';
   const editBtn = `<button class="card-edit-btn" onclick="event.stopPropagation();editFestival('${f.id}')" title="Modifier">${ICONS.pencil}</button>`;
   const mediaContent = f.posterUrl
@@ -1849,7 +1853,7 @@ function festivalCard(f, zoom) {
   return `<div class="card card-hover"
     onclick="openFestivalDetail('${f.id}')" title="${esc(f.name)}">
     <div class="card-media card-media-fest-${f.category}">
-      ${mediaContent}${badge}${participating}${protoBadge}${editBtn}
+      ${mediaContent}${badge}${participating}${dateBadge}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -2012,17 +2016,24 @@ function openFestivalDetail(id) {
       <div id="fest-presences-list-${f.id}">
         ${(f.presences||[]).length
           ? `<table style="width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:.4rem">
-              ${[...(f.presences||[])].sort((a,b) => (a.date||'').localeCompare(b.date||'')).map(p => `<tr>
-                <td style="padding:.2rem .4rem;white-space:nowrap;font-weight:600">${p.date ? new Date(p.date).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'}) : '—'}</td>
-                <td style="padding:.2rem .4rem;color:var(--text-500)">${esc(p.note||'')}</td>
-                <td style="padding:.2rem .4rem;text-align:right"><button class="btn-del-row" onclick="removeFestivalPresence('${f.id}','${p.id}')" title="Supprimer">✕</button></td>
-              </tr>`).join('')}
+              ${[...(f.presences||[])].sort((a,b) => (a.dateStart||a.date||'').localeCompare(b.dateStart||b.date||'')).map(p => {
+                const fmtP = d => d ? new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : null;
+                const ds = fmtP(p.dateStart||p.date), de = fmtP(p.dateEnd);
+                const period = ds && de && ds !== de ? `${ds} → ${de}` : (ds || '—');
+                return `<tr>
+                  <td style="padding:.2rem .4rem;white-space:nowrap;font-weight:600">${period}</td>
+                  <td style="padding:.2rem .4rem;color:var(--text-500)">${esc(p.note||'')}</td>
+                  <td style="padding:.2rem .4rem;text-align:right"><button class="btn-del-row" onclick="removeFestivalPresence('${f.id}','${p.id}')" title="Supprimer">✕</button></td>
+                </tr>`;
+              }).join('')}
             </table>`
           : `<p style="font-size:.82rem;color:var(--text-400);margin:.2rem 0 .5rem">Aucune présence enregistrée.</p>`}
       </div>
       <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-        <input type="date" id="fest-pres-date-${f.id}" style="font-size:.8rem;padding:.3rem .5rem;border:1px solid var(--border-input);border-radius:var(--rx);font-family:inherit" />
-        <input type="text" id="fest-pres-note-${f.id}" placeholder="Note (facultative)…" style="flex:1;min-width:120px;font-size:.8rem;padding:.3rem .5rem;border:1px solid var(--border-input);border-radius:var(--rx);font-family:inherit" />
+        <input type="date" id="fest-pres-start-${f.id}" style="font-size:.8rem;padding:.3rem .5rem;border:1px solid var(--border-input);border-radius:var(--rx);font-family:inherit" />
+        <span style="font-size:.8rem;color:var(--text-400)">→</span>
+        <input type="date" id="fest-pres-end-${f.id}" style="font-size:.8rem;padding:.3rem .5rem;border:1px solid var(--border-input);border-radius:var(--rx);font-family:inherit" />
+        <input type="text" id="fest-pres-note-${f.id}" placeholder="Note…" style="flex:1;min-width:100px;font-size:.8rem;padding:.3rem .5rem;border:1px solid var(--border-input);border-radius:var(--rx);font-family:inherit" />
         <button class="btn-primary" style="padding:.3rem .7rem;font-size:.8rem" onclick="addFestivalPresence('${f.id}')">+ Présence</button>
       </div>
 
@@ -2048,11 +2059,12 @@ function confirmDeleteFestival(id) {
 function addFestivalPresence(festId) {
   const f = state.festivals.find(x => x.id === festId);
   if (!f) return;
-  const date = document.getElementById(`fest-pres-date-${festId}`)?.value || '';
+  const dateStart = document.getElementById(`fest-pres-start-${festId}`)?.value || '';
+  const dateEnd   = document.getElementById(`fest-pres-end-${festId}`)?.value   || '';
   const note = document.getElementById(`fest-pres-note-${festId}`)?.value.trim() || '';
-  if (!date) { alert('Veuillez sélectionner une date.'); return; }
+  if (!dateStart) { alert('Veuillez sélectionner une date de début.'); return; }
   if (!Array.isArray(f.presences)) f.presences = [];
-  f.presences.push({ id: uid(), date, note, done: false });
+  f.presences.push({ id: uid(), dateStart, dateEnd, note, done: false });
   saveState();
   renderTasks();
   openFestivalDetail(festId);
@@ -2344,7 +2356,10 @@ function renderAgenda() {
   (state.festivals || []).forEach(f => {
     (f.presences || []).forEach(p => {
       entries.push({
-        id: p.id, date: p.date, note: p.note,
+        id: p.id,
+        date: p.dateStart || p.date || '',
+        dateEnd: p.dateEnd || '',
+        note: p.note,
         _source: 'festival',
         festivalId:   f.id,
         festivalName: f.name,
@@ -2406,9 +2421,11 @@ function renderAgenda() {
       const dateStr = isNaN(d) ? e.date : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
       if (e._source === 'festival') {
         const festIcon = FEST_ICONS[e.festivalCat] || '🎪';
-        const festLabel = FEST_LABELS[e.festivalCat] || 'Festival';
+        const fmtAg = d => d ? new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : null;
+        const endStr = fmtAg(e.dateEnd);
+        const periodStr = endStr && endStr !== dateStr ? `${dateStr} → ${endStr}` : dateStr;
         html += `<div class="agenda-entry" onclick="openFestivalDetail('${e.festivalId}')">
-          <span class="agenda-date">${dateStr}</span>
+          <span class="agenda-date">${periodStr}</span>
           <span class="agenda-type-badge"><span class="badge badge-fest-${e.festivalCat}" style="font-size:.7rem">${festIcon} Présence</span></span>
           <div class="agenda-contact-wrap">
             <span style="font-size:.95rem">${festIcon}</span>
