@@ -77,6 +77,7 @@ const STATUS_MIGRATE = { concept: 'tester', test: 'tester', proto: 'tester', sig
 function migrateFestival(f) {
   if (!Array.isArray(f.contactLinks)) f.contactLinks = [];
   if (!Array.isArray(f.gameLinks))    f.gameLinks    = [];
+  if (!Array.isArray(f.presences))    f.presences    = [];
   if (!f.costs || typeof f.costs !== 'object') f.costs = {};
   if (typeof f.participating === 'undefined')  f.participating = false;
   if (typeof f.protos === 'undefined')         f.protos = false;
@@ -1011,6 +1012,14 @@ function renderTasks() {
       category: 'standalone',
       task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
   });
+  (state.festivals || []).forEach(f => {
+    (f.presences || []).forEach(p => {
+      tasks.push({ itemId: f.id, taskId: p.id, type: 'festival', name: f.name,
+        category: 'festival',
+        task: `Présence${p.note ? ' — ' + p.note : ''}`,
+        urgency: 'normal', done: p.done || false, dueDate: p.date, doneAt: p.doneAt });
+    });
+  });
 
   // Source filter (state-based)
   const srcFilter = state.tasksSourceFilter || [];
@@ -1132,17 +1141,21 @@ function renderTasks() {
 }
 
 function taskCard(t) {
-  const typeEmoji = t.type === 'standalone' ? '📋' : (t.type === 'contact' ? '👤' : '🎲');
+  const typeEmoji = t.type === 'standalone' ? '📋' : t.type === 'contact' ? '👤' : t.type === 'festival' ? '🎪' : '🎲';
   const dueBadge = t.dueDate ? `<span class="task-due${t.dueDate < today() ? ' overdue' : ''}">${t.dueDate}</span>` : '';
   const doneAtBadge = (t.done && t.doneAt)
     ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR', {day:'2-digit',month:'short'})}</span>`
     : '';
   const clickBody = t.type === 'standalone'
     ? `onclick="editStandaloneTask('${t.itemId}')"`
-    : `onclick="openDetail('${t.type}','${t.itemId}')"`;
+    : t.type === 'festival'
+      ? `onclick="openFestivalDetail('${t.itemId}')"`
+      : `onclick="openDetail('${t.type}','${t.itemId}')"`;
   const delBtn = t.type === 'standalone'
     ? `<button class="task-del-btn" onclick="event.stopPropagation();deleteStandaloneTask('${t.itemId}')" title="Supprimer">✕</button>`
-    : '';
+    : t.type === 'festival'
+      ? `<button class="task-del-btn" onclick="event.stopPropagation();removeFestivalPresence('${t.itemId}','${t.taskId}')" title="Supprimer">✕</button>`
+      : '';
   return `<div class="task-card${t.done ? ' done' : ''}">
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
       onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.itemId}','${t.taskId}')" />
@@ -1173,6 +1186,14 @@ function toggleTaskDone(type, itemId, taskId) {
     }
     saveState();
     renderContacts();
+  } else if (type === 'festival') {
+    const f = state.festivals.find(x => x.id === itemId);
+    if (f) {
+      const pres = (f.presences || []).find(x => x.id === taskId);
+      if (pres) setTaskDone(pres, !pres.done);
+    }
+    saveState();
+    renderFestivals();
   } else {
     const p = state.prototypes.find(x => x.id === itemId);
     if (p) {
@@ -1984,7 +2005,28 @@ function openFestivalDetail(id) {
         </div>`;
       }).filter(Boolean).join('')}</div>` : ''}
 
-      ${f.notes ? `<div class="detail-section-title">Notes</div><div class="detail-notes">${esc(f.notes)}</div>` : ''}
+      <div class="detail-section-title" style="display:flex;align-items:center;gap:.6rem">
+        Présences
+        ${(f.presences||[]).length ? `<span style="font-size:.72rem;color:var(--text-400)">${(f.presences||[]).length} jour${(f.presences||[]).length > 1 ? 's' : ''}</span>` : ''}
+      </div>
+      <div id="fest-presences-list-${f.id}">
+        ${(f.presences||[]).length
+          ? `<table style="width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:.4rem">
+              ${[...(f.presences||[])].sort((a,b) => (a.date||'').localeCompare(b.date||'')).map(p => `<tr>
+                <td style="padding:.2rem .4rem;white-space:nowrap;font-weight:600">${p.date ? new Date(p.date).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'}) : '—'}</td>
+                <td style="padding:.2rem .4rem;color:var(--text-500)">${esc(p.note||'')}</td>
+                <td style="padding:.2rem .4rem;text-align:right"><button class="btn-del-row" onclick="removeFestivalPresence('${f.id}','${p.id}')" title="Supprimer">✕</button></td>
+              </tr>`).join('')}
+            </table>`
+          : `<p style="font-size:.82rem;color:var(--text-400);margin:.2rem 0 .5rem">Aucune présence enregistrée.</p>`}
+      </div>
+      <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+        <input type="date" id="fest-pres-date-${f.id}" style="font-size:.8rem;padding:.3rem .5rem;border:1px solid var(--border-input);border-radius:var(--rx);font-family:inherit" />
+        <input type="text" id="fest-pres-note-${f.id}" placeholder="Note (facultative)…" style="flex:1;min-width:120px;font-size:.8rem;padding:.3rem .5rem;border:1px solid var(--border-input);border-radius:var(--rx);font-family:inherit" />
+        <button class="btn-primary" style="padding:.3rem .7rem;font-size:.8rem" onclick="addFestivalPresence('${f.id}')">+ Présence</button>
+      </div>
+
+      ${f.notes ? `<div class="detail-section-title" style="margin-top:.75rem">Notes</div><div class="detail-notes">${esc(f.notes)}</div>` : ''}
 
       <div class="detail-actions">
         <button class="btn-cancel" onclick="closeModal('detail');confirmDeleteFestival('${f.id}')">Supprimer</button>
@@ -2001,6 +2043,28 @@ function openFestivalDetail(id) {
 function confirmDeleteFestival(id) {
   _pendingDelete = { type: 'festival', id };
   openModal('confirm');
+}
+
+function addFestivalPresence(festId) {
+  const f = state.festivals.find(x => x.id === festId);
+  if (!f) return;
+  const date = document.getElementById(`fest-pres-date-${festId}`)?.value || '';
+  const note = document.getElementById(`fest-pres-note-${festId}`)?.value.trim() || '';
+  if (!date) { alert('Veuillez sélectionner une date.'); return; }
+  if (!Array.isArray(f.presences)) f.presences = [];
+  f.presences.push({ id: uid(), date, note, done: false });
+  saveState();
+  renderTasks();
+  openFestivalDetail(festId);
+}
+
+function removeFestivalPresence(festId, presId) {
+  const f = state.festivals.find(x => x.id === festId);
+  if (!f) return;
+  f.presences = (f.presences || []).filter(p => p.id !== presId);
+  saveState();
+  renderTasks();
+  openFestivalDetail(festId);
 }
 
 // ── Festival form linking ──────────────────────────
@@ -2268,6 +2332,7 @@ function renderAgenda() {
     (c.exchanges || []).forEach(e => {
       entries.push({
         ...e,
+        _source: 'contact',
         contactId:   c.id,
         contactName: c.name,
         contactCat:  c.category,
@@ -2275,19 +2340,34 @@ function renderAgenda() {
       });
     });
   });
+  // Festival presences
+  (state.festivals || []).forEach(f => {
+    (f.presences || []).forEach(p => {
+      entries.push({
+        id: p.id, date: p.date, note: p.note,
+        _source: 'festival',
+        festivalId:   f.id,
+        festivalName: f.name,
+        festivalCat:  f.category,
+      });
+    });
+  });
 
   document.getElementById('nav-agenda-count').textContent = entries.length;
 
-  // Source filter (Contacts / Jeux)
+  // Source filter (Contacts / Jeux / Festivals)
   const activeSrc = state.agendaSourceFilter || [];
-  const showContacts = activeSrc.length === 0 || activeSrc.includes('contacts');
-  const showJeux     = activeSrc.length === 0 || activeSrc.includes('jeux');
+  const showContacts  = activeSrc.length === 0 || activeSrc.includes('contacts');
+  const showJeux      = activeSrc.length === 0 || activeSrc.includes('jeux');
+  const showFestivals = activeSrc.length === 0 || activeSrc.includes('festivals');
 
   // Category filter (checkboxes) — only applies to contact exchanges
   const activeCats = state.agendaCatFilters || [];
-  const filtered = showContacts
-    ? (activeCats.length > 0 ? entries.filter(e => activeCats.includes(e.contactCat)) : entries)
-    : [];
+  let filtered = entries.filter(e => {
+    if (e._source === 'festival') return showFestivals;
+    if (!showContacts) return false;
+    return activeCats.length === 0 || activeCats.includes(e.contactCat);
+  });
 
   document.getElementById('agenda-count').textContent =
     `${filtered.length} échange${filtered.length !== 1 ? 's' : ''}${activeCats.length || activeSrc.length ? ' (filtré)' : ''}`;
@@ -2324,16 +2404,30 @@ function renderAgenda() {
     evts.forEach(e => {
       const d = new Date(e.date);
       const dateStr = isNaN(d) ? e.date : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-      const avatarHtml = e.contactPhoto
-        ? `<img src="${esc(e.contactPhoto)}" class="agenda-avatar" alt="" />`
-        : `<div class="list-avatar list-avatar-${e.contactCat}" style="width:24px;height:24px;font-size:.6rem;flex-shrink:0">${initials(e.contactName)}</div>`;
-      const emoji = EXCH_EMOJI[e.type] || '📝';
-      html += `<div class="agenda-entry" onclick="openDetail('contact','${e.contactId}')">
-        <span class="agenda-date">${dateStr}</span>
-        <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">${emoji} ${esc(e.type||'autre')}</span></span>
-        <div class="agenda-contact-wrap">${avatarHtml}<span class="agenda-contact-name badge-${e.contactCat}">${esc(e.contactName)}</span></div>
-        ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
-      </div>`;
+      if (e._source === 'festival') {
+        const festIcon = FEST_ICONS[e.festivalCat] || '🎪';
+        const festLabel = FEST_LABELS[e.festivalCat] || 'Festival';
+        html += `<div class="agenda-entry" onclick="openFestivalDetail('${e.festivalId}')">
+          <span class="agenda-date">${dateStr}</span>
+          <span class="agenda-type-badge"><span class="badge badge-fest-${e.festivalCat}" style="font-size:.7rem">${festIcon} Présence</span></span>
+          <div class="agenda-contact-wrap">
+            <span style="font-size:.95rem">${festIcon}</span>
+            <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">${esc(e.festivalName)}</span>
+          </div>
+          ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
+        </div>`;
+      } else {
+        const avatarHtml = e.contactPhoto
+          ? `<img src="${esc(e.contactPhoto)}" class="agenda-avatar" alt="" />`
+          : `<div class="list-avatar list-avatar-${e.contactCat}" style="width:24px;height:24px;font-size:.6rem;flex-shrink:0">${initials(e.contactName)}</div>`;
+        const emoji = EXCH_EMOJI[e.type] || '📝';
+        html += `<div class="agenda-entry" onclick="openDetail('contact','${e.contactId}')">
+          <span class="agenda-date">${dateStr}</span>
+          <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">${emoji} ${esc(e.type||'autre')}</span></span>
+          <div class="agenda-contact-wrap">${avatarHtml}<span class="agenda-contact-name badge-${e.contactCat}">${esc(e.contactName)}</span></div>
+          ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
+        </div>`;
+      }
     });
   }
   listEl.innerHTML = html;
