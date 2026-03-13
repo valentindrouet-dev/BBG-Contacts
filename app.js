@@ -3783,6 +3783,7 @@ updateInterestUI(3);
   document.getElementById('nav-tasks-count').textContent = pendingTasks;
   const agendaCount = state.contacts.reduce((n, c) => n + (c.exchanges||[]).length, 0);
   document.getElementById('nav-agenda-count').textContent = agendaCount;
+  document.getElementById('nav-festivals-count').textContent = (state.festivals||[]).length;
 })();
 // Sync UI controls to default state
 document.getElementById('contacts-sort').value = state.contactsSort;

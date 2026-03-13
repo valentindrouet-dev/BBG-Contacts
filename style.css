@@ -142,12 +142,12 @@ a:hover { color: var(--primary-700); }
 .logo-text  { font-size: .9rem; font-weight: 700; color: #ffffff; }
 
 /* Nav tabs (on dark header) */
-.nav-tabs { display: flex; gap: 0; flex: 1; overflow: hidden; }
+.nav-tabs { display: flex; gap: 0.15rem; flex: 1; overflow: hidden; }
 .nav-tab {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.35rem 0.55rem;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
   border-radius: var(--rx-lg);
   font-size: 0.78rem;
   font-weight: 500;
@@ -155,7 +155,7 @@ a:hover { color: var(--primary-700); }
   white-space: nowrap;
   transition: background var(--transition), color var(--transition);
 }
-.nav-tab svg { display: none; } /* hide icons to save space */
+.nav-tab svg { width: 14px; height: 14px; flex-shrink: 0; }
 .nav-tab:hover  { background: #334155; color: #ffffff; }
 .nav-tab.active { background: #334155; color: #ffffff; }
 
