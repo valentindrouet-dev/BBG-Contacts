@@ -378,16 +378,29 @@ function renderDashboard() {
       }).join('')}
     </div>` : ''}
 
-    ${urgentTasks.length > 0 ? `
-    <div class="dash-section">
-      <div class="dash-section-title">🚨 Tâches critiques &amp; urgentes</div>
-      ${urgentTasks.slice(0,5).map(t => `
-        <div class="dash-task-row" onclick="switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')">
-          <span class="badge badge-urgence-${t.urgency}">${URGENCY_EMOJI[t.urgency]||''} ${t.urgency}</span>
-          <span class="dash-task-text">${esc(t.text)}</span>
-          <span class="dash-task-source">${esc(t._name)}</span>
-        </div>`).join('')}
-    </div>` : `<div class="dash-section"><p style="color:var(--text-500);font-size:.875rem">✅ Aucune tâche urgente en cours.</p></div>`}
+    ${(() => {
+      const upcomingFests = [...state.festivals]
+        .filter(f => f.dateStart && f.dateStart > today_str)
+        .sort((a,b) => a.dateStart.localeCompare(b.dateStart))
+        .slice(0, 5);
+      if (!upcomingFests.length) return `<div class="dash-section"><p style="color:var(--text-500);font-size:.875rem">🎪 Aucun festival à venir.</p></div>`;
+      return `<div class="dash-section">
+        <div class="dash-section-title">🎪 Festivals à venir</div>
+        ${upcomingFests.map(f => {
+          const days = Math.ceil((new Date(f.dateStart) - new Date(today_str)) / 86400000);
+          const dayLabel = days === 1 ? 'demain' : `dans ${days} j`;
+          const dayColor = days <= 7 ? '#ea580c' : days <= 30 ? '#ca8a04' : '#16a34a';
+          const dateLabel = new Date(f.dateStart).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
+          return `<div class="dash-task-row" onclick="switchPage('festivals');openFestivalDetail('${f.id}')">
+            <span class="badge badge-fest-${f.category}" style="font-size:.7rem">${FEST_ICONS[f.category]||'🎪'} ${esc(FEST_LABELS[f.category]||'')}</span>
+            <span class="dash-task-text">${esc(f.name)}</span>
+            ${f.city ? `<span class="dash-task-source">📍 ${esc(f.city)}</span>` : ''}
+            <span class="dash-task-date">${dateLabel}</span>
+            <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    })()}
 
     <div class="dash-cols">
       <div class="dash-section" style="flex:1;min-width:0">
