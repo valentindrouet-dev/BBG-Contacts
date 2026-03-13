@@ -55,6 +55,13 @@
         Agenda
         <span class="nav-count" id="nav-agenda-count">0</span>
       </button>
+      <button class="nav-tab" data-page="festivals">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+        </svg>
+        Festivals
+        <span class="nav-count" id="nav-festivals-count">0</span>
+      </button>
     </nav>
 
     <div class="header-actions">
@@ -417,6 +424,112 @@
     </div>
 
   </div><!-- /page-agenda -->
+
+
+  <!-- ╔═════════════════════════════════╗
+       ║       PAGE — FESTIVALS         ║
+       ╚═════════════════════════════════╝ -->
+  <div class="page" id="page-festivals">
+
+    <div class="panel panel-pad mb-4">
+      <div class="search-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input class="search-input" id="festivals-search" type="text"
+          placeholder="Rechercher par nom, ville…" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="panel mb-4" id="festivals-filter-panel">
+      <button class="filter-toggle" id="festivals-filter-toggle">
+        <div class="filter-toggle-left">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-500)">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          <span>Filtres</span>
+          <span class="filter-active-count hidden" id="festivals-filter-count">0 actif(s)</span>
+        </div>
+        <svg class="chevron-icon" id="festivals-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="filter-body" id="festivals-filter-body" style="display:none">
+        <div class="filter-grid" style="grid-template-columns:1fr 1fr">
+          <div class="filter-field">
+            <label>Catégorie</label>
+            <select id="festivals-category-filter">
+              <option value="">Tous</option>
+              <option value="festival">🎪 Festival</option>
+              <option value="festival-pro">🤝 Festival Pro</option>
+              <option value="micro-festival">🏠 Micro-Festival</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <label>Participation</label>
+            <select id="festivals-participating-filter">
+              <option value="">Tous</option>
+              <option value="yes">✓ Je participe</option>
+              <option value="no">✗ Non</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-reset hidden" id="festivals-filter-reset">Réinitialiser les filtres</button>
+      </div>
+    </div>
+
+    <div class="toolbar mb-4">
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <p class="toolbar-count" id="festivals-count">0 festival</p>
+        <button class="btn-primary btn-add-inline" onclick="openModal('festival')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouveau
+        </button>
+      </div>
+      <div class="toolbar-right">
+        <div class="zoom-wrap" id="festivals-zoom-wrap">
+          <button class="zoom-btn" onclick="zoomPage('festivals',-1)" title="Réduire">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
+          <input type="range" class="zoom-slider" id="festivals-zoom" min="0" max="4" step="1" value="2" />
+          <button class="zoom-btn" onclick="zoomPage('festivals',1)" title="Agrandir">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
+        </div>
+        <div class="view-toggle">
+          <button class="view-btn active" id="festivals-view-grid" title="Vue vignettes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="view-btn" id="festivals-view-timeline" title="Vue frise chronologique">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><line x1="7" y1="6" x2="7" y2="10"/><line x1="17" y1="14" x2="17" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="sort-wrap">
+          <select class="sort-select" id="festivals-sort">
+            <option value="dateStart">Date</option>
+            <option value="name">Nom</option>
+            <option value="city">Ville</option>
+          </select>
+          <button class="sort-order-btn" id="festivals-sort-order" title="Inverser le tri">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="festivals-sort-icon">
+              <polyline points="18 15 12 9 6 15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid" id="festivals-grid"></div>
+    <div id="festivals-timeline" style="display:none"></div>
+
+    <div class="empty-state hidden" id="festivals-empty">
+      <div class="empty-icon">🎪</div>
+      <h3>Aucun festival</h3>
+      <p>Commencez par ajouter votre premier festival.</p>
+      <button class="btn-primary" onclick="openModal('festival')">Ajouter un festival</button>
+    </div>
+
+  </div><!-- /page-festivals -->
 
 </main>
 
@@ -817,6 +930,150 @@
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" onclick="closeModal('prototype')">Annuler</button>
+        <button type="submit" class="btn-save">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — FESTIVAL
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-festival">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2 id="modal-festival-title">Nouveau festival</h2>
+      <button class="modal-close" onclick="closeModal('festival')">✕</button>
+    </div>
+    <form class="modal-form" id="form-festival" onsubmit="submitFestival(event)">
+      <input type="hidden" id="festival-id" />
+
+      <!-- Participation + Protos -->
+      <div class="form-group full" style="display:flex;gap:1.5rem">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.875rem;color:var(--text-700)">
+          <input type="checkbox" id="festival-participating" style="width:16px;height:16px;accent-color:var(--primary-600);cursor:pointer" />
+          ✅ J'y participe
+        </label>
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.875rem;color:var(--text-700)">
+          <input type="checkbox" id="festival-protos" style="width:16px;height:16px;accent-color:var(--primary-600);cursor:pointer" />
+          🎲 Protos présentés
+        </label>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nom <span class="req">*</span></label>
+          <input type="text" id="festival-name" required placeholder="Ex : Essen Spiel" />
+        </div>
+        <div class="form-group">
+          <label>Catégorie</label>
+          <select id="festival-category">
+            <option value="festival">🎪 Festival</option>
+            <option value="festival-pro">🤝 Festival Pro</option>
+            <option value="micro-festival">🏠 Micro-Festival</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ville</label>
+          <input type="text" id="festival-city" placeholder="Ex : Paris" />
+        </div>
+        <div class="form-group">
+          <label>Distance 🔄</label>
+          <input type="text" id="festival-distance" placeholder="Ex : 320 km" />
+        </div>
+      </div>
+
+      <div class="form-group full">
+        <label>Adresse</label>
+        <input type="text" id="festival-address" placeholder="Ex : Parc des Expositions, Hall 5" />
+      </div>
+
+      <div class="form-group full">
+        <label>URL de l'affiche</label>
+        <input type="url" id="festival-poster-url" placeholder="https://…" />
+      </div>
+
+      <!-- Dates -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date de début</label>
+          <input type="date" id="festival-date-start" />
+        </div>
+        <div class="form-group">
+          <label>Date de fin</label>
+          <input type="date" id="festival-date-end" />
+        </div>
+      </div>
+
+      <!-- Coûts -->
+      <div class="form-group full">
+        <label>Coûts</label>
+        <div class="festival-costs-grid">
+          <div class="festival-cost-item">
+            <label>🚗 Transport</label>
+            <input type="number" id="festival-cost-transport" min="0" step="0.01" placeholder="0" />
+          </div>
+          <div class="festival-cost-item">
+            <label>🅿️ Parking</label>
+            <input type="number" id="festival-cost-parking" min="0" step="0.01" placeholder="0" />
+          </div>
+          <div class="festival-cost-item">
+            <label>🎟️ Billet / Stand</label>
+            <input type="number" id="festival-cost-ticket" min="0" step="0.01" placeholder="0" />
+          </div>
+          <div class="festival-cost-item">
+            <label>🍔 Nourriture</label>
+            <input type="number" id="festival-cost-food" min="0" step="0.01" placeholder="0" />
+          </div>
+          <div class="festival-cost-item">
+            <label>🛏️ Logement</label>
+            <input type="number" id="festival-cost-lodging" min="0" step="0.01" placeholder="0" />
+          </div>
+        </div>
+      </div>
+
+      <!-- RDV sur place : contacts -->
+      <div class="form-group full">
+        <label>RDV sur place</label>
+        <div class="game-list-wrap">
+          <table class="task-list-table">
+            <thead><tr><th style="width:55%">Contact</th><th style="width:35%">Note</th><th style="width:10%"></th></tr></thead>
+            <tbody id="fest-contacts-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addFestContactRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un contact
+        </button>
+      </div>
+
+      <!-- Jeux sur place -->
+      <div class="form-group full">
+        <label>Jeux sur place</label>
+        <div class="game-list-wrap">
+          <table class="task-list-table">
+            <thead><tr><th style="width:55%">Jeu / Prototype</th><th style="width:35%">Note</th><th style="width:10%"></th></tr></thead>
+            <tbody id="fest-games-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addFestGameRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un jeu
+        </button>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="festival-notes" placeholder="Impressions, objectifs, retours…" rows="3"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('festival')">Annuler</button>
         <button type="submit" class="btn-save">Enregistrer</button>
       </div>
     </form>

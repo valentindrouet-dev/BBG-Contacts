@@ -99,6 +99,10 @@ a:hover { color: var(--primary-700); }
 .badge-production    { background: #ffedd5; color: #9a3412; }
 .badge-sorti         { background: #dcfce7; color: #166534; }
 .badge-évalué        { background: #d1fae5; color: #065f46; }
+/* Festival categories */
+.badge-fest-festival       { background: #fef3c7; color: #92400e; }
+.badge-fest-festival-pro   { background: #dbeafe; color: #1e3a8a; }
+.badge-fest-micro-festival { background: #dcfce7; color: #14532d; }
 /* Contact status (footer) */
 .badge-actif    { background: #dcfce7; color: #166534; }
 .badge-inactif  { background: #f3f4f6; color: #374151; }
@@ -416,6 +420,10 @@ a:hover { color: var(--primary-700); }
 .card-media-développement { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); }
 .card-media-production    { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); }
 .card-media-sorti         { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
+/* Festival category gradients */
+.card-media-fest-festival       { background: linear-gradient(135deg, #fffbeb 0%, #fde68a 100%); }
+.card-media-fest-festival-pro   { background: linear-gradient(135deg, #eff6ff 0%, #bfdbfe 100%); }
+.card-media-fest-micro-festival { background: linear-gradient(135deg, #f0fdf4 0%, #bbf7d0 100%); }
 
 /* Avatar (contact) */
 .card-avatar {
@@ -1642,6 +1650,67 @@ a:hover { color: var(--primary-700); }
   box-shadow: 0 2px 8px rgba(0,0,0,.25);
 }
 .detail-side-nav:disabled { opacity: .25; cursor: default; }
+
+/* ═══════════════════════════════════════════════════
+   FESTIVALS
+═══════════════════════════════════════════════════ */
+.festival-costs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .5rem;
+}
+.festival-cost-item {
+  display: flex; flex-direction: column; gap: .2rem;
+}
+.festival-cost-item label {
+  font-size: .75rem; color: var(--text-500); font-weight: 500;
+}
+.festival-cost-item input {
+  padding: .35rem .5rem;
+  border: 1px solid var(--border-input);
+  border-radius: var(--rx);
+  font-size: .82rem;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+}
+.festival-cost-item input:focus { border-color: var(--primary-400); }
+
+/* ── Timeline (frise chronologique) ── */
+.fest-timeline {
+  display: flex; flex-direction: column; gap: 1.5rem;
+}
+.fest-timeline-year-header {
+  font-size: 1rem; font-weight: 700; color: var(--text-700);
+  padding: .4rem 0; border-bottom: 2px solid var(--border);
+  margin-bottom: .6rem;
+}
+.fest-timeline-items {
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.fest-timeline-card {
+  display: flex; align-items: center; gap: .75rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rx-lg); padding: .6rem .9rem;
+  cursor: pointer; transition: box-shadow .12s, border-color .12s;
+}
+.fest-timeline-card:hover { box-shadow: var(--shadow-sm); border-color: var(--primary-200); }
+.fest-timeline-card.fest-participating { border-left: 3px solid #16a34a; }
+.fest-timeline-date {
+  font-size: .75rem; font-weight: 600; color: var(--text-500);
+  white-space: nowrap; min-width: 3.5rem;
+}
+.fest-timeline-body { flex: 1; min-width: 0; }
+.fest-timeline-name {
+  font-size: .9rem; font-weight: 600; color: var(--text-800);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fest-timeline-city {
+  font-size: .75rem; color: var(--text-500); margin-top: .1rem;
+}
+.fest-timeline-meta {
+  display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-top: .25rem;
+}
 
 /* ═══════════════════════════════════════════════════
    BACKUP BUTTON

@@ -7,6 +7,7 @@
 const state = {
   contacts:   [],
   prototypes: [],
+  festivals:  [],
   activePage: 'home',
 
   contactsSearch:    '',
@@ -26,6 +27,14 @@ const state = {
   prototypesView:    'grid',
   prototypesZoom:    1,
 
+  festivalsSearch:        '',
+  festivalsCategory:      '',
+  festivalsParticipating: '',
+  festivalsSort:          'dateStart',
+  festivalsSortAsc:       true,
+  festivalsView:          'grid',
+  festivalsZoom:          1,
+
   standaloneTasks:    [],
   compareMode:        false,
   selectedForCompare: [],
@@ -41,6 +50,7 @@ const state = {
 function saveState() {
   localStorage.setItem('bbg-contacts',         JSON.stringify(state.contacts));
   localStorage.setItem('bbg-prototypes',       JSON.stringify(state.prototypes));
+  localStorage.setItem('bbg-festivals',        JSON.stringify(state.festivals));
   localStorage.setItem('bbg-standalone-tasks', JSON.stringify(state.standaloneTasks));
 }
 // ── Data migration ──────────────────────────────
@@ -64,6 +74,16 @@ function migrateContact(c) {
 }
 const STATUS_MIGRATE = { concept: 'tester', test: 'tester', proto: 'tester', signé: 'développement', finalisation: 'production', publié: 'sorti' };
 
+function migrateFestival(f) {
+  if (!Array.isArray(f.contactLinks)) f.contactLinks = [];
+  if (!Array.isArray(f.gameLinks))    f.gameLinks    = [];
+  if (!f.costs || typeof f.costs !== 'object') f.costs = {};
+  if (typeof f.participating === 'undefined')  f.participating = false;
+  if (typeof f.protos === 'undefined')         f.protos = false;
+  if (!f.category) f.category = 'festival';
+  return f;
+}
+
 function migratePrototype(p) {
   if (!Array.isArray(p.tasks)) {
     p.tasks = p.task
@@ -85,9 +105,10 @@ function migratePrototype(p) {
 
 function loadState() {
   // SAFE load: never overwrite localStorage on error to avoid data loss
-  let c, p, s;
+  let c, p, f, s;
   try { c = localStorage.getItem('bbg-contacts'); } catch(e) {}
   try { p = localStorage.getItem('bbg-prototypes'); } catch(e) {}
+  try { f = localStorage.getItem('bbg-festivals'); } catch(e) {}
   try { s = localStorage.getItem('bbg-standalone-tasks'); } catch(e) {}
 
   try {
@@ -101,6 +122,12 @@ function loadState() {
   } catch(e) {
     console.error('Prototypes parse error', e);
     state.prototypes = SEED_PROTOTYPES.map(migratePrototype);
+  }
+  try {
+    state.festivals = (f ? JSON.parse(f) : []).map(migrateFestival);
+  } catch(e) {
+    console.error('Festivals parse error', e);
+    state.festivals = [];
   }
   try {
     state.standaloneTasks = s ? JSON.parse(s) : [];
@@ -243,6 +270,7 @@ function switchPage(page) {
   if (page === 'prototypes') renderPrototypes();
   if (page === 'tasks')      renderTasks();
   if (page === 'agenda')     renderAgenda();
+  if (page === 'festivals')  renderFestivals();
 }
 
 // ═══════════════════════════════════════════════════
@@ -483,6 +511,7 @@ function zoomPage(page, delta) {
   slider.value = state[key];
   if (page === 'contacts')   renderContacts();
   if (page === 'prototypes') renderPrototypes();
+  if (page === 'festivals')  renderFestivals();
 }
 
 // ═══════════════════════════════════════════════════
@@ -1710,6 +1739,490 @@ function populateTestSessionsForm(sessions = []) {
 }
 
 // ═══════════════════════════════════════════════════
+// FESTIVALS
+// ═══════════════════════════════════════════════════
+
+const FEST_ICONS = { 'festival': '🎪', 'festival-pro': '🤝', 'micro-festival': '🏠' };
+const FEST_LABELS = { 'festival': 'Festival', 'festival-pro': 'Festival Pro', 'micro-festival': 'Micro-Festival' };
+
+function festivalTotalCost(f) {
+  const c = f.costs || {};
+  return (c.transport||0) + (c.parking||0) + (c.ticket||0) + (c.food||0) + (c.lodging||0);
+}
+
+function festivalDuration(f) {
+  if (!f.dateStart || !f.dateEnd) return null;
+  const d0 = new Date(f.dateStart), d1 = new Date(f.dateEnd);
+  if (isNaN(d0) || isNaN(d1) || d1 < d0) return null;
+  const days = Math.round((d1 - d0) / 86400000) + 1;
+  const nights = days - 1;
+  return `${days} jour${days > 1 ? 's' : ''}${nights > 0 ? ` + ${nights} nuit${nights > 1 ? 's' : ''}` : ''}`;
+}
+
+function festDateRange(f) {
+  const fmt = d => d ? new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' }) : null;
+  const s = fmt(f.dateStart), e = fmt(f.dateEnd);
+  if (s && e && s !== e) return `${s} → ${e}`;
+  return s || e || '—';
+}
+
+function filteredFestivals() {
+  let list = [...state.festivals];
+  const q = state.festivalsSearch.toLowerCase().trim();
+  if (q) list = list.filter(f =>
+    (f.name   || '').toLowerCase().includes(q) ||
+    (f.city   || '').toLowerCase().includes(q) ||
+    (f.notes  || '').toLowerCase().includes(q)
+  );
+  if (state.festivalsCategory) list = list.filter(f => f.category === state.festivalsCategory);
+  if (state.festivalsParticipating === 'yes') list = list.filter(f => f.participating);
+  if (state.festivalsParticipating === 'no')  list = list.filter(f => !f.participating);
+  list.sort((a, b) => {
+    let cmp = 0;
+    switch (state.festivalsSort) {
+      case 'dateStart': cmp = (a.dateStart||'').localeCompare(b.dateStart||''); break;
+      case 'name':      cmp = (a.name||'').localeCompare(b.name||'', 'fr'); break;
+      case 'city':      cmp = (a.city||'').localeCompare(b.city||'', 'fr'); break;
+    }
+    return state.festivalsSortAsc ? cmp : -cmp;
+  });
+  return list;
+}
+
+function festivalCard(f, zoom) {
+  const isMin = zoom <= 1;
+  const icon = FEST_ICONS[f.category] || '🎪';
+  const label = FEST_LABELS[f.category] || f.category;
+  const participating = f.participating
+    ? `<span style="position:absolute;top:.4rem;right:.4rem;background:rgba(22,163,74,.9);color:#fff;border-radius:var(--rx);padding:.1rem .4rem;font-size:.65rem;font-weight:700">✓ Participe</span>`
+    : '';
+  const protoBadge = f.protos
+    ? `<span style="position:absolute;bottom:.35rem;left:.35rem;background:rgba(255,255,255,.9);border-radius:var(--rx);padding:.1rem .4rem;font-size:.65rem;font-weight:600;color:var(--primary-700)">🎲 Protos</span>`
+    : '';
+  const editBtn = `<button class="card-edit-btn" onclick="event.stopPropagation();editFestival('${f.id}')" title="Modifier">${ICONS.pencil}</button>`;
+  const mediaContent = f.posterUrl
+    ? `<img src="${esc(f.posterUrl)}" class="card-photo" alt="" onerror="this.style.display='none'" />`
+    : `<span class="card-game-icon">${icon}</span>`;
+  const badge = isMin
+    ? `<span class="badge badge-fest-${f.category} card-badge" style="font-size:.6rem;padding:.1rem .35rem">${icon}</span>`
+    : `<span class="badge badge-fest-${f.category} card-badge">${icon} ${esc(label)}</span>`;
+
+  let body;
+  if (isMin) {
+    body = `<div class="card-min-name" title="${esc(f.name)}">${esc(f.name)}</div>`;
+  } else {
+    const total = festivalTotalCost(f);
+    const dur = festivalDuration(f);
+    body = `<div class="card-body">
+      <h3 class="card-title">${esc(f.name)}</h3>
+      ${f.city ? `<p class="card-subtitle">📍 ${esc(f.city)}</p>` : ''}
+      ${zoom >= 2 && (f.dateStart || f.dateEnd) ? `<p style="font-size:.72rem;color:var(--text-500);margin:.15rem 0">${festDateRange(f)}</p>` : ''}
+      ${zoom >= 3 && dur ? `<p style="font-size:.7rem;color:var(--text-400);margin:.1rem 0">${dur}</p>` : ''}
+      <div class="card-footer">
+        ${total > 0 ? `<span style="font-size:.72rem;color:var(--text-500)">💶 ${total.toFixed(0)} €</span>` : '<span></span>'}
+        ${zoom >= 3 && f.distance ? `<span style="font-size:.7rem;color:var(--text-400)">🔄 ${esc(f.distance)}</span>` : ''}
+      </div>
+    </div>`;
+  }
+
+  return `<div class="card card-hover"
+    onclick="openFestivalDetail('${f.id}')" title="${esc(f.name)}">
+    <div class="card-media card-media-fest-${f.category}">
+      ${mediaContent}${badge}${participating}${protoBadge}${editBtn}
+    </div>
+    ${body}
+  </div>`;
+}
+
+function buildFestivalsTimeline(list) {
+  if (!list.length) return '<div class="timeline-empty" style="text-align:center;padding:2rem;color:var(--text-400)">Aucun festival à afficher</div>';
+  // Group by year (from dateStart, or createdAt)
+  const byYear = {};
+  list.forEach(f => {
+    const y = f.dateStart ? f.dateStart.slice(0, 4) : (f.createdAt ? f.createdAt.slice(0, 4) : 'Sans date');
+    if (!byYear[y]) byYear[y] = [];
+    byYear[y].push(f);
+  });
+  const years = Object.keys(byYear).sort((a, b) => state.festivalsSortAsc ? a.localeCompare(b) : b.localeCompare(a));
+  return `<div class="fest-timeline">${years.map(year => {
+    const items = byYear[year].sort((a, b) => (a.dateStart||'').localeCompare(b.dateStart||''));
+    return `<div class="fest-timeline-year">
+      <div class="fest-timeline-year-header">${year}</div>
+      <div class="fest-timeline-items">${items.map(f => {
+        const icon = FEST_ICONS[f.category] || '🎪';
+        const total = festivalTotalCost(f);
+        const dur = festivalDuration(f);
+        return `<div class="fest-timeline-card${f.participating ? ' fest-participating' : ''}" onclick="openFestivalDetail('${f.id}')">
+          <div class="fest-timeline-date">${f.dateStart ? new Date(f.dateStart).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : '—'}</div>
+          <div class="fest-timeline-body">
+            <div class="fest-timeline-name">${f.participating ? '✓ ' : ''}${esc(f.name)}</div>
+            ${f.city ? `<div class="fest-timeline-city">📍 ${esc(f.city)}</div>` : ''}
+            <div class="fest-timeline-meta">
+              <span class="badge badge-fest-${f.category}" style="font-size:.65rem">${icon} ${esc(FEST_LABELS[f.category]||'')}</span>
+              ${f.protos ? `<span style="font-size:.68rem;color:var(--primary-600);font-weight:600">🎲 Protos</span>` : ''}
+              ${dur ? `<span style="font-size:.68rem;color:var(--text-400)">${dur}</span>` : ''}
+              ${total > 0 ? `<span style="font-size:.68rem;color:var(--text-500)">💶 ${total.toFixed(0)} €</span>` : ''}
+            </div>
+          </div>
+          <button class="card-edit-btn" style="position:static;opacity:1;margin-left:auto;flex-shrink:0" onclick="event.stopPropagation();editFestival('${f.id}')" title="Modifier">${ICONS.pencil}</button>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderFestivals() {
+  const list   = filteredFestivals();
+  const gridEl = document.getElementById('festivals-grid');
+  const tlEl   = document.getElementById('festivals-timeline');
+  const empty  = document.getElementById('festivals-empty');
+
+  document.getElementById('nav-festivals-count').textContent = state.festivals.length;
+  const n = list.length;
+  document.getElementById('festivals-count').textContent = `${n} festival${n > 1 ? 's' : ''}`;
+
+  const zoom = state.festivalsZoom;
+  gridEl.dataset.zoom = zoom;
+
+  const isGrid = state.festivalsView === 'grid';
+  gridEl.style.display     = isGrid ? '' : 'none';
+  tlEl.style.display       = isGrid ? 'none' : '';
+  document.getElementById('festivals-view-grid').classList.toggle('active', isGrid);
+  document.getElementById('festivals-view-timeline').classList.toggle('active', !isGrid);
+
+  if (isGrid) {
+    gridEl.innerHTML = list.map(f => festivalCard(f, zoom)).join('');
+  } else {
+    tlEl.innerHTML = buildFestivalsTimeline(list);
+  }
+
+  empty.classList.toggle('hidden', n > 0);
+
+  // Update filter badge
+  const activeFilters = [state.festivalsCategory, state.festivalsParticipating].filter(Boolean).length;
+  const fc = document.getElementById('festivals-filter-count');
+  if (fc) {
+    fc.textContent = `${activeFilters} actif(s)`;
+    fc.classList.toggle('hidden', activeFilters === 0);
+  }
+  const resetBtn = document.getElementById('festivals-filter-reset');
+  if (resetBtn) resetBtn.classList.toggle('hidden', activeFilters === 0);
+}
+
+// ── Festival detail (simple panel) ────────────────
+function openFestivalDetail(id) {
+  const f = state.festivals.find(x => x.id === id);
+  if (!f) return;
+  const icon = FEST_ICONS[f.category] || '🎪';
+  const dur = festivalDuration(f);
+  const total = festivalTotalCost(f);
+  const costs = f.costs || {};
+
+  const el = document.getElementById('modal-detail-content');
+  const _fList = filteredFestivals();
+  const _fIdx  = _fList.findIndex(x => x.id === id);
+  _detailType = 'festival';
+  _detailId   = id;
+
+  el.innerHTML = `
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
+        ${f.posterUrl
+          ? `<img src="${esc(f.posterUrl)}" style="width:48px;height:48px;border-radius:var(--rx-lg);object-fit:cover;border:2px solid var(--border)" alt="" onerror="this.style.display='none'" />`
+          : `<span style="font-size:1.75rem;line-height:1">${icon}</span>`}
+        <div style="min-width:0">
+          <div style="font-size:1.05rem;font-weight:700;color:var(--text-800);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.name)}</div>
+          ${f.city ? `<div style="font-size:.8rem;color:var(--text-500)">📍 ${esc(f.city)}</div>` : ''}
+        </div>
+        <span class="badge badge-fest-${f.category}" style="margin-left:auto;flex-shrink:0">${icon} ${esc(FEST_LABELS[f.category]||f.category)}</span>
+      </div>
+      <button class="btn-edit-detail" onclick="closeModal('detail');editFestival('${f.id}')" title="Modifier">${ICONS.pencil}</button>
+      <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
+    </div>
+    <div class="detail-inner">
+      <div class="detail-section-title">Informations</div>
+      <div class="detail-kv">
+        ${f.participating ? `<label>Participation</label><span style="color:#16a34a;font-weight:600">✅ Je participe</span>` : `<label>Participation</label><span style="color:var(--text-400)">✗ Non</span>`}
+        ${f.protos ? `<label>Protos</label><span style="color:var(--primary-700);font-weight:600">🎲 Oui</span>` : ''}
+        ${(f.dateStart || f.dateEnd) ? `<label>Dates</label><span>${festDateRange(f)}</span>` : ''}
+        ${dur ? `<label>Durée</label><span>${dur}</span>` : ''}
+        ${f.address ? `<label>Adresse</label><span>${esc(f.address)}</span>` : ''}
+        ${f.distance ? `<label>Distance 🔄</label><span>${esc(f.distance)}</span>` : ''}
+      </div>
+
+      ${(total > 0) ? `<div class="detail-section-title">Coûts</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+        ${costs.transport ? `<tr><td style="padding:.2rem .4rem;color:var(--text-500)">🚗 Transport</td><td style="padding:.2rem .4rem;text-align:right">${(+costs.transport).toFixed(2)} €</td></tr>` : ''}
+        ${costs.parking   ? `<tr><td style="padding:.2rem .4rem;color:var(--text-500)">🅿️ Parking</td><td style="padding:.2rem .4rem;text-align:right">${(+costs.parking).toFixed(2)} €</td></tr>` : ''}
+        ${costs.ticket    ? `<tr><td style="padding:.2rem .4rem;color:var(--text-500)">🎟️ Billet/Stand</td><td style="padding:.2rem .4rem;text-align:right">${(+costs.ticket).toFixed(2)} €</td></tr>` : ''}
+        ${costs.food      ? `<tr><td style="padding:.2rem .4rem;color:var(--text-500)">🍔 Nourriture</td><td style="padding:.2rem .4rem;text-align:right">${(+costs.food).toFixed(2)} €</td></tr>` : ''}
+        ${costs.lodging   ? `<tr><td style="padding:.2rem .4rem;color:var(--text-500)">🛏️ Logement</td><td style="padding:.2rem .4rem;text-align:right">${(+costs.lodging).toFixed(2)} €</td></tr>` : ''}
+        <tr style="border-top:1px solid var(--border);font-weight:700"><td style="padding:.3rem .4rem">💶 Total</td><td style="padding:.3rem .4rem;text-align:right">${total.toFixed(2)} €</td></tr>
+      </table>` : ''}
+
+      ${(f.contactLinks||[]).length ? `<div class="detail-section-title">RDV sur place</div>
+      <div>${(f.contactLinks||[]).map(l => {
+        const c = state.contacts.find(x => x.id === l.contactId);
+        if (!c) return '';
+        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;cursor:pointer" onclick="closeModal('detail');openDetail('contact','${c.id}')">
+          <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(c.name)}</span>
+          ${l.note ? `<span style="font-size:.75rem;color:var(--text-500)">${esc(l.note)}</span>` : ''}
+          ${c.category ? `<span class="badge badge-${c.category}" style="margin-left:auto">${esc(c.category)}</span>` : ''}
+        </div>`;
+      }).filter(Boolean).join('')}</div>` : ''}
+
+      ${(f.gameLinks||[]).length ? `<div class="detail-section-title">Jeux sur place</div>
+      <div>${(f.gameLinks||[]).map(l => {
+        const p = state.prototypes.find(x => x.id === l.protoId);
+        if (!p) return '';
+        const pIcon = PROTO_ICONS[p.status] || '🎮';
+        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;cursor:pointer" onclick="closeModal('detail');openDetail('prototype','${p.id}')">
+          <span>${pIcon}</span>
+          <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(p.title)}</span>
+          ${l.note ? `<span style="font-size:.75rem;color:var(--text-500)">${esc(l.note)}</span>` : ''}
+          <span class="badge badge-${p.status}" style="margin-left:auto">${esc(STATUS_LABELS[p.status]||p.status)}</span>
+        </div>`;
+      }).filter(Boolean).join('')}</div>` : ''}
+
+      ${f.notes ? `<div class="detail-section-title">Notes</div><div class="detail-notes">${esc(f.notes)}</div>` : ''}
+
+      <div class="detail-actions">
+        <button class="btn-cancel" onclick="closeModal('detail');confirmDeleteFestival('${f.id}')">Supprimer</button>
+      </div>
+    </div>`;
+
+  document.getElementById('detail-nav-prev').disabled = _fIdx <= 0;
+  document.getElementById('detail-nav-next').disabled = _fIdx >= _fList.length - 1;
+  document.getElementById('modal-detail').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  el.scrollTop = 0;
+}
+
+function confirmDeleteFestival(id) {
+  _pendingDelete = { type: 'festival', id };
+  openModal('confirm');
+}
+
+// ── Festival form linking ──────────────────────────
+function addFestContactRow(link = {}) {
+  const tbody = document.getElementById('fest-contacts-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const opts = state.contacts.map(c =>
+    `<option value="${c.id}" ${link.contactId === c.id ? 'selected' : ''}>${esc(c.name)}${c.company ? ' – ' + esc(c.company) : ''}</option>`
+  ).join('');
+  tr.innerHTML = `
+    <td><select><option value="">— Choisir un contact —</option>${opts}</select></td>
+    <td><input type="text" placeholder="Note…" value="${esc(link.note || '')}" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getFestContactLinksFromForm() {
+  const tbody = document.getElementById('fest-contacts-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
+    contactId: tr.querySelector('select')?.value || '',
+    note:      tr.querySelector('input[type="text"]')?.value.trim() || '',
+  })).filter(l => l.contactId);
+}
+
+function populateFestContactLinksForm(links = []) {
+  const tbody = document.getElementById('fest-contacts-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  links.forEach(l => addFestContactRow(l));
+}
+
+function addFestGameRow(link = {}) {
+  const tbody = document.getElementById('fest-games-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const opts = state.prototypes.map(p =>
+    `<option value="${p.id}" ${link.protoId === p.id ? 'selected' : ''}>${esc(p.title)}</option>`
+  ).join('');
+  tr.innerHTML = `
+    <td><select><option value="">— Choisir un jeu —</option>${opts}</select></td>
+    <td><input type="text" placeholder="Note…" value="${esc(link.note || '')}" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getFestGameLinksFromForm() {
+  const tbody = document.getElementById('fest-games-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
+    protoId: tr.querySelector('select')?.value || '',
+    note:    tr.querySelector('input[type="text"]')?.value.trim() || '',
+  })).filter(l => l.protoId);
+}
+
+function populateFestGameLinksForm(links = []) {
+  const tbody = document.getElementById('fest-games-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  links.forEach(l => addFestGameRow(l));
+}
+
+// ── Festival CRUD ──────────────────────────────────
+function resetFestivalForm() {
+  document.getElementById('festival-id').value          = '';
+  document.getElementById('festival-name').value        = '';
+  document.getElementById('festival-city').value        = '';
+  document.getElementById('festival-address').value     = '';
+  document.getElementById('festival-distance').value    = '';
+  document.getElementById('festival-poster-url').value  = '';
+  document.getElementById('festival-date-start').value  = '';
+  document.getElementById('festival-date-end').value    = '';
+  document.getElementById('festival-notes').value       = '';
+  document.getElementById('festival-category').value    = 'festival';
+  document.getElementById('festival-participating').checked = false;
+  document.getElementById('festival-protos').checked    = false;
+  document.getElementById('festival-cost-transport').value = '';
+  document.getElementById('festival-cost-parking').value   = '';
+  document.getElementById('festival-cost-ticket').value    = '';
+  document.getElementById('festival-cost-food').value      = '';
+  document.getElementById('festival-cost-lodging').value   = '';
+  populateFestContactLinksForm([]);
+  populateFestGameLinksForm([]);
+  document.getElementById('modal-festival-title').textContent = 'Nouveau festival';
+}
+
+function editFestival(id) {
+  const f = state.festivals.find(x => x.id === id);
+  if (!f) return;
+  const c = f.costs || {};
+  document.getElementById('festival-id').value          = f.id;
+  document.getElementById('festival-name').value        = f.name        || '';
+  document.getElementById('festival-city').value        = f.city        || '';
+  document.getElementById('festival-address').value     = f.address     || '';
+  document.getElementById('festival-distance').value    = f.distance    || '';
+  document.getElementById('festival-poster-url').value  = f.posterUrl   || '';
+  document.getElementById('festival-date-start').value  = f.dateStart   || '';
+  document.getElementById('festival-date-end').value    = f.dateEnd     || '';
+  document.getElementById('festival-notes').value       = f.notes       || '';
+  document.getElementById('festival-category').value    = f.category    || 'festival';
+  document.getElementById('festival-participating').checked = !!f.participating;
+  document.getElementById('festival-protos').checked    = !!f.protos;
+  document.getElementById('festival-cost-transport').value = c.transport || '';
+  document.getElementById('festival-cost-parking').value   = c.parking   || '';
+  document.getElementById('festival-cost-ticket').value    = c.ticket    || '';
+  document.getElementById('festival-cost-food').value      = c.food      || '';
+  document.getElementById('festival-cost-lodging').value   = c.lodging   || '';
+  populateFestContactLinksForm(f.contactLinks || []);
+  populateFestGameLinksForm(f.gameLinks || []);
+  document.getElementById('modal-festival-title').textContent = 'Modifier le festival';
+  openModal('festival');
+}
+
+function submitFestival(e) {
+  e.preventDefault();
+  const id = document.getElementById('festival-id').value;
+  const data = {
+    name:          document.getElementById('festival-name').value.trim(),
+    city:          document.getElementById('festival-city').value.trim(),
+    address:       document.getElementById('festival-address').value.trim(),
+    distance:      document.getElementById('festival-distance').value.trim(),
+    posterUrl:     document.getElementById('festival-poster-url').value.trim(),
+    dateStart:     document.getElementById('festival-date-start').value,
+    dateEnd:       document.getElementById('festival-date-end').value,
+    notes:         document.getElementById('festival-notes').value.trim(),
+    category:      document.getElementById('festival-category').value,
+    participating: document.getElementById('festival-participating').checked,
+    protos:        document.getElementById('festival-protos').checked,
+    costs: {
+      transport: parseFloat(document.getElementById('festival-cost-transport').value) || 0,
+      parking:   parseFloat(document.getElementById('festival-cost-parking').value)   || 0,
+      ticket:    parseFloat(document.getElementById('festival-cost-ticket').value)    || 0,
+      food:      parseFloat(document.getElementById('festival-cost-food').value)      || 0,
+      lodging:   parseFloat(document.getElementById('festival-cost-lodging').value)   || 0,
+    },
+    contactLinks: getFestContactLinksFromForm(),
+    gameLinks:    getFestGameLinksFromForm(),
+  };
+  if (id) {
+    const i = state.festivals.findIndex(x => x.id === id);
+    state.festivals[i] = { ...state.festivals[i], ...data };
+  } else {
+    state.festivals.unshift({ id: uid(), createdAt: today(), ...data });
+  }
+  saveState();
+  closeModal('festival');
+  renderFestivals();
+}
+
+// ── Festivals filters init ─────────────────────────
+(function initFestivalsFilters() {
+  // Search
+  document.getElementById('festivals-search')?.addEventListener('input', e => {
+    state.festivalsSearch = e.target.value;
+    renderFestivals();
+  });
+
+  // Filter panel toggle
+  document.getElementById('festivals-filter-toggle')?.addEventListener('click', () => {
+    const body = document.getElementById('festivals-filter-body');
+    const chev = document.getElementById('festivals-chevron');
+    const panel = document.getElementById('festivals-filter-panel');
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    chev?.classList.toggle('open', !open);
+    panel?.classList.toggle('expanded', !open);
+  });
+
+  // Category filter
+  document.getElementById('festivals-category-filter')?.addEventListener('change', e => {
+    state.festivalsCategory = e.target.value;
+    renderFestivals();
+  });
+
+  // Participating filter
+  document.getElementById('festivals-participating-filter')?.addEventListener('change', e => {
+    state.festivalsParticipating = e.target.value;
+    renderFestivals();
+  });
+
+  // Sort select
+  document.getElementById('festivals-sort')?.addEventListener('change', e => {
+    state.festivalsSort = e.target.value;
+    renderFestivals();
+  });
+
+  // Sort order button
+  document.getElementById('festivals-sort-order')?.addEventListener('click', () => {
+    state.festivalsSortAsc = !state.festivalsSortAsc;
+    const ico = document.getElementById('festivals-sort-icon');
+    if (ico) ico.innerHTML = state.festivalsSortAsc ? ICONS.chevUp : ICONS.chevDown;
+    renderFestivals();
+  });
+
+  // View toggle
+  document.getElementById('festivals-view-grid')?.addEventListener('click', () => {
+    state.festivalsView = 'grid';
+    renderFestivals();
+  });
+  document.getElementById('festivals-view-timeline')?.addEventListener('click', () => {
+    state.festivalsView = 'timeline';
+    renderFestivals();
+  });
+
+  // Zoom slider
+  document.getElementById('festivals-zoom')?.addEventListener('input', e => {
+    state.festivalsZoom = parseInt(e.target.value);
+    renderFestivals();
+  });
+
+  // Filter reset
+  document.getElementById('festivals-filter-reset')?.addEventListener('click', () => {
+    state.festivalsCategory = '';
+    state.festivalsParticipating = '';
+    document.getElementById('festivals-category-filter').value = '';
+    document.getElementById('festivals-participating-filter').value = '';
+    renderFestivals();
+  });
+})();
+
+// ═══════════════════════════════════════════════════
 // AGENDA
 // ═══════════════════════════════════════════════════
 function renderAgendaStats(entries) {
@@ -1948,6 +2461,7 @@ function closeModal(type) {
   document.body.style.overflow = '';
   if (type === 'contact')   resetContactForm();
   if (type === 'prototype') resetPrototypeForm();
+  if (type === 'festival')  resetFestivalForm();
 }
 
 document.querySelectorAll('.modal-overlay').forEach(ov =>
@@ -1957,7 +2471,7 @@ document.querySelectorAll('.modal-overlay').forEach(ov =>
 );
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['contact','prototype','detail','confirm','compare','standalone-task'].forEach(t =>
+    ['contact','prototype','festival','detail','confirm','compare','standalone-task'].forEach(t =>
       document.getElementById('modal-' + t)?.classList.add('hidden')
     );
     document.body.style.overflow = '';
@@ -2174,6 +2688,9 @@ document.getElementById('btn-confirm-delete').addEventListener('click', () => {
   if (type === 'contact') {
     state.contacts = state.contacts.filter(x => x.id !== id);
     saveState(); renderContacts();
+  } else if (type === 'festival') {
+    state.festivals = state.festivals.filter(x => x.id !== id);
+    saveState(); renderFestivals();
   } else {
     state.prototypes = state.prototypes.filter(x => x.id !== id);
     saveState(); renderPrototypes();
@@ -2430,6 +2947,16 @@ function markProtoEvalued(protoId) {
 
 function navigateDetail(dir) {
   if (!_detailType || !_detailId) return;
+  if (_detailType === 'festival') {
+    const list = filteredFestivals();
+    const ids = list.map(x => x.id);
+    const idx = ids.indexOf(_detailId);
+    if (idx === -1) return;
+    const next = idx + dir;
+    if (next < 0 || next >= ids.length) return;
+    openFestivalDetail(ids[next]);
+    return;
+  }
   const list = _detailType === 'contact'
     ? filteredContacts()
     : filteredPrototypes();
