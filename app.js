@@ -1861,39 +1861,64 @@ function festivalCard(f, zoom) {
 
 function buildFestivalsTimeline(list) {
   if (!list.length) return '<div class="timeline-empty" style="text-align:center;padding:2rem;color:var(--text-400)">Aucun festival à afficher</div>';
-  // Group by year (from dateStart, or createdAt)
-  const byYear = {};
-  list.forEach(f => {
-    const y = f.dateStart ? f.dateStart.slice(0, 4) : (f.createdAt ? f.createdAt.slice(0, 4) : 'Sans date');
-    if (!byYear[y]) byYear[y] = [];
-    byYear[y].push(f);
-  });
-  const years = Object.keys(byYear).sort((a, b) => state.festivalsSortAsc ? a.localeCompare(b) : b.localeCompare(a));
-  return `<div class="fest-timeline">${years.map(year => {
-    const items = byYear[year].sort((a, b) => (a.dateStart||'').localeCompare(b.dateStart||''));
-    return `<div class="fest-timeline-year">
-      <div class="fest-timeline-year-header">${year}</div>
-      <div class="fest-timeline-items">${items.map(f => {
-        const icon = FEST_ICONS[f.category] || '🎪';
-        const total = festivalTotalCost(f);
-        const dur = festivalDuration(f);
-        return `<div class="fest-timeline-card${f.participating ? ' fest-participating' : ''}" onclick="openFestivalDetail('${f.id}')">
-          <div class="fest-timeline-date">${f.dateStart ? new Date(f.dateStart).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : '—'}</div>
-          <div class="fest-timeline-body">
-            <div class="fest-timeline-name">${f.participating ? '✓ ' : ''}${esc(f.name)}</div>
-            ${f.city ? `<div class="fest-timeline-city">📍 ${esc(f.city)}</div>` : ''}
-            <div class="fest-timeline-meta">
-              <span class="badge badge-fest-${f.category}" style="font-size:.65rem">${icon} ${esc(FEST_LABELS[f.category]||'')}</span>
-              ${f.protos ? `<span style="font-size:.68rem;color:var(--primary-600);font-weight:600">🎲 Protos</span>` : ''}
-              ${dur ? `<span style="font-size:.68rem;color:var(--text-400)">${dur}</span>` : ''}
-              ${total > 0 ? `<span style="font-size:.68rem;color:var(--text-500)">💶 ${total.toFixed(0)} €</span>` : ''}
-            </div>
-          </div>
-          <button class="card-edit-btn" style="position:static;opacity:1;margin-left:auto;flex-shrink:0" onclick="event.stopPropagation();editFestival('${f.id}')" title="Modifier">${ICONS.pencil}</button>
-        </div>`;
-      }).join('')}</div>
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = list.filter(f => (f.dateEnd || f.dateStart || '') >= today || !f.dateStart);
+  const past     = list.filter(f => f.dateStart && (f.dateEnd || f.dateStart) < today);
+
+  function timelineCard(f) {
+    const icon = FEST_ICONS[f.category] || '🎪';
+    const total = festivalTotalCost(f);
+    const dur = festivalDuration(f);
+    return `<div class="fest-timeline-card${f.participating ? ' fest-participating' : ''}" onclick="openFestivalDetail('${f.id}')">
+      <div class="fest-timeline-date">${f.dateStart ? new Date(f.dateStart).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : '—'}</div>
+      <div class="fest-timeline-body">
+        <div class="fest-timeline-name">${f.participating ? '✓ ' : ''}${esc(f.name)}</div>
+        ${f.city ? `<div class="fest-timeline-city">📍 ${esc(f.city)}</div>` : ''}
+        <div class="fest-timeline-meta">
+          <span class="badge badge-fest-${f.category}" style="font-size:.65rem">${icon} ${esc(FEST_LABELS[f.category]||'')}</span>
+          ${f.protos ? `<span style="font-size:.68rem;color:var(--primary-600);font-weight:600">🎲 Protos</span>` : ''}
+          ${dur ? `<span style="font-size:.68rem;color:var(--text-400)">${dur}</span>` : ''}
+          ${total > 0 ? `<span style="font-size:.68rem;color:var(--text-500)">💶 ${total.toFixed(0)} €</span>` : ''}
+        </div>
+      </div>
+      <button class="card-edit-btn" style="position:static;opacity:1;margin-left:auto;flex-shrink:0" onclick="event.stopPropagation();editFestival('${f.id}')" title="Modifier">${ICONS.pencil}</button>
     </div>`;
-  }).join('')}</div>`;
+  }
+
+  function byYearBlock(items, asc) {
+    const byYear = {};
+    items.forEach(f => {
+      const y = f.dateStart ? f.dateStart.slice(0, 4) : 'Sans date';
+      if (!byYear[y]) byYear[y] = [];
+      byYear[y].push(f);
+    });
+    const years = Object.keys(byYear).sort((a, b) => asc ? a.localeCompare(b) : b.localeCompare(a));
+    return years.map(year => {
+      const sorted = byYear[year].slice().sort((a, b) => (a.dateStart||'').localeCompare(b.dateStart||''));
+      return `<div class="fest-timeline-year">
+        <div class="fest-timeline-year-header">${year}</div>
+        <div class="fest-timeline-items">${sorted.map(timelineCard).join('')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  let html = '<div class="fest-timeline">';
+  if (upcoming.length) {
+    html += `<div class="fest-timeline-section-label" style="font-size:.72rem;font-weight:700;color:var(--text-500);text-transform:uppercase;letter-spacing:.05em;padding:.5rem .25rem .25rem;display:flex;align-items:center;gap:.6rem">
+      <span style="white-space:nowrap">À venir · ${upcoming.length}</span>
+      <span style="flex:1;height:1px;background:var(--border)"></span>
+    </div>`;
+    html += byYearBlock(upcoming, true);
+  }
+  if (past.length) {
+    html += `<div class="fest-timeline-section-label" style="font-size:.72rem;font-weight:700;color:var(--text-400);text-transform:uppercase;letter-spacing:.05em;padding:${upcoming.length ? '1rem' : '.5rem'} .25rem .25rem;display:flex;align-items:center;gap:.6rem">
+      <span style="white-space:nowrap">Passés · ${past.length}</span>
+      <span style="flex:1;height:1px;background:var(--border)"></span>
+    </div>`;
+    html += byYearBlock(past, false);
+  }
+  html += '</div>';
+  return html;
 }
 
 function renderFestivals() {
@@ -1916,7 +1941,25 @@ function renderFestivals() {
   document.getElementById('festivals-view-timeline').classList.toggle('active', !isGrid);
 
   if (isGrid) {
-    gridEl.innerHTML = list.map(f => festivalCard(f, zoom)).join('');
+    const today = new Date().toISOString().slice(0, 10);
+    const upcoming = list.filter(f => (f.dateEnd || f.dateStart || '') >= today || !f.dateStart);
+    const past     = list.filter(f => f.dateStart && (f.dateEnd || f.dateStart) < today);
+    let html = '';
+    if (upcoming.length) {
+      html += `<div class="fest-section-separator" style="grid-column:1/-1;display:flex;align-items:center;gap:.6rem;padding:.25rem 0;margin-bottom:.25rem">
+        <span style="font-size:.72rem;font-weight:700;color:var(--text-500);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em">À venir · ${upcoming.length}</span>
+        <span style="flex:1;height:1px;background:var(--border)"></span>
+      </div>`;
+      html += upcoming.map(f => festivalCard(f, zoom)).join('');
+    }
+    if (past.length) {
+      html += `<div class="fest-section-separator" style="grid-column:1/-1;display:flex;align-items:center;gap:.6rem;padding:.25rem 0;margin-top:${upcoming.length ? '.75rem' : '.25rem'};margin-bottom:.25rem">
+        <span style="font-size:.72rem;font-weight:700;color:var(--text-400);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em">Passés · ${past.length}</span>
+        <span style="flex:1;height:1px;background:var(--border)"></span>
+      </div>`;
+      html += past.map(f => festivalCard(f, zoom)).join('');
+    }
+    gridEl.innerHTML = html;
   } else {
     tlEl.innerHTML = buildFestivalsTimeline(list);
   }
