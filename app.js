@@ -179,7 +179,7 @@ const PROTO_ICONS = {
   développement: '🔧', production: '🏭', standby: '💤', sorti: '🚀', abandonné: '❌', 'non-retenu': '🚫'
 };
 const STATUS_LABELS = {
-  pnp: 'En attente de PNP', imprimer: 'À Imprimer', tester: 'À tester', évalué: 'Évalué',
+  pnp: 'En attente de Règles / PNP', imprimer: 'À Imprimer', tester: 'À tester', évalué: 'Évalué',
   développement: 'En Développement', production: 'En Production', standby: 'Standby', sorti: 'Sorti', abandonné: 'Abandonné', 'non-retenu': 'Non Retenu'
 };
 
