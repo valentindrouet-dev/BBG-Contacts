@@ -394,12 +394,16 @@
       </div>
     </div>
 
-    <div id="tasks-list"></div>
-
-    <div class="empty-state hidden" id="tasks-empty">
-      <div class="empty-icon">✅</div>
-      <h3>Aucune tâche en cours</h3>
-      <p>Ajoutez des tâches depuis les fiches contacts ou jeux.</p>
+    <div class="page-layout">
+      <aside class="page-stats-sidebar" id="tasks-stats"></aside>
+      <div class="page-main">
+        <div id="tasks-list"></div>
+        <div class="empty-state hidden" id="tasks-empty">
+          <div class="empty-icon">✅</div>
+          <h3>Aucune tâche en cours</h3>
+          <p>Ajoutez des tâches depuis les fiches contacts ou jeux.</p>
+        </div>
+      </div>
     </div>
 
   </div><!-- /page-tasks -->
@@ -409,8 +413,6 @@
        ║        PAGE — AGENDA           ║
        ╚═════════════════════════════════╝ -->
   <div class="page" id="page-agenda">
-
-    <div id="agenda-stats" class="agenda-stats-block mb-4"></div>
 
     <div class="agenda-cat-filters mb-4">
       <span class="agenda-cat-filter-label">Afficher :</span>
@@ -437,13 +439,17 @@
       </div>
     </div>
 
-    <div id="agenda-list"></div>
-
-    <div class="empty-state hidden" id="agenda-empty">
-      <div class="empty-icon">📅</div>
-      <h3>Aucun échange enregistré</h3>
-      <p>Ajoutez des échanges depuis les fiches contacts pour les voir apparaître ici.</p>
-    </div>
+    <div class="page-layout">
+      <aside class="page-stats-sidebar" id="agenda-stats-sidebar"></aside>
+      <div class="page-main">
+        <div id="agenda-list"></div>
+        <div class="empty-state hidden" id="agenda-empty">
+          <div class="empty-icon">📅</div>
+          <h3>Aucun échange enregistré</h3>
+          <p>Ajoutez des échanges depuis les fiches contacts pour les voir apparaître ici.</p>
+        </div>
+      </div><!-- /page-main -->
+    </div><!-- /page-layout -->
 
   </div><!-- /page-agenda -->
 

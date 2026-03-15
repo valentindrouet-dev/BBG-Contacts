@@ -1102,6 +1102,59 @@ function buildPrototypesTable(list) {
 }
 
 // ═══════════════════════════════════════════════════
+// RENDER — TASKS STATS
+// ═══════════════════════════════════════════════════
+function renderTasksStats(allTasks) {
+  const el = document.getElementById('tasks-stats');
+  if (!el) return;
+  if (!allTasks.length) { el.innerHTML = ''; return; }
+
+  const total   = allTasks.length;
+  const pending = allTasks.filter(t => !t.done).length;
+  const done    = allTasks.filter(t => t.done).length;
+  const todayStr = today();
+  const overdue = allTasks.filter(t => !t.done && t.dueDate && t.dueDate < todayStr).length;
+
+  // Par urgence (tâches en cours uniquement)
+  const urgLevels = ['critique', 'urgent', 'normal', 'faible'];
+  const urgLabels = { critique: '🚨 Critique', urgent: '⚠️ Urgent', normal: '📌 Normal', faible: '💤 Faible' };
+  const urgCounts = {};
+  urgLevels.forEach(u => { urgCounts[u] = allTasks.filter(t => !t.done && (t.urgency||'normal') === u).length; });
+
+  // Par source
+  const srcCounts = {
+    contact:    allTasks.filter(t => t.type === 'contact').length,
+    prototype:  allTasks.filter(t => t.type === 'prototype').length,
+    festival:   allTasks.filter(t => t.type === 'festival').length,
+    standalone: allTasks.filter(t => t.type === 'standalone').length,
+  };
+
+  el.innerHTML = `
+    <div class="fstat-block">
+      <div class="fstat-title">Tâches</div>
+      <div class="fstat-big">${pending}</div>
+      <div class="fstat-sub">en cours · ${done} terminée${done !== 1 ? 's' : ''}</div>
+      ${overdue ? `<div class="fstat-sub" style="color:var(--danger,#dc2626);margin-top:.2rem">⏰ ${overdue} en retard</div>` : ''}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Par urgence</div>
+      ${urgLevels.filter(u => urgCounts[u] > 0).map(u =>
+        `<div class="fstat-row"><span>${urgLabels[u]}</span><span class="fstat-row-val">${urgCounts[u]}</span></div>`
+      ).join('')}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Par source</div>
+      ${srcCounts.contact    ? `<div class="fstat-row"><span>👤 Contacts</span><span class="fstat-row-val">${srcCounts.contact}</span></div>` : ''}
+      ${srcCounts.prototype  ? `<div class="fstat-row"><span>🎮 Jeux</span><span class="fstat-row-val">${srcCounts.prototype}</span></div>` : ''}
+      ${srcCounts.festival   ? `<div class="fstat-row"><span>🎪 Festivals</span><span class="fstat-row-val">${srcCounts.festival}</span></div>` : ''}
+      ${srcCounts.standalone ? `<div class="fstat-row"><span>✨ Libres</span><span class="fstat-row-val">${srcCounts.standalone}</span></div>` : ''}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
 // RENDER — TASKS
 // ═══════════════════════════════════════════════════
 function renderTasks() {
@@ -1144,6 +1197,9 @@ function renderTasks() {
         urgency: 'normal', done: p.done || false, dueDate: ds, doneAt: p.doneAt });
     });
   });
+
+  // Stats sidebar (always on full dataset, before any filter)
+  renderTasksStats(tasks);
 
   // Source filter (state-based)
   const srcFilter = state.tasksSourceFilter || [];
@@ -2548,36 +2604,51 @@ function submitFestival(e) {
 // AGENDA
 // ═══════════════════════════════════════════════════
 function renderAgendaStats(entries) {
-  const statsEl = document.getElementById('agenda-stats');
-  if (!statsEl) return;
-  if (entries.length === 0) { statsEl.innerHTML = ''; return; }
+  const el = document.getElementById('agenda-stats-sidebar');
+  if (!el) return;
+  if (!entries.length) { el.innerHTML = ''; return; }
 
-  // Build last 12 months buckets
-  const now  = new Date();
-  const months = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
-    const label = d.toLocaleDateString('fr-FR', { month: 'short' });
-    months.push({ key, label, count: 0 });
-  }
-  entries.forEach(e => {
-    const m = (e.date || '').slice(0, 7);
-    const bucket = months.find(b => b.key === m);
-    if (bucket) bucket.count++;
+  const total = entries.length;
+  const contactEntries  = entries.filter(e => e._source === 'contact');
+  const festivalEntries = entries.filter(e => e._source === 'festival');
+
+  // Par type d'échange (contacts uniquement)
+  const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
+  const typeCounts = {};
+  contactEntries.forEach(e => {
+    const t = e.type || 'autre';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
   });
 
-  const max = Math.max(...months.map(m => m.count), 1);
-  statsEl.innerHTML = `
-    <div class="agenda-stats-title">Activité sur 12 mois</div>
-    <div class="agenda-bar-chart">
-      ${months.map(m => `
-        <div class="agenda-bar-col">
-          <div class="agenda-bar-val">${m.count > 0 ? m.count : ''}</div>
-          <div class="agenda-bar" style="height:${Math.round((m.count / max) * 52)}px" title="${m.count} échange(s) en ${m.key}"></div>
-          <div class="agenda-bar-label">${m.label}</div>
-        </div>`).join('')}
-    </div>`;
+  // Cette année / ce mois
+  const now = new Date();
+  const thisYear  = `${now.getFullYear()}`;
+  const thisMonth = `${thisYear}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const countYear  = entries.filter(e => (e.date||'').startsWith(thisYear)).length;
+  const countMonth = entries.filter(e => (e.date||'').startsWith(thisMonth)).length;
+
+  el.innerHTML = `
+    <div class="fstat-block">
+      <div class="fstat-title">Échanges</div>
+      <div class="fstat-big">${total}</div>
+      ${countMonth ? `<div class="fstat-sub">Ce mois · ${countMonth}</div>` : ''}
+      ${countYear  ? `<div class="fstat-sub">${thisYear} · ${countYear}</div>` : ''}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Par source</div>
+      ${contactEntries.length  ? `<div class="fstat-row"><span>👤 Contacts</span><span class="fstat-row-val">${contactEntries.length}</span></div>` : ''}
+      ${festivalEntries.length ? `<div class="fstat-row"><span>🎪 Festivals</span><span class="fstat-row-val">${festivalEntries.length}</span></div>` : ''}
+    </div>
+
+    ${Object.keys(typeCounts).length ? `
+    <div class="fstat-block">
+      <div class="fstat-title">Par type</div>
+      ${Object.entries(EXCHANGE_TYPES.reduce((acc, t) => { if (typeCounts[t]) acc[t] = typeCounts[t]; return acc; }, {})).map(([t, n]) =>
+        `<div class="fstat-row"><span>${EXCH_EMOJI[t]||'📝'} ${t.charAt(0).toUpperCase()+t.slice(1)}</span><span class="fstat-row-val">${n}</span></div>`
+      ).join('')}
+    </div>` : ''}
+  `;
 }
 
 function renderAgenda() {
