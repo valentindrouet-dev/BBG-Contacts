@@ -2269,14 +2269,12 @@ function openFestivalDetail(id) {
       <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
     </div>
     <div class="detail-inner">
-      <div class="detail-section-title">Informations</div>
-      <div class="detail-kv">
-        ${f.participating ? `<label>Participation</label><span style="color:#16a34a;font-weight:600">✅ Je participe</span>` : `<label>Participation</label><span style="color:var(--text-400)">✗ Non</span>`}
-        ${f.protos ? `<label>Protos</label><span style="color:var(--primary-700);font-weight:600">🎲 Oui</span>` : ''}
-        ${(f.dateStart || f.dateEnd) ? `<label>Dates</label><span>${festDateRange(f)}</span>` : ''}
-        ${dur ? `<label>Durée</label><span>${dur}</span>` : ''}
-        ${f.address ? `<label>Adresse</label><span>${esc(f.address)}</span>` : ''}
-        ${f.distance ? `<label>Distance 🔄</label><span>${esc(f.distance)}</span>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem">
+        ${f.participating ? `<span style="background:#dcfce7;color:#15803d;border-radius:var(--rx);padding:.2rem .55rem;font-size:.78rem;font-weight:600">✅ Je participe</span>` : `<span style="background:var(--bg);color:var(--text-400);border-radius:var(--rx);padding:.2rem .55rem;font-size:.78rem;border:1px solid var(--border)">✗ Ne participe pas</span>`}
+        ${f.protos ? `<span style="background:#ede9fe;color:#6d28d9;border-radius:var(--rx);padding:.2rem .55rem;font-size:.78rem;font-weight:600">🎲 Protos</span>` : ''}
+        ${(f.dateStart || f.dateEnd) ? `<span style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rx);padding:.2rem .55rem;font-size:.78rem;color:var(--text-700)">📅 ${festDateRange(f)}${dur ? ` · ${dur}` : ''}</span>` : ''}
+        ${f.distance ? `<span style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rx);padding:.2rem .55rem;font-size:.78rem;color:var(--text-700)">🔄 ${esc(f.distance)}</span>` : ''}
+        ${f.address ? `<span style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rx);padding:.2rem .55rem;font-size:.78rem;color:var(--text-700)">📍 ${esc(f.address)}</span>` : ''}
       </div>
 
       ${(total > 0) ? `<div class="detail-section-title">Coûts</div>
