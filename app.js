@@ -1160,7 +1160,7 @@ function renderTasksStats(allTasks) {
 // RENDER — TASKS
 // ═══════════════════════════════════════════════════
 function renderTasks() {
-  const sortBy   = document.getElementById('tasks-sort')?.value || 'urgency';
+  const sortBy   = document.getElementById('tasks-sort')?.value || 'date';
   const showDone = document.getElementById('tasks-show-done')?.checked || false;
   const listEl   = document.getElementById('tasks-list');
   const emptyEl  = document.getElementById('tasks-empty');
@@ -1269,6 +1269,13 @@ function renderTasks() {
 
   // Sort
   tasks.sort((a, b) => {
+    if (sortBy === 'date') {
+      const da = a.dueDate || '', db = b.dueDate || '';
+      if (!da && !db) return a.name.localeCompare(b.name, 'fr');
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.localeCompare(db);
+    }
     if (sortBy === 'urgency')  return (URGENCY_ORDER[a.urgency] ?? 99) - (URGENCY_ORDER[b.urgency] ?? 99);
     if (sortBy === 'source')   return a.type.localeCompare(b.type) || a.name.localeCompare(b.name, 'fr');
     if (sortBy === 'category') {
