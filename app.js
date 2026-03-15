@@ -176,11 +176,11 @@ const ICONS = {
 
 const PROTO_ICONS = {
   pnp: '⏳', imprimer: '🖨️', tester: '🧪', évalué: '✅',
-  développement: '🔧', production: '🏭', standby: '💤', sorti: '🚀', abandonné: '❌'
+  développement: '🔧', production: '🏭', standby: '💤', sorti: '🚀', abandonné: '❌', 'non-retenu': '🚫'
 };
 const STATUS_LABELS = {
   pnp: 'En attente de PNP', imprimer: 'À Imprimer', tester: 'À tester', évalué: 'Évalué',
-  développement: 'En Développement', production: 'En Production', standby: 'Standby', sorti: 'Sorti', abandonné: 'Abandonné'
+  développement: 'En Développement', production: 'En Production', standby: 'Standby', sorti: 'Sorti', abandonné: 'Abandonné', 'non-retenu': 'Non Retenu'
 };
 
 const URGENCY_EMOJI = { faible: '💤', normal: '📌', urgent: '⚠️', critique: '🚨' };
@@ -194,7 +194,7 @@ const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exception
 
 const SOCIAL_TYPES = ['LinkedIn', 'Facebook', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
 const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'autre'];
-const STATUS_ORDER = ['développement', 'tester', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné'];
+const STATUS_ORDER = ['développement', 'tester', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné', 'non-retenu'];
 
 // ── Task helpers ───────────────────────────────────
 function getTopTask(item) {
@@ -310,7 +310,7 @@ function renderDashboard() {
 
   // Top protos (by interest, not sorti)
   const topProtos = [...state.prototypes]
-    .filter(p => p.status !== 'sorti')
+    .filter(p => p.status !== 'sorti' && p.status !== 'non-retenu')
     .sort((a,b) => (b.interest||3) - (a.interest||3))
     .slice(0, 4);
 
