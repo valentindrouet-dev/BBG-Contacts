@@ -78,6 +78,7 @@ function migrateFestival(f) {
   if (!Array.isArray(f.contactLinks)) f.contactLinks = [];
   if (!Array.isArray(f.gameLinks))    f.gameLinks    = [];
   if (!Array.isArray(f.presences))    f.presences    = [];
+  if (!Array.isArray(f.photos))       f.photos       = [];
   if (!f.costs || typeof f.costs !== 'object') f.costs = {};
   if (typeof f.participating === 'undefined')  f.participating = false;
   if (typeof f.protos === 'undefined')         f.protos = false;
@@ -2311,6 +2312,14 @@ function openFestivalDetail(id) {
         </div>`;
       }).filter(Boolean).join('')}</div>` : ''}
 
+      ${(f.photos||[]).length ? `<div class="detail-section-title">📷 Photos sur place</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem">
+        ${(f.photos||[]).map(url => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">
+          <img src="${esc(url)}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:var(--rx);border:1px solid var(--border);cursor:pointer"
+            onerror="this.closest('a').style.display='none'" />
+        </a>`).join('')}
+      </div>` : ''}
+
       <div class="detail-section-title" style="display:flex;align-items:center;gap:.6rem">
         Présences
         ${(f.presences||[]).length ? `<span style="font-size:.72rem;color:var(--text-400)">${(f.presences||[]).length} jour${(f.presences||[]).length > 1 ? 's' : ''}</span>` : ''}
@@ -2442,6 +2451,31 @@ function populateFestGameLinksForm(links = []) {
   links.forEach(l => addFestGameRow(l));
 }
 
+function addFestPhotoRow(url = '') {
+  const tbody = document.getElementById('fest-photos-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="url" placeholder="https://…" value="${esc(url)}" style="width:100%" /></td>
+    <td style="width:36px;text-align:center"><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getFestPhotosFromForm() {
+  const tbody = document.getElementById('fest-photos-body');
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr'))
+    .map(tr => tr.querySelector('input')?.value.trim() || '')
+    .filter(Boolean);
+}
+
+function populateFestPhotosForm(photos = []) {
+  const tbody = document.getElementById('fest-photos-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  photos.forEach(url => addFestPhotoRow(url));
+}
+
 // ── Festival CRUD ──────────────────────────────────
 function resetFestivalForm() {
   document.getElementById('festival-id').value          = '';
@@ -2463,6 +2497,7 @@ function resetFestivalForm() {
   document.getElementById('festival-cost-lodging').value   = '';
   populateFestContactLinksForm([]);
   populateFestGameLinksForm([]);
+  populateFestPhotosForm([]);
   document.getElementById('modal-festival-title').textContent = 'Nouveau festival';
 }
 
@@ -2489,6 +2524,7 @@ function editFestival(id) {
   document.getElementById('festival-cost-lodging').value   = c.lodging   || '';
   populateFestContactLinksForm(f.contactLinks || []);
   populateFestGameLinksForm(f.gameLinks || []);
+  populateFestPhotosForm(f.photos || []);
   document.getElementById('modal-festival-title').textContent = 'Modifier le festival';
   openModal('festival');
 }
@@ -2517,6 +2553,7 @@ function submitFestival(e) {
     },
     contactLinks: getFestContactLinksFromForm(),
     gameLinks:    getFestGameLinksFromForm(),
+    photos:       getFestPhotosFromForm(),
   };
   if (id) {
     const i = state.festivals.findIndex(x => x.id === id);
