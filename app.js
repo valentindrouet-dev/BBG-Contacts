@@ -2316,7 +2316,7 @@ function openFestivalDetail(id) {
       ${(f.photos||[]).length ? `<div class="detail-section-title">📷 Photos sur place</div>
       <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem">
         ${(f.photos||[]).map(url => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">
-          <img src="${esc(url)}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:var(--rx);border:1px solid var(--border);cursor:pointer"
+          <img src="${esc(url)}" alt="" style="width:140px;height:140px;object-fit:cover;border-radius:var(--rx);border:1px solid var(--border);cursor:pointer"
             onerror="this.closest('a').style.display='none'" />
         </a>`).join('')}
       </div>` : ''}
