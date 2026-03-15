@@ -188,16 +188,26 @@
       </div>
     </div>
 
-    <div class="card-grid" id="contacts-grid"></div>
-    <div id="contacts-list" style="display:none"></div>
-    <div id="contacts-kanban" style="display:none"></div>
+    <div class="page-layout">
 
-    <div class="empty-state hidden" id="contacts-empty">
-      <div class="empty-icon">👤</div>
-      <h3>Aucun contact</h3>
-      <p>Commencez par ajouter votre premier contact professionnel.</p>
-      <button class="btn-primary" onclick="openModal('contact')">Ajouter un contact</button>
-    </div>
+      <!-- Sidebar stats -->
+      <aside class="page-stats-sidebar" id="contacts-stats"></aside>
+
+      <!-- Main content -->
+      <div class="page-main">
+        <div class="card-grid" id="contacts-grid"></div>
+        <div id="contacts-list" style="display:none"></div>
+        <div id="contacts-kanban" style="display:none"></div>
+
+        <div class="empty-state hidden" id="contacts-empty">
+          <div class="empty-icon">👤</div>
+          <h3>Aucun contact</h3>
+          <p>Commencez par ajouter votre premier contact professionnel.</p>
+          <button class="btn-primary" onclick="openModal('contact')">Ajouter un contact</button>
+        </div>
+      </div><!-- /page-main -->
+
+    </div><!-- /page-layout -->
 
   </div><!-- /page-contacts -->
 
@@ -317,16 +327,26 @@
       </div>
     </div>
 
-    <div class="card-grid" id="prototypes-grid"></div>
-    <div id="prototypes-list" style="display:none"></div>
-    <div id="prototypes-timeline" style="display:none"></div>
+    <div class="page-layout">
 
-    <div class="empty-state hidden" id="prototypes-empty">
-      <div class="empty-icon">🎮</div>
-      <h3>Aucun jeu</h3>
-      <p>Commencez par ajouter votre premier jeu.</p>
-      <button class="btn-primary" onclick="openModal('prototype')">Ajouter un jeu</button>
-    </div>
+      <!-- Sidebar stats -->
+      <aside class="page-stats-sidebar" id="prototypes-stats"></aside>
+
+      <!-- Main content -->
+      <div class="page-main">
+        <div class="card-grid" id="prototypes-grid"></div>
+        <div id="prototypes-list" style="display:none"></div>
+        <div id="prototypes-timeline" style="display:none"></div>
+
+        <div class="empty-state hidden" id="prototypes-empty">
+          <div class="empty-icon">🎮</div>
+          <h3>Aucun jeu</h3>
+          <p>Commencez par ajouter votre premier jeu.</p>
+          <button class="btn-primary" onclick="openModal('prototype')">Ajouter un jeu</button>
+        </div>
+      </div><!-- /page-main -->
+
+    </div><!-- /page-layout -->
 
   </div><!-- /page-prototypes -->
 

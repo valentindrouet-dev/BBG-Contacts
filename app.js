@@ -529,9 +529,67 @@ function zoomPage(page, delta) {
 }
 
 // ═══════════════════════════════════════════════════
+// RENDER — CONTACTS STATS
+// ═══════════════════════════════════════════════════
+function renderContactsStats() {
+  const el = document.getElementById('contacts-stats');
+  if (!el) return;
+  const all = state.contacts;
+  if (!all.length) { el.innerHTML = ''; return; }
+
+  const total    = all.length;
+  const favorites= all.filter(c => c.favorite).length;
+  const withTasks= all.filter(c => (c.tasks||[]).some(t => !t.done)).length;
+
+  // Par catégorie
+  const catIcons = { auteur:'✍️', illustrateur:'🎨', editeur:'📚', distributeur:'🚚', fabricant:'🏭' };
+
+  // Par statut
+  const statusIcons = { actif:'✅', inactif:'💤', prospect:'🔍' };
+  const statusLabels = { actif:'Actif', inactif:'Inactif', prospect:'Prospect' };
+
+  // Échanges total
+  const totalExchanges = all.reduce((s, c) => s + (c.exchanges||[]).length, 0);
+
+  el.innerHTML = `
+    <div class="fstat-block">
+      <div class="fstat-title">Contacts</div>
+      <div class="fstat-big">${total}</div>
+      ${favorites ? `<div class="fstat-sub">⭐ ${favorites} favori${favorites > 1 ? 's' : ''}</div>` : ''}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Par catégorie</div>
+      ${Object.entries(CAT_LABELS).map(([cat, label]) => {
+        const n = all.filter(c => c.category === cat).length;
+        if (!n) return '';
+        return `<div class="fstat-row"><span>${catIcons[cat]||'👤'} ${label}</span><span class="fstat-row-val">${n}</span></div>`;
+      }).join('')}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Par statut</div>
+      ${['actif','prospect','inactif'].map(s => {
+        const n = all.filter(c => (c.status||'actif') === s).length;
+        if (!n) return '';
+        return `<div class="fstat-row"><span>${statusIcons[s]} ${statusLabels[s]}</span><span class="fstat-row-val">${n}</span></div>`;
+      }).join('')}
+    </div>
+
+    ${totalExchanges > 0 ? `
+    <div class="fstat-block">
+      <div class="fstat-title">Activité</div>
+      <div class="fstat-row"><span>📝 Échanges</span><span class="fstat-row-val">${totalExchanges}</span></div>
+      ${withTasks ? `<div class="fstat-row"><span>📌 Avec tâches</span><span class="fstat-row-val">${withTasks}</span></div>` : ''}
+    </div>` : ''}
+  `;
+}
+
+// ═══════════════════════════════════════════════════
 // RENDER — CONTACTS
 // ═══════════════════════════════════════════════════
 function renderContacts() {
+  renderContactsStats();
   const list    = filteredContacts();
   const gridEl  = document.getElementById('contacts-grid');
   const listEl  = document.getElementById('contacts-list');
@@ -784,9 +842,58 @@ function buildContactsTable(list) {
 }
 
 // ═══════════════════════════════════════════════════
+// RENDER — PROTOTYPES STATS
+// ═══════════════════════════════════════════════════
+function renderPrototypesStats() {
+  const el = document.getElementById('prototypes-stats');
+  if (!el) return;
+  const all = state.prototypes;
+  if (!all.length) { el.innerHTML = ''; return; }
+
+  const total    = all.length;
+  const withTasks= all.filter(p => (p.tasks||[]).some(t => !t.done)).length;
+
+  // Intérêt moyen (hors sans intérêt défini)
+  const withInterest = all.filter(p => p.interest);
+  const avgInterest  = withInterest.length
+    ? (withInterest.reduce((s, p) => s + p.interest, 0) / withInterest.length).toFixed(1)
+    : null;
+
+  // Contacts liés
+  const contactIds = new Set(all.flatMap(p => (p.contactLinks||[]).map(l => l.contactId)));
+
+  // Par statut (dans l'ordre)
+  const statusCounts = STATUS_ORDER.map(s => ({
+    s, n: all.filter(p => p.status === s).length
+  })).filter(x => x.n > 0);
+
+  el.innerHTML = `
+    <div class="fstat-block">
+      <div class="fstat-title">Jeux</div>
+      <div class="fstat-big">${total}</div>
+      ${avgInterest ? `<div class="fstat-sub">Intérêt moy. ${'⭐'.repeat(Math.round(avgInterest))} ${avgInterest}/5</div>` : ''}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Par statut</div>
+      ${statusCounts.map(({s, n}) =>
+        `<div class="fstat-row"><span>${PROTO_ICONS[s]||''} ${STATUS_LABELS[s]||s}</span><span class="fstat-row-val">${n}</span></div>`
+      ).join('')}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Liens</div>
+      ${contactIds.size ? `<div class="fstat-row"><span>🤝 Contacts liés</span><span class="fstat-row-val">${contactIds.size}</span></div>` : ''}
+      ${withTasks ? `<div class="fstat-row"><span>📌 Avec tâches</span><span class="fstat-row-val">${withTasks}</span></div>` : ''}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
 // RENDER — PROTOTYPES
 // ═══════════════════════════════════════════════════
 function renderPrototypes() {
+  renderPrototypesStats();
   const list      = filteredPrototypes();
   const gridEl    = document.getElementById('prototypes-grid');
   const listEl    = document.getElementById('prototypes-list');

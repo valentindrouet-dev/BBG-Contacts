@@ -1679,6 +1679,20 @@ a:hover { color: var(--primary-700); }
 }
 .festival-cost-item input:focus { border-color: var(--primary-400); }
 
+/* ── Generic page layout (sidebar stats + main) ── */
+.page-layout {
+  display: flex; gap: 1rem; align-items: flex-start;
+}
+.page-stats-sidebar {
+  width: 210px; flex-shrink: 0; position: sticky; top: 1rem;
+}
+.page-main { flex: 1; min-width: 0; }
+
+@media (max-width: 700px) {
+  .page-layout { flex-direction: column; }
+  .page-stats-sidebar { width: 100%; position: static; }
+}
+
 /* ── Festivals layout (sidebar + main) ── */
 .festivals-layout {
   display: flex; gap: 1rem; align-items: flex-start;
