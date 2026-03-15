@@ -307,7 +307,8 @@ function renderDashboard() {
   // Upcoming tasks (future due dates)
   const upcomingTasks = pendingTasks
     .filter(t => t.dueDate && t.dueDate > today_str)
-    .sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+    .sort((a,b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, 8);
 
   // Top protos (by interest, not sorti)
   const topProtos = [...state.prototypes]
