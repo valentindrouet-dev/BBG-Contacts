@@ -1934,7 +1934,90 @@ function buildFestivalsTimeline(list) {
   return html;
 }
 
+function renderFestivalsStats() {
+  const el = document.getElementById('festivals-stats');
+  if (!el) return;
+  const all = state.festivals;
+  if (!all.length) { el.innerHTML = ''; return; }
+
+  const today_str = today();
+
+  // Counts
+  const total     = all.length;
+  const past      = all.filter(f => f.dateStart && (f.dateEnd || f.dateStart) < today_str).length;
+  const upcoming  = all.filter(f => (f.dateEnd || f.dateStart || '') >= today_str || !f.dateStart).length;
+  const withPart  = all.filter(f => f.participating).length;
+  const withProtos= all.filter(f => f.protos).length;
+
+  // Unique contacts met across all festivals
+  const contactIds = new Set(all.flatMap(f => (f.contactLinks||[]).map(l => l.contactId)));
+  const authorsCount = contactIds.size;
+
+  // Costs
+  const costKeys = ['transport','parking','ticket','food','lodging'];
+  const costLabels = { transport:'🚗 Transport', parking:'🅿️ Parking', ticket:'🎟️ Billet/Stand', food:'🍔 Nourriture', lodging:'🛏️ Logement' };
+  const totalCosts = { transport:0, parking:0, ticket:0, food:0, lodging:0 };
+  let grandTotal = 0;
+  all.forEach(f => {
+    const c = f.costs || {};
+    costKeys.forEach(k => { totalCosts[k] += (+c[k]||0); });
+    grandTotal += festivalTotalCost(f);
+  });
+
+  // Cost by category
+  const catCosts = {};
+  Object.keys(FEST_LABELS).forEach(cat => {
+    catCosts[cat] = all.filter(f => f.category === cat).reduce((s,f) => s + festivalTotalCost(f), 0);
+  });
+
+  // Avg cost per festival with costs
+  const withCosts = all.filter(f => festivalTotalCost(f) > 0);
+  const avgCost = withCosts.length ? grandTotal / withCosts.length : 0;
+
+  el.innerHTML = `
+    <div class="fstat-block">
+      <div class="fstat-title">Festivals</div>
+      <div class="fstat-big">${total}</div>
+      <div class="fstat-sub">dont ${upcoming} à venir · ${past} passés</div>
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Par catégorie</div>
+      ${Object.entries(FEST_LABELS).map(([cat, label]) => {
+        const n = all.filter(f => f.category === cat).length;
+        if (!n) return '';
+        return `<div class="fstat-row"><span>${FEST_ICONS[cat]||'🎪'} ${label}</span><span class="fstat-row-val">${n}</span></div>`;
+      }).join('')}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Participation</div>
+      <div class="fstat-row"><span>✅ Je participe</span><span class="fstat-row-val">${withPart}</span></div>
+      <div class="fstat-row"><span>🎲 Avec protos</span><span class="fstat-row-val">${withProtos}</span></div>
+      ${authorsCount ? `<div class="fstat-row"><span>🤝 Auteurs rencontrés</span><span class="fstat-row-val">${authorsCount}</span></div>` : ''}
+    </div>
+
+    ${grandTotal > 0 ? `
+    <div class="fstat-block">
+      <div class="fstat-title">Coûts totaux</div>
+      ${costKeys.filter(k => totalCosts[k] > 0).map(k =>
+        `<div class="fstat-row"><span>${costLabels[k]}</span><span class="fstat-row-val">${totalCosts[k].toFixed(0)} €</span></div>`
+      ).join('')}
+      <div class="fstat-total-row"><span>💶 Total</span><span>${grandTotal.toFixed(0)} €</span></div>
+      ${avgCost > 0 ? `<div class="fstat-sub" style="margin-top:.35rem">Moy. ${avgCost.toFixed(0)} €/festival</div>` : ''}
+    </div>
+
+    <div class="fstat-block">
+      <div class="fstat-title">Coûts par catégorie</div>
+      ${Object.entries(catCosts).filter(([,v]) => v > 0).map(([cat, v]) =>
+        `<div class="fstat-row"><span>${FEST_ICONS[cat]||'🎪'} ${FEST_LABELS[cat]}</span><span class="fstat-row-val">${v.toFixed(0)} €</span></div>`
+      ).join('')}
+    </div>` : ''}
+  `;
+}
+
 function renderFestivals() {
+  renderFestivalsStats();
   const list   = filteredFestivals();
   const gridEl = document.getElementById('festivals-grid');
   const tlEl   = document.getElementById('festivals-timeline');
