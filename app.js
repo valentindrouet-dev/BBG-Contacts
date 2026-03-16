@@ -2665,6 +2665,7 @@ function renderAgendaStats(entries) {
   const total = entries.length;
   const contactEntries  = entries.filter(e => e._source === 'contact');
   const festivalEntries = entries.filter(e => e._source === 'festival');
+  const jeuxEntries     = entries.filter(e => e._source === 'jeux');
 
   // Par type d'échange (contacts uniquement)
   const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
@@ -2692,6 +2693,7 @@ function renderAgendaStats(entries) {
     <div class="fstat-block">
       <div class="fstat-title">Par source</div>
       ${contactEntries.length  ? `<div class="fstat-row"><span>👤 Contacts</span><span class="fstat-row-val">${contactEntries.length}</span></div>` : ''}
+      ${jeuxEntries.length     ? `<div class="fstat-row"><span>🎲 Jeux</span><span class="fstat-row-val">${jeuxEntries.length}</span></div>` : ''}
       ${festivalEntries.length ? `<div class="fstat-row"><span>🎪 Festivals</span><span class="fstat-row-val">${festivalEntries.length}</span></div>` : ''}
     </div>
 
@@ -2738,6 +2740,18 @@ function renderAgenda() {
       });
     });
   });
+  // Prototype devLog entries
+  (state.prototypes || []).forEach(p => {
+    (p.devLog || []).forEach(e => {
+      entries.push({
+        ...e,
+        _source: 'jeux',
+        protoId:    p.id,
+        protoTitle: p.title,
+        protoStatus: p.status,
+      });
+    });
+  });
 
   document.getElementById('nav-agenda-count').textContent = entries.length;
 
@@ -2751,6 +2765,7 @@ function renderAgenda() {
   const activeCats = state.agendaCatFilters || [];
   let filtered = entries.filter(e => {
     if (e._source === 'festival') return showFestivals;
+    if (e._source === 'jeux')    return showJeux;
     if (!showContacts) return false;
     return activeCats.length === 0 || activeCats.includes(e.contactCat);
   });
@@ -2790,7 +2805,16 @@ function renderAgenda() {
     evts.forEach(e => {
       const d = new Date(e.date);
       const dateStr = isNaN(d) ? e.date : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-      if (e._source === 'festival') {
+      if (e._source === 'jeux') {
+        html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
+          <span class="agenda-date">${dateStr}</span>
+          <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span></span>
+          <div class="agenda-contact-wrap">
+            <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
+          </div>
+          ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
+        </div>`;
+      } else if (e._source === 'festival') {
         const festIcon = FEST_ICONS[e.festivalCat] || '🎪';
         const fmtAg = d => d ? new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : null;
         const endStr = fmtAg(e.dateEnd);
