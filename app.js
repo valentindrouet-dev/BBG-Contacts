@@ -1160,7 +1160,7 @@ function renderTasksStats(allTasks) {
 // RENDER — TASKS
 // ═══════════════════════════════════════════════════
 function renderTasks() {
-  const sortBy   = document.getElementById('tasks-sort')?.value || 'date';
+  const sortBy   = document.getElementById('tasks-sort')?.value || 'urgency';
   const showDone = document.getElementById('tasks-show-done')?.checked || false;
   const listEl   = document.getElementById('tasks-list');
   const emptyEl  = document.getElementById('tasks-empty');
