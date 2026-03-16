@@ -389,6 +389,14 @@ a:hover { color: var(--primary-700); }
 .card-grid[data-zoom="3"] { --cw: 240px; --cmh: 175px; }
 .card-grid[data-zoom="4"] { --cw: 270px; --cmh: 200px; }
 
+/* Prototypes (Jeux) — media height halved */
+#prototypes-grid            { --cmh:  75px; }
+#prototypes-grid[data-zoom="0"] { --cmh:  40px; }
+#prototypes-grid[data-zoom="1"] { --cmh:  60px; }
+#prototypes-grid[data-zoom="2"] { --cmh:  75px; }
+#prototypes-grid[data-zoom="3"] { --cmh:  88px; }
+#prototypes-grid[data-zoom="4"] { --cmh: 100px; }
+
 /* ═══════════════════════════════════════════════════
    CARD BASE
 ═══════════════════════════════════════════════════ */
