@@ -349,13 +349,21 @@ function renderDashboard() {
     ${dueNow.length > 0 ? `
     <div class="dash-section">
       <div class="dash-section-title">🔔 Échéances dépassées ou du jour</div>
-      ${dueNow.map(t => `
-        <div class="dash-task-row dash-task-due" onclick="switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')">
-          <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
-          <span class="dash-task-text">${esc(t.text)}</span>
-          <span class="dash-task-source">${esc(t._name)}</span>
-          <span class="dash-task-date" style="color:#dc2626">${t.dueDate}</span>
-        </div>`).join('')}
+      ${dueNow.map(t => {
+        const nav = t._from === 'standalone'
+          ? "switchPage('tasks')"
+          : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+        return `
+        <div class="dash-task-row dash-task-due">
+          <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
+          <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;cursor:pointer" onclick="${nav}">
+            <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
+            <span class="dash-task-text">${esc(t.text)}</span>
+            <span class="dash-task-source">${esc(t._name)}</span>
+            <span class="dash-task-date" style="color:#dc2626">${t.dueDate}</span>
+          </div>
+        </div>`;
+      }).join('')}
     </div>` : ''}
 
     ${upcomingTasks.length > 0 ? `
@@ -370,12 +378,15 @@ function renderDashboard() {
           ? "switchPage('tasks')"
           : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
         return `
-        <div class="dash-task-row" onclick="${nav}">
-          <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
-          <span class="dash-task-text">${esc(t.text)}</span>
-          <span class="dash-task-source">${esc(t._name)}</span>
-          <span class="dash-task-date">${dateLabel}</span>
-          <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
+        <div class="dash-task-row">
+          <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
+          <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;cursor:pointer" onclick="${nav}">
+            <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
+            <span class="dash-task-text">${esc(t.text)}</span>
+            <span class="dash-task-source">${esc(t._name)}</span>
+            <span class="dash-task-date">${dateLabel}</span>
+            <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
+          </div>
         </div>`;
       }).join('')}
     </div>` : ''}

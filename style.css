@@ -1812,7 +1812,7 @@ a:hover { color: var(--primary-700); }
 .dash-task-row {
   display: flex; align-items: center; gap: .5rem;
   padding: .45rem .6rem; border-radius: var(--rx-lg);
-  cursor: pointer; transition: background .1s;
+  transition: background .1s;
   border-bottom: 1px solid var(--border);
   font-size: .82rem;
 }
