@@ -1878,6 +1878,13 @@ a:hover { color: var(--primary-700); }
 .task-del-btn:hover { color: #dc2626; background: #fee2e2; }
 .task-due { font-size: .7rem; color: var(--text-500); margin-left: .25rem; }
 .task-due.overdue { color: #dc2626; font-weight: 600; }
+.task-due-editable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
+.task-due-editable:hover { color: var(--primary-600) !important; }
+.task-due-add { color: var(--text-300); cursor: pointer; font-style: italic; }
+.task-due-add:hover { color: var(--primary-500); }
+.dash-task-date-editable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
+.dash-task-date-editable:hover { color: var(--primary-600) !important; }
+.task-date-inline-input { font-size: .72rem; padding: .1rem .3rem; border: 1px solid var(--primary-500); border-radius: var(--rx); width: 8rem; font-family: inherit; outline: none; box-shadow: 0 0 0 2px var(--primary-100); }
 
 /* ═══════════════════════════════════════════════════
    AGENDA CATEGORY FILTERS

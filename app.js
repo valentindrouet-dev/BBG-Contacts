@@ -360,7 +360,7 @@ function renderDashboard() {
             <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
             <span class="dash-task-text">${esc(t.text)}</span>
             <span class="dash-task-source">${esc(t._name)}</span>
-            <span class="dash-task-date" style="color:#dc2626">${t.dueDate}</span>
+            <span class="dash-task-date dash-task-date-editable" style="color:#dc2626" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${t.dueDate}</span>
           </div>
         </div>`;
       }).join('')}
@@ -384,7 +384,7 @@ function renderDashboard() {
             <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
             <span class="dash-task-text">${esc(t.text)}</span>
             <span class="dash-task-source">${esc(t._name)}</span>
-            <span class="dash-task-date">${dateLabel}</span>
+            <span class="dash-task-date dash-task-date-editable" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${dateLabel}</span>
             <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
           </div>
         </div>`;
@@ -1342,7 +1342,9 @@ function renderTasks() {
 
 function taskCard(t) {
   const typeEmoji = t.type === 'standalone' ? '📋' : t.type === 'contact' ? '👤' : t.type === 'festival' ? '🎪' : '🎲';
-  const dueBadge = t.dueDate ? `<span class="task-due${t.dueDate < today() ? ' overdue' : ''}">${t.dueDate}</span>` : '';
+  const dueBadge = t.dueDate
+    ? `<span class="task-due task-due-editable${t.dueDate < today() ? ' overdue' : ''}" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t.type}','${t.itemId}','${t.taskId}')" title="Modifier la date">${t.dueDate}</span>`
+    : `<span class="task-due task-due-add" data-date="" onclick="event.stopPropagation();openTaskDatePicker(this,'${t.type}','${t.itemId}','${t.taskId}')" title="Ajouter une date">+ date</span>`;
   const doneAtBadge = (t.done && t.doneAt)
     ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR', {day:'2-digit',month:'short'})}</span>`
     : '';
@@ -1403,6 +1405,38 @@ function toggleTaskDone(type, itemId, taskId) {
     saveState();
     renderPrototypes();
   }
+  if (state.activePage === 'tasks') renderTasks();
+  if (state.activePage === 'home') renderDashboard();
+}
+
+function openTaskDatePicker(el, type, itemId, taskId) {
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.value = el.dataset.date || '';
+  input.className = 'task-date-inline-input';
+  el.replaceWith(input);
+  input.addEventListener('change', () => {
+    setTaskDueDateInline(type, itemId, taskId, input.value || undefined);
+  });
+  input.addEventListener('blur', () => { if (document.contains(input)) input.remove(); });
+  try { input.showPicker(); } catch(e) {}
+}
+
+function setTaskDueDateInline(type, itemId, taskId, newDate) {
+  if (type === 'standalone') {
+    const t = (state.standaloneTasks || []).find(x => x.id === itemId);
+    if (t) t.dueDate = newDate;
+  } else if (type === 'contact') {
+    const c = state.contacts.find(x => x.id === itemId);
+    if (c) { const t = (c.tasks || []).find(x => x.id === taskId); if (t) t.dueDate = newDate; }
+  } else if (type === 'festival') {
+    const f = state.festivals.find(x => x.id === itemId);
+    if (f) { const p = (f.presences || []).find(x => x.id === taskId); if (p) p.dateStart = newDate; }
+  } else {
+    const p = state.prototypes.find(x => x.id === itemId);
+    if (p) { const t = (p.tasks || []).find(x => x.id === taskId); if (t) t.dueDate = newDate; }
+  }
+  saveState();
   if (state.activePage === 'tasks') renderTasks();
   if (state.activePage === 'home') renderDashboard();
 }
