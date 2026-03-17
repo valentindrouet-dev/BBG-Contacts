@@ -3695,13 +3695,11 @@ function openDetail(type, id) {
         ${p.description ? `<div class="detail-section-title">Description</div>
           <div class="detail-notes">${esc(p.description)}</div>` : ''}
         <div class="detail-section-title">Caractéristiques</div>
-        ${(p.players||p.duration||p.age) ? `<div class="detail-specs-inline">
+        <div class="detail-specs-inline">
           ${p.players  ? `<span class="spec-chip">${ICONS.users} ${esc(p.players)} joueurs</span>` : ''}
           ${p.duration ? `<span class="spec-chip">${ICONS.clock} ${esc(p.duration)}</span>` : ''}
           ${p.age      ? `<span class="spec-chip">👶 dès ${esc(p.age)} ans</span>` : ''}
-        </div>` : ''}
-        <div class="detail-kv" style="margin-top:.4rem">
-          <label>Intérêt</label><span>${'⭐'.repeat(p.interest||3)} ${INTEREST_LABELS[p.interest||3]}</span>
+          <span class="spec-chip">${'⭐'.repeat(p.interest||3)} ${INTEREST_LABELS[p.interest||3]}</span>
         </div>
         ${(() => {
           const allT = p.tasks||[];
@@ -3742,16 +3740,29 @@ function openDetail(type, id) {
           <div class="tags-cloud">${(p.tags||[]).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
         ${p.notes ? `<div class="detail-section-title">Notes de développement</div>
           <div class="detail-notes">${esc(p.notes)}</div>` : ''}
-        ${(p.devLog||[]).length > 0 ? `<div class="detail-section-title">Journal de développement</div>
-          <div class="devlog-list">${[...(p.devLog||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(e => `
+        ${(p.devLog||[]).length > 0 ? (() => {
+          const renderDevEntry = e => `
             <div class="devlog-item${e.details ? '' : ' devlog-no-body'}">
               <div class="devlog-item-header" onclick="${e.details ? 'toggleDevLogItem(this)' : ''}">
                 <span class="devlog-date">${new Date(e.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>
                 <span class="devlog-note">${esc(e.note)}</span>
-                ${e.details ? `<span class="devlog-chevron">▸</span>` : ''}
+                ${e.details ? `<span class="devlog-info-hint">💡</span><span class="devlog-chevron">▸</span>` : ''}
               </div>
               ${e.details ? `<div class="devlog-item-body" style="display:none">${esc(e.details).replace(/\n/g,'<br>')}</div>` : ''}
-            </div>`).join('')}</div>` : ''}
+            </div>`;
+          const sorted  = [...(p.devLog||[])].sort((a,b)=>b.date.localeCompare(a.date));
+          const visible  = sorted.slice(0, 5);
+          const hiddenEntries = sorted.slice(5);
+          const hiddenId = `devlog-hidden-${p.id}`;
+          const n = hiddenEntries.length;
+          return `<div class="detail-section-title">Journal de développement</div>
+            <div class="devlog-list">
+              ${visible.map(renderDevEntry).join('')}
+              ${n > 0 ? `
+                <button class="btn-show-done devlog-show-more" onclick="var d=document.getElementById('${hiddenId}');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'Voir ${n} entr${n>1?'ées':'ée'} plus ancienne${n>1?'s':''}…':'Masquer les anciennes'">Voir ${n} entr${n>1?'ées':'ée'} plus ancienne${n>1?'s':''}…</button>
+                <div id="${hiddenId}" class="hidden">${hiddenEntries.map(renderDevEntry).join('')}</div>` : ''}
+            </div>`;
+        })() : ''}
         ${(p.videos||[]).length > 0 ? `<div class="detail-section-title">Vidéos</div>
           <div class="video-list">${(p.videos||[]).map(v => {
             const ytId = getYoutubeId(v.url);

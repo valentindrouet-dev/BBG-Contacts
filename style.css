@@ -1460,7 +1460,8 @@ a:hover { color: var(--primary-700); }
 .devlog-open .devlog-chevron { transform: rotate(90deg); }
 .devlog-date { font-size: .72rem; color: var(--text-400); white-space: nowrap; flex-shrink: 0; }
 .devlog-note { color: var(--text-700); line-height: 1.45; flex: 1; }
-.devlog-chevron { font-size: .7rem; color: var(--text-400); flex-shrink: 0; transition: transform .15s; display: inline-block; }
+.devlog-chevron { font-size: 1rem; color: var(--primary-500); flex-shrink: 0; transition: transform .15s; display: inline-block; line-height: 1; }
+.devlog-info-hint { font-size: .85rem; flex-shrink: 0; opacity: .75; }
 .devlog-item-body {
   padding: .4rem .65rem .5rem;
   color: var(--text-600); font-size: .8rem; line-height: 1.55;
