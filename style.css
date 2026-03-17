@@ -1442,15 +1442,32 @@ a:hover { color: var(--primary-700); }
 ═══════════════════════════════════════════════════ */
 .devlog-list { display: flex; flex-direction: column; gap: .35rem; margin-top: .4rem; }
 .devlog-item {
-  display: flex; align-items: baseline; gap: .6rem;
-  padding: .3rem .65rem;
   background: var(--bg); border: 1px solid var(--border);
   border-left: 3px solid var(--primary-500);
   border-radius: 0 var(--rx-lg) var(--rx-lg) 0;
   font-size: .825rem;
+  overflow: hidden;
 }
+.devlog-item-header {
+  display: flex; align-items: baseline; gap: .6rem;
+  padding: .3rem .65rem;
+  cursor: pointer;
+  user-select: none;
+}
+.devlog-no-body .devlog-item-header { cursor: default; }
+.devlog-item-header:hover:not(.devlog-no-body .devlog-item-header) { background: var(--bg-hover, rgba(0,0,0,.03)); }
+.devlog-open > .devlog-item-header { border-bottom: 1px solid var(--border); }
+.devlog-open .devlog-chevron { transform: rotate(90deg); }
 .devlog-date { font-size: .72rem; color: var(--text-400); white-space: nowrap; flex-shrink: 0; }
-.devlog-note { color: var(--text-700); line-height: 1.45; }
+.devlog-note { color: var(--text-700); line-height: 1.45; flex: 1; }
+.devlog-chevron { font-size: .7rem; color: var(--text-400); flex-shrink: 0; transition: transform .15s; display: inline-block; }
+.devlog-item-body {
+  padding: .4rem .65rem .5rem;
+  color: var(--text-600); font-size: .8rem; line-height: 1.55;
+  white-space: pre-wrap;
+}
+.devlog-title-input { width: 100%; margin-bottom: .3rem; }
+.devlog-details-input { width: 100%; resize: vertical; font-size: .82rem; }
 
 /* ═══════════════════════════════════════════════════
    PHOTO GALLERY

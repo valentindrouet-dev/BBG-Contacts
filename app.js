@@ -1805,18 +1805,22 @@ function addDevLogRow(entry = {}) {
   const eid = entry.id || uid();
   tr.dataset.entryId = eid;
   tr.innerHTML = `
-    <td><input type="date" value="${esc(entry.date || today())}" /></td>
-    <td><input type="text" placeholder="Note de développement…" value="${esc(entry.note || '')}" /></td>
-    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+    <td style="vertical-align:top;padding-top:.45rem"><input type="date" value="${esc(entry.date || today())}" /></td>
+    <td>
+      <input type="text" class="devlog-title-input" placeholder="Titre de l'entrée…" value="${esc(entry.note || '')}" />
+      <textarea class="devlog-details-input" placeholder="Idées, modifications, détails…" rows="3">${esc(entry.details || '')}</textarea>
+    </td>
+    <td style="vertical-align:top"><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
   tbody.appendChild(tr);
 }
 function getDevLogFromForm() {
   const tbody = document.getElementById('proto-devlog-body');
   if (!tbody) return [];
   return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
-    id:   tr.dataset.entryId || uid(),
-    date: tr.querySelector('input[type="date"]')?.value || '',
-    note: tr.querySelector('input[type="text"]')?.value.trim() || '',
+    id:      tr.dataset.entryId || uid(),
+    date:    tr.querySelector('input[type="date"]')?.value || '',
+    note:    tr.querySelector('.devlog-title-input')?.value.trim() || '',
+    details: tr.querySelector('.devlog-details-input')?.value.trim() || '',
   })).filter(e => e.note);
 }
 function populateDevLogForm(devLog = []) {
@@ -2257,6 +2261,13 @@ function renderFestivals() {
 }
 
 // ── Festival detail (simple panel) ────────────────
+function toggleDevLogItem(el) {
+  const item = el.closest('.devlog-item');
+  const body = item.querySelector('.devlog-item-body');
+  const open = item.classList.toggle('devlog-open');
+  body.style.display = open ? 'block' : 'none';
+}
+
 function openFestivalDetail(id) {
   const f = state.festivals.find(x => x.id === id);
   if (!f) return;
@@ -3733,9 +3744,13 @@ function openDetail(type, id) {
           <div class="detail-notes">${esc(p.notes)}</div>` : ''}
         ${(p.devLog||[]).length > 0 ? `<div class="detail-section-title">Journal de développement</div>
           <div class="devlog-list">${[...(p.devLog||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(e => `
-            <div class="devlog-item">
-              <div class="devlog-date">${e.date}</div>
-              <div class="devlog-note">${esc(e.note)}</div>
+            <div class="devlog-item${e.details ? '' : ' devlog-no-body'}">
+              <div class="devlog-item-header" onclick="${e.details ? 'toggleDevLogItem(this)' : ''}">
+                <span class="devlog-date">${new Date(e.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>
+                <span class="devlog-note">${esc(e.note)}</span>
+                ${e.details ? `<span class="devlog-chevron">▸</span>` : ''}
+              </div>
+              ${e.details ? `<div class="devlog-item-body" style="display:none">${esc(e.details).replace(/\n/g,'<br>')}</div>` : ''}
             </div>`).join('')}</div>` : ''}
         ${(p.videos||[]).length > 0 ? `<div class="detail-section-title">Vidéos</div>
           <div class="video-list">${(p.videos||[]).map(v => {
