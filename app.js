@@ -2801,20 +2801,55 @@ function renderAgenda() {
       });
     });
   });
+  // Done tasks (contacts + prototypes)
+  state.contacts.forEach(c => {
+    (c.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
+      const doneDate = t.doneAt.slice(0, 10);
+      entries.push({
+        id: t.id,
+        date: doneDate,
+        _source: 'tasks',
+        taskText:    t.text,
+        taskUrgency: t.urgency || 'normal',
+        taskFrom:    'contact',
+        taskFromId:  c.id,
+        taskFromName: c.name,
+        taskFromCat: c.category,
+        taskFromPhoto: c.photo,
+      });
+    });
+  });
+  (state.prototypes || []).forEach(p => {
+    (p.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
+      const doneDate = t.doneAt.slice(0, 10);
+      entries.push({
+        id: t.id,
+        date: doneDate,
+        _source: 'tasks',
+        taskText:    t.text,
+        taskUrgency: t.urgency || 'normal',
+        taskFrom:    'prototype',
+        taskFromId:  p.id,
+        taskFromName: p.title,
+      });
+    });
+  });
 
   document.getElementById('nav-agenda-count').textContent = entries.length;
 
-  // Source filter (Contacts / Jeux / Festivals)
+  // Source filter (Contacts / Jeux / Festivals / Tâches)
   const activeSrc = state.agendaSourceFilter || [];
   const showContacts  = activeSrc.length === 0 || activeSrc.includes('contacts');
   const showJeux      = activeSrc.length === 0 || activeSrc.includes('jeux');
   const showFestivals = activeSrc.length === 0 || activeSrc.includes('festivals');
+  const showTasks     = activeSrc.length === 0 || activeSrc.includes('tasks');
 
   // Category filter (checkboxes) — only applies to contact exchanges
   const activeCats = state.agendaCatFilters || [];
   let filtered = entries.filter(e => {
     if (e._source === 'festival') return showFestivals;
     if (e._source === 'jeux')    return showJeux;
+    if (e._source === 'tasks')   return showTasks;
     if (!showContacts) return false;
     return activeCats.length === 0 || activeCats.includes(e.contactCat);
   });
@@ -2876,6 +2911,22 @@ function renderAgenda() {
             <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">${esc(e.festivalName)}</span>
           </div>
           ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
+        </div>`;
+      } else if (e._source === 'tasks') {
+        const nav = e.taskFrom === 'contact'
+          ? `openDetail('contact','${e.taskFromId}')`
+          : `openDetail('prototype','${e.taskFromId}')`;
+        const fromIcon = e.taskFrom === 'contact' ? '👤' : '🎲';
+        const avatarHtml = e.taskFromPhoto
+          ? `<img src="${esc(e.taskFromPhoto)}" class="agenda-avatar" alt="" />`
+          : e.taskFromCat
+            ? `<div class="list-avatar list-avatar-${e.taskFromCat}" style="width:24px;height:24px;font-size:.6rem;flex-shrink:0">${initials(e.taskFromName)}</div>`
+            : `<span style="font-size:.95rem">${fromIcon}</span>`;
+        html += `<div class="agenda-entry" onclick="${nav}">
+          <span class="agenda-date">${dateStr}</span>
+          <span class="agenda-type-badge"><span class="badge" style="background:#dcfce7;border:1px solid #86efac;color:#15803d;font-size:.7rem">✅ Tâche</span></span>
+          <div class="agenda-contact-wrap">${avatarHtml}<span class="agenda-contact-name${e.taskFromCat ? ' badge-'+e.taskFromCat : ''}">${esc(e.taskFromName)}</span></div>
+          <span class="agenda-note">— ${esc(e.taskText)}</span>
         </div>`;
       } else {
         const avatarHtml = e.contactPhoto
