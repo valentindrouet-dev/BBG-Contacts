@@ -2802,34 +2802,35 @@ function renderAgenda() {
     });
   });
   // Done tasks (contacts + prototypes)
+  const todayStr = new Date().toISOString().slice(0, 10);
   state.contacts.forEach(c => {
-    (c.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
-      const doneDate = t.doneAt.slice(0, 10);
+    (c.tasks || []).filter(t => t.done).forEach(t => {
+      const doneDate = t.doneAt ? t.doneAt.slice(0, 10) : (t.dueDate || todayStr);
       entries.push({
         id: t.id,
         date: doneDate,
         _source: 'tasks',
-        taskText:    t.text,
-        taskUrgency: t.urgency || 'normal',
-        taskFrom:    'contact',
-        taskFromId:  c.id,
+        taskText:     t.text,
+        taskUrgency:  t.urgency || 'normal',
+        taskFrom:     'contact',
+        taskFromId:   c.id,
         taskFromName: c.name,
-        taskFromCat: c.category,
+        taskFromCat:  c.category,
         taskFromPhoto: c.photo,
       });
     });
   });
   (state.prototypes || []).forEach(p => {
-    (p.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
-      const doneDate = t.doneAt.slice(0, 10);
+    (p.tasks || []).filter(t => t.done).forEach(t => {
+      const doneDate = t.doneAt ? t.doneAt.slice(0, 10) : (t.dueDate || todayStr);
       entries.push({
         id: t.id,
         date: doneDate,
         _source: 'tasks',
-        taskText:    t.text,
-        taskUrgency: t.urgency || 'normal',
-        taskFrom:    'prototype',
-        taskFromId:  p.id,
+        taskText:     t.text,
+        taskUrgency:  t.urgency || 'normal',
+        taskFrom:     'prototype',
+        taskFromId:   p.id,
         taskFromName: p.title,
       });
     });
@@ -3157,7 +3158,7 @@ function submitContact(e) {
     // Preserve done state for tasks that already exist
     data.tasks = newTasks.map(t => {
       const old = (existing.tasks || []).find(o => o.id === t.id);
-      return old ? { ...t, done: old.done } : t;
+      return old ? { ...t, done: old.done, doneAt: old.doneAt } : t;
     });
     state.contacts[i] = { ...existing, ...data };
   } else {
@@ -3271,7 +3272,7 @@ function submitPrototype(e) {
     const existing = state.prototypes[i];
     data.tasks = newTasks.map(t => {
       const old = (existing.tasks || []).find(o => o.id === t.id);
-      return old ? { ...t, done: old.done } : t;
+      return old ? { ...t, done: old.done, doneAt: old.doneAt } : t;
     });
     state.prototypes[i] = { ...existing, ...data };
   } else {
