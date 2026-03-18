@@ -782,7 +782,7 @@ function contactCard(c, zoom) {
     </div>`;
   }
 
-  const allDone = (c.tasks||[]).length > 0 && (c.tasks||[]).every(t => t.done);
+  const allDone = (c.tasks||[]).every(t => t.done);
   const allDoneEmoji = allDone ? `<span class="card-urg-emoji" data-urg="done" title="Toutes les tâches terminées">✅</span>` : '';
 
   return `<div class="card card-hover card-bg-${cat}"
