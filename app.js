@@ -2801,14 +2801,12 @@ function renderAgenda() {
       });
     });
   });
-  // Done tasks (contacts + prototypes)
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Done tasks (contacts + prototypes) — only tasks with a real doneAt date
   state.contacts.forEach(c => {
-    (c.tasks || []).filter(t => t.done).forEach(t => {
-      const doneDate = t.doneAt ? t.doneAt.slice(0, 10) : (t.dueDate || todayStr);
+    (c.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
       entries.push({
         id: t.id,
-        date: doneDate,
+        date: t.doneAt.slice(0, 10),
         _source: 'tasks',
         taskText:     t.text,
         taskUrgency:  t.urgency || 'normal',
@@ -2821,11 +2819,10 @@ function renderAgenda() {
     });
   });
   (state.prototypes || []).forEach(p => {
-    (p.tasks || []).filter(t => t.done).forEach(t => {
-      const doneDate = t.doneAt ? t.doneAt.slice(0, 10) : (t.dueDate || todayStr);
+    (p.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
       entries.push({
         id: t.id,
-        date: doneDate,
+        date: t.doneAt.slice(0, 10),
         _source: 'tasks',
         taskText:     t.text,
         taskUrgency:  t.urgency || 'normal',
