@@ -2800,6 +2800,19 @@ function renderAgenda() {
         protoStatus: p.status,
       });
     });
+    // Evaluation date
+    const evalDate = p.evaluation?.date;
+    if (evalDate) {
+      entries.push({
+        id:         `eval-${p.id}`,
+        date:       evalDate,
+        _source:    'jeux',
+        _isEval:    true,
+        protoId:    p.id,
+        protoTitle: p.title,
+        protoStatus: p.status,
+      });
+    }
   });
   // Done tasks (contacts + prototypes) — only tasks with a real doneAt date
   state.contacts.forEach(c => {
@@ -2888,9 +2901,12 @@ function renderAgenda() {
       const d = new Date(e.date);
       const dateStr = isNaN(d) ? e.date : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
       if (e._source === 'jeux') {
+        const badge = e._isEval
+          ? `<span class="badge" style="background:#fef9c3;border:1px solid #fde047;color:#854d0e;font-size:.7rem">⭐ Éval</span>`
+          : `<span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span>`;
         html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
           <span class="agenda-date">${dateStr}</span>
-          <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span></span>
+          <span class="agenda-type-badge">${badge}</span>
           <div class="agenda-contact-wrap">
             <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
           </div>
