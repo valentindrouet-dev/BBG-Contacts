@@ -363,7 +363,7 @@ function renderDashboard() {
             <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
             <span class="dash-task-text">${esc(t.text)}</span>
             <span class="dash-task-source">${esc(t._name)}</span>
-            <span class="dash-task-date dash-task-date-editable" style="color:${lateColor}" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${t.dueDate}</span>
+            <span class="dash-task-date dash-task-date-editable" style="color:${lateColor}" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'})}</span>
             <span class="dash-days-badge" style="color:${lateColor};background:${lateColor}1a">${lateLabel}</span>
           </div>
         </div>`;
@@ -407,7 +407,7 @@ function renderDashboard() {
           const days = Math.ceil((new Date(f.dateStart) - new Date(today_str)) / 86400000);
           const dayLabel = days === 1 ? 'demain' : `dans ${days} j`;
           const dayColor = days <= 7 ? '#ea580c' : days <= 30 ? '#ca8a04' : '#16a34a';
-          const dateLabel = new Date(f.dateStart).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
+          const dateLabel = new Date(f.dateStart).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
           return `<div class="dash-task-row" onclick="switchPage('festivals');openFestivalDetail('${f.id}')">
             <span class="badge badge-fest-${f.category}" style="font-size:.7rem">${FEST_ICONS[f.category]||'🎪'} ${esc(FEST_LABELS[f.category]||'')}</span>
             <span class="dash-task-text">${esc(f.name)}</span>
