@@ -761,7 +761,7 @@ function contactCard(c, zoom) {
     const subtitle = c.company || c.email || '';
     let extra = '';
     if (zoom >= 3) {
-      if (c.email) extra += `<p class="card-detail-row">${ICONS.mail} ${esc(c.email)}</p>`;
+      if (c.email) extra += `<p class="card-detail-row">${ICONS.mail} ${esc(c.email)}<button class="btn-copy-inline" onclick="event.stopPropagation();copyText('${esc(c.email)}',this)" title="Copier l'email">⎘</button></p>`;
       if (c.phone) extra += `<p class="card-detail-row">${ICONS.phone} ${esc(c.phone)}</p>`;
     }
     if (zoom >= 4 && topTask) {
@@ -3528,6 +3528,15 @@ function openEvalReport(protoId) {
   document.getElementById('eval-report-overlay').classList.remove('hidden');
 }
 
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓';
+    btn.style.color = 'var(--success, #16a34a)';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 2000);
+  });
+}
+
 function copyEvalReport() {
   const content = document.getElementById('eval-report-content');
   if (!content) return;
@@ -3652,7 +3661,7 @@ function openDetail(type, id) {
       <div class="detail-inner">
         <div class="detail-section-title">Coordonnées</div>
         <div class="detail-kv-grid">
-          ${c.email  ? `<div class="detail-kv"><label>Email</label><span>${esc(c.email)}</span></div>` : ''}
+          ${c.email  ? `<div class="detail-kv"><label>Email</label><span style="display:flex;align-items:center;gap:.4rem">${esc(c.email)}<button class="btn-copy-inline" onclick="copyText('${esc(c.email)}',this)" title="Copier l'email">⎘</button></span></div>` : ''}
           ${c.phone  ? `<div class="detail-kv"><label>Téléphone</label><span>${esc(c.phone)}</span></div>` : ''}
           ${c.website? `<div class="detail-kv"><label>Site web</label>
             <a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website.replace(/^https?:\/\//,''))}</a></div>` : ''}

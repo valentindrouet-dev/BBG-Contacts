@@ -1086,6 +1086,12 @@ a:hover { color: var(--primary-700); }
   transition: color var(--transition), background var(--transition);
 }
 .btn-del-row:hover { color: #ef4444; background: #fee2e2; }
+.btn-copy-inline {
+  padding: 0.1rem 0.3rem; color: var(--text-400); font-size: .8rem;
+  border-radius: var(--rx-sm); line-height: 1; flex-shrink: 0;
+  transition: color var(--transition), background var(--transition);
+}
+.btn-copy-inline:hover { color: var(--primary-600); background: var(--primary-50, #eff6ff); }
 .btn-add-row {
   display: inline-flex; align-items: center; gap: 0.3rem;
   font-size: 0.8rem; color: var(--primary-600); margin-top: 0.5rem;
