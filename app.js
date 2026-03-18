@@ -353,6 +353,8 @@ function renderDashboard() {
         const nav = t._from === 'standalone'
           ? "switchPage('tasks')"
           : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+        const diffDays = Math.floor((new Date(today_str) - new Date(t.dueDate)) / 86400000);
+        const lateLabel = diffDays === 0 ? "Aujourd'hui" : diffDays === 1 ? '1j de retard' : `${diffDays}j de retard`;
         return `
         <div class="dash-task-row dash-task-due">
           <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
@@ -361,6 +363,7 @@ function renderDashboard() {
             <span class="dash-task-text">${esc(t.text)}</span>
             <span class="dash-task-source">${esc(t._name)}</span>
             <span class="dash-task-date dash-task-date-editable" style="color:#dc2626" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${t.dueDate}</span>
+            <span class="dash-days-badge" style="color:#dc2626;background:#dc26261a">${lateLabel}</span>
           </div>
         </div>`;
       }).join('')}
