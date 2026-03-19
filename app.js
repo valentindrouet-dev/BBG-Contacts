@@ -42,7 +42,7 @@ const state = {
   tasksSourceFilter:  [],   // [] = tout, 'contacts', 'jeux'
   contactsFavoriteOnly: false,
   agendaSortAsc:      false,
-  agendaCatFilters:   [],   // [] = toutes catégories
+  agendaTypeFilters:   [],   // [] = tous types
   agendaSourceFilter: [],   // [] = tout, 'contacts', 'jeux'
 };
 
@@ -194,7 +194,7 @@ const CAT_LABELS = {
 const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exceptionnel'];
 
 const SOCIAL_TYPES = ['LinkedIn', 'Facebook', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
-const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'autre'];
+const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'developpement', 'autre'];
 const STATUS_ORDER = ['développement', 'tester', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné', 'non-retenu'];
 
 // ── Task helpers ───────────────────────────────────
@@ -316,7 +316,7 @@ function renderDashboard() {
     .sort((a,b) => (b.interest||3) - (a.interest||3))
     .slice(0, 4);
 
-  const EXCH_EMOJI = { rencontre:'🤝', email:'📧', appel:'📞', salon:'🎪', message:'💬', autre:'📝' };
+  const EXCH_EMOJI = { rencontre:'🤝', email:'📧', appel:'📞', salon:'🎪', message:'💬', developpement:'🛠️', autre:'📝' };
   const totalExch = state.contacts.reduce((n,c) => n + (c.exchanges||[]).length, 0);
 
   el.innerHTML = `
@@ -2806,8 +2806,7 @@ function renderAgenda() {
       entries.push({
         id:         `eval-${p.id}`,
         date:       evalDate,
-        _source:    'jeux',
-        _isEval:    true,
+        _source:    'evals',
         protoId:    p.id,
         protoTitle: p.title,
         protoStatus: p.status,
@@ -2854,15 +2853,22 @@ function renderAgenda() {
   const showJeux      = activeSrc.length === 0 || activeSrc.includes('jeux');
   const showFestivals = activeSrc.length === 0 || activeSrc.includes('festivals');
   const showTasks     = activeSrc.length === 0 || activeSrc.includes('tasks');
+  const showEvals     = activeSrc.length === 0 || activeSrc.includes('evals');
 
-  // Category filter (checkboxes) — only applies to contact exchanges
-  const activeCats = state.agendaCatFilters || [];
+  // Type filter — applies to contact exchanges and jeux devlog
+  const activeTypes = state.agendaTypeFilters || [];
   let filtered = entries.filter(e => {
     if (e._source === 'festival') return showFestivals;
     if (e._source === 'jeux')    return showJeux;
+    if (e._source === 'evals')   return showEvals;
     if (e._source === 'tasks')   return showTasks;
     if (!showContacts) return false;
-    return activeCats.length === 0 || activeCats.includes(e.contactCat);
+    if (activeTypes.length === 0) return true;
+    const t = e.type || 'autre';
+    return activeTypes.some(f => {
+      if (f === 'message') return t === 'message' || t === 'email';
+      return t === f;
+    });
   });
 
   document.getElementById('agenda-count').textContent =
@@ -2900,13 +2906,18 @@ function renderAgenda() {
     evts.forEach(e => {
       const d = new Date(e.date);
       const dateStr = isNaN(d) ? e.date : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-      if (e._source === 'jeux') {
-        const badge = e._isEval
-          ? `<span class="badge" style="background:#fef9c3;border:1px solid #fde047;color:#854d0e;font-size:.7rem">⭐ Éval</span>`
-          : `<span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span>`;
+      if (e._source === 'evals') {
         html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
           <span class="agenda-date">${dateStr}</span>
-          <span class="agenda-type-badge">${badge}</span>
+          <span class="agenda-type-badge"><span class="badge" style="background:#fef9c3;border:1px solid #fde047;color:#854d0e;font-size:.7rem">⭐ Éval</span></span>
+          <div class="agenda-contact-wrap">
+            <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
+          </div>
+        </div>`;
+      } else if (e._source === 'jeux') {
+        html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
+          <span class="agenda-date">${dateStr}</span>
+          <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span></span>
           <div class="agenda-contact-wrap">
             <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
           </div>
@@ -2979,12 +2990,12 @@ function onAgendaSourceFilter(checkbox) {
   renderAgenda();
 }
 
-function onAgendaCatFilter(checkbox) {
+function onAgendaTypeFilter(checkbox) {
   const val = checkbox.value;
   if (checkbox.checked) {
-    if (!state.agendaCatFilters.includes(val)) state.agendaCatFilters.push(val);
+    if (!state.agendaTypeFilters.includes(val)) state.agendaTypeFilters.push(val);
   } else {
-    state.agendaCatFilters = state.agendaCatFilters.filter(v => v !== val);
+    state.agendaTypeFilters = state.agendaTypeFilters.filter(v => v !== val);
   }
   renderAgenda();
 }
