@@ -2872,7 +2872,7 @@ function renderAgenda() {
   });
 
   document.getElementById('agenda-count').textContent =
-    `${filtered.length} échange${filtered.length !== 1 ? 's' : ''}${activeCats.length || activeSrc.length ? ' (filtré)' : ''}`;
+    `${filtered.length} échange${filtered.length !== 1 ? 's' : ''}${activeTypes.length || activeSrc.length ? ' (filtré)' : ''}`;
 
   renderAgendaStats(entries);  // stats always on full dataset
 
