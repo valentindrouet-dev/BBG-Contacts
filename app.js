@@ -1445,6 +1445,22 @@ function setTaskDueDateInline(type, itemId, taskId, newDate) {
   if (state.activePage === 'home') renderDashboard();
 }
 
+function saveQuickExchange(contactId) {
+  const date    = document.getElementById('qe-date')?.value || today();
+  const type    = document.getElementById('qe-type')?.value || 'rencontre';
+  const note    = document.getElementById('qe-note')?.value.trim() || '';
+  const exchange = { id: uid(), date, type, note };
+  const c = state.contacts.find(x => x.id === contactId);
+  if (!c) return;
+  c.exchanges = c.exchanges || [];
+  c.exchanges.unshift(exchange);
+  saveState();
+  renderContacts();
+  if (state.activePage === 'home') renderDashboard();
+  if (state.activePage === 'agenda') renderAgenda();
+  openDetail('contact', contactId);
+}
+
 function saveQuickTask(type, id) {
   const prefix = type === 'contact' ? 'qt-c' : 'qt-p';
   const text = document.getElementById(prefix + '-text')?.value.trim();
@@ -3631,17 +3647,28 @@ function openDetail(type, id) {
       : '';
 
     // Exchanges timeline
+    const EXCH_EMOJI_LOC = { rencontre:'🤝', email:'📧', appel:'📞', salon:'🎪', message:'💬', developpement:'🛠️', autre:'📝' };
     const exchSorted = [...(c.exchanges||[])].sort((a,b) => b.date.localeCompare(a.date));
-    const meetHtml = exchSorted.length > 0
-      ? `<div class="detail-section-title">Historique des échanges</div>
-         <div class="exchange-list">${exchSorted.map(e => `
-           <div class="exchange-item">
-             <span class="exchange-date">${e.date}</span>
-             <span class="exchange-type">${esc(e.type||'rencontre')}</span>
-             <span class="exchange-note">${esc(e.note||'')}</span>
-           </div>`).join('')}
-         </div>`
-      : '';
+    const typeOpts = EXCHANGE_TYPES.map(t =>
+      `<option value="${t}">${(EXCH_EMOJI_LOC[t]||'📝')} ${t.charAt(0).toUpperCase()+t.slice(1)}</option>`
+    ).join('');
+    const meetHtml = `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">Historique des échanges
+        <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('qe-form');f.classList.toggle('hidden');f.querySelector('select').focus()">+ Échange</button>
+      </div>
+      <div id="qe-form" class="quick-task-form hidden">
+        <input type="date" id="qe-date" class="form-input" value="${today()}" style="width:auto" />
+        <select id="qe-type" class="form-select" style="width:auto">${typeOpts}</select>
+        <input type="text" id="qe-note" placeholder="Note…" class="form-input" style="flex:1;min-width:100px" />
+        <button onclick="saveQuickExchange('${c.id}')" class="btn-save" style="padding:.25rem .75rem;font-size:.8rem">Ajouter</button>
+        <button onclick="document.getElementById('qe-form').classList.add('hidden')" class="btn-cancel" style="padding:.25rem .5rem;font-size:.8rem">✕</button>
+      </div>
+      ${exchSorted.length > 0 ? `<div class="exchange-list">${exchSorted.map(e => `
+        <div class="exchange-item">
+          <span class="exchange-date">${e.date}</span>
+          <span class="exchange-type">${esc(e.type||'rencontre')}</span>
+          <span class="exchange-note">${esc(e.note||'')}</span>
+        </div>`).join('')}
+      </div>` : ''}`;
 
     // Socials
     const socialsDetailHtml = (c.socials||[]).length > 0
