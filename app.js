@@ -2846,10 +2846,10 @@ function renderAgenda() {
       });
     }
     // Test sessions
-    (p.testSessions || []).filter(s => s.date).forEach(s => {
+    (p.testSessions || []).forEach(s => {
       entries.push({
         id:          `test-${s.id}`,
-        date:        s.date,
+        date:        s.date || today(),
         _source:     'tests',
         protoId:     p.id,
         protoTitle:  p.title,
