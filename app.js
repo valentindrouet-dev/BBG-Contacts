@@ -2845,6 +2845,19 @@ function renderAgenda() {
         protoStatus: p.status,
       });
     }
+    // Test sessions
+    (p.testSessions || []).filter(s => s.date).forEach(s => {
+      entries.push({
+        id:          `test-${s.id}`,
+        date:        s.date,
+        _source:     'jeux',
+        _isTest:     true,
+        protoId:     p.id,
+        protoTitle:  p.title,
+        testPlayers: s.players,
+        testRating:  s.rating,
+      });
+    });
   });
   // Done tasks (contacts + prototypes) — only tasks with a real doneAt date
   state.contacts.forEach(c => {
@@ -2948,14 +2961,27 @@ function renderAgenda() {
           </div>
         </div>`;
       } else if (e._source === 'jeux') {
-        html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
-          <span class="agenda-date">${dateStr}</span>
-          <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span></span>
-          <div class="agenda-contact-wrap">
-            <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
-          </div>
-          ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
-        </div>`;
+        if (e._isTest) {
+          const playersStr = e.testPlayers ? `— Test à ${e.testPlayers} joueur${e.testPlayers > 1 ? 's' : ''}` : '';
+          const starsStr   = e.testRating  ? ' ' + '⭐'.repeat(e.testRating) : '';
+          html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
+            <span class="agenda-date">${dateStr}</span>
+            <span class="agenda-type-badge"><span class="badge" style="background:#dbeafe;border:1px solid #93c5fd;color:#1d4ed8;font-size:.7rem">🎮 Session</span></span>
+            <div class="agenda-contact-wrap">
+              <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
+            </div>
+            ${playersStr || starsStr ? `<span class="agenda-note">${playersStr}${starsStr}</span>` : ''}
+          </div>`;
+        } else {
+          html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
+            <span class="agenda-date">${dateStr}</span>
+            <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span></span>
+            <div class="agenda-contact-wrap">
+              <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
+            </div>
+            ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
+          </div>`;
+        }
       } else if (e._source === 'festival') {
         const festIcon = FEST_ICONS[e.festivalCat] || '🎪';
         const fmtAg = d => d ? new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : null;
