@@ -2850,8 +2850,7 @@ function renderAgenda() {
       entries.push({
         id:          `test-${s.id}`,
         date:        s.date,
-        _source:     'jeux',
-        _isTest:     true,
+        _source:     'tests',
         protoId:     p.id,
         protoTitle:  p.title,
         testPlayers: s.players,
@@ -2900,13 +2899,15 @@ function renderAgenda() {
   const showFestivals = activeSrc.length === 0 || activeSrc.includes('festivals');
   const showTasks     = activeSrc.length === 0 || activeSrc.includes('tasks');
   const showEvals     = activeSrc.length === 0 || activeSrc.includes('evals');
+  const showTests     = activeSrc.length === 0 || activeSrc.includes('tests');
 
-  // Type filter — applies to contact exchanges and jeux devlog
+  // Type filter — applies to contact exchanges
   const activeTypes = state.agendaTypeFilters || [];
   let filtered = entries.filter(e => {
     if (e._source === 'festival') return showFestivals;
     if (e._source === 'jeux')    return showJeux;
     if (e._source === 'evals')   return showEvals;
+    if (e._source === 'tests')   return showTests;
     if (e._source === 'tasks')   return showTasks;
     if (!showContacts) return false;
     if (activeTypes.length === 0) return true;
@@ -2960,28 +2961,26 @@ function renderAgenda() {
             <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
           </div>
         </div>`;
+      } else if (e._source === 'tests') {
+        const playersStr = e.testPlayers ? `— Test à ${e.testPlayers} joueur${e.testPlayers > 1 ? 's' : ''}` : '';
+        const starsStr   = e.testRating  ? ' ' + '⭐'.repeat(e.testRating) : '';
+        html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
+          <span class="agenda-date">${dateStr}</span>
+          <span class="agenda-type-badge"><span class="badge" style="background:#dbeafe;border:1px solid #93c5fd;color:#1d4ed8;font-size:.7rem">🧪 Session</span></span>
+          <div class="agenda-contact-wrap">
+            <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
+          </div>
+          ${playersStr || starsStr ? `<span class="agenda-note">${playersStr}${starsStr}</span>` : ''}
+        </div>`;
       } else if (e._source === 'jeux') {
-        if (e._isTest) {
-          const playersStr = e.testPlayers ? `— Test à ${e.testPlayers} joueur${e.testPlayers > 1 ? 's' : ''}` : '';
-          const starsStr   = e.testRating  ? ' ' + '⭐'.repeat(e.testRating) : '';
-          html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
-            <span class="agenda-date">${dateStr}</span>
-            <span class="agenda-type-badge"><span class="badge" style="background:#dbeafe;border:1px solid #93c5fd;color:#1d4ed8;font-size:.7rem">🎮 Session</span></span>
-            <div class="agenda-contact-wrap">
-              <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
-            </div>
-            ${playersStr || starsStr ? `<span class="agenda-note">${playersStr}${starsStr}</span>` : ''}
-          </div>`;
-        } else {
-          html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
-            <span class="agenda-date">${dateStr}</span>
-            <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span></span>
-            <div class="agenda-contact-wrap">
-              <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
-            </div>
-            ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
-          </div>`;
-        }
+        html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
+          <span class="agenda-date">${dateStr}</span>
+          <span class="agenda-type-badge"><span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem">🎲 Dev</span></span>
+          <div class="agenda-contact-wrap">
+            <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">🎲 ${esc(e.protoTitle)}</span>
+          </div>
+          ${e.note ? `<span class="agenda-note">— ${esc(e.note)}</span>` : ''}
+        </div>`;
       } else if (e._source === 'festival') {
         const festIcon = FEST_ICONS[e.festivalCat] || '🎪';
         const fmtAg = d => d ? new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : null;
