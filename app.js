@@ -1445,6 +1445,23 @@ function setTaskDueDateInline(type, itemId, taskId, newDate) {
   if (state.activePage === 'home') renderDashboard();
 }
 
+function saveQuickTestSession(protoId) {
+  const date     = document.getElementById('qts-date')?.value || today();
+  const version  = document.getElementById('qts-version')?.value.trim() || '';
+  const players  = parseInt(document.getElementById('qts-players')?.value) || null;
+  const rating   = parseInt(document.getElementById('qts-rating')?.value) || 0;
+  const comments = document.getElementById('qts-comments')?.value.trim() || '';
+  const session  = { id: uid(), date, version, players, rating, comments };
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) return;
+  p.testSessions = p.testSessions || [];
+  p.testSessions.unshift(session);
+  saveState();
+  renderPrototypes();
+  if (state.activePage === 'agenda') renderAgenda();
+  openDetail('prototype', protoId);
+}
+
 function saveQuickExchange(contactId) {
   const date    = document.getElementById('qe-date')?.value || today();
   const type    = document.getElementById('qe-type')?.value || 'rencontre';
@@ -3949,12 +3966,14 @@ function openDetail(type, id) {
         })()}
         ${(() => {
           const sessions = (p.testSessions||[]);
-          if (!sessions.length) return '';
           const rated = sessions.filter(s => s.rating);
           const avg = rated.length ? (rated.reduce((sum,s) => sum + s.rating, 0) / rated.length) : null;
           const avgStars = avg !== null
             ? `<span class="test-avg-badge" title="${avg.toFixed(1)}/5">${'⭐'.repeat(Math.round(avg))} <span style="font-size:.72rem;color:var(--text-500)">${avg.toFixed(1)}/5 (${rated.length} noté${rated.length>1?'s':''})</span></span>`
             : '';
+          const ratingOpts = [0,1,2,3,4,5].map(n =>
+            `<option value="${n}">${n === 0 ? '— sans note' : '⭐'.repeat(n)}</option>`
+          ).join('');
           // Group by version
           const byVersion = {};
           sessions.forEach(s => {
@@ -3980,8 +3999,20 @@ function openDetail(type, id) {
             </tr>`).join('');
             return sep + dataRows;
           }).join('');
-          return `<div class="detail-section-title" style="display:flex;align-items:center;gap:.6rem">Sessions de test ${avgStars}</div>
-          <table style="width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.3rem">
+          return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span style="display:flex;align-items:center;gap:.6rem">Sessions de test ${avgStars}</span>
+              <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('qts-form');f.classList.toggle('hidden');f.querySelector('input[type=date]').focus()">+ Session</button>
+            </div>
+            <div id="qts-form" class="quick-task-form hidden">
+              <input type="date" id="qts-date" class="form-input" value="${today()}" style="width:auto" />
+              <input type="text" id="qts-version" class="form-input" placeholder="Version" style="width:6rem" />
+              <input type="number" id="qts-players" class="form-input" placeholder="Joueurs" min="1" max="99" style="width:5.5rem" />
+              <select id="qts-rating" class="form-select" style="width:auto">${ratingOpts}</select>
+              <input type="text" id="qts-comments" class="form-input" placeholder="Commentaires…" style="flex:1;min-width:80px" />
+              <button onclick="saveQuickTestSession('${p.id}')" class="btn-save" style="padding:.25rem .75rem;font-size:.8rem">Ajouter</button>
+              <button onclick="document.getElementById('qts-form').classList.add('hidden')" class="btn-cancel" style="padding:.25rem .5rem;font-size:.8rem">✕</button>
+            </div>
+            ${sessions.length > 0 ? `<table style="width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.3rem">
             <thead><tr style="color:var(--text-500)">
               <th style="text-align:left;padding:.2rem .4rem">Date</th>
               <th style="text-align:center;padding:.2rem .4rem">Joueurs</th>
@@ -3989,7 +4020,7 @@ function openDetail(type, id) {
               <th style="text-align:left;padding:.2rem .4rem">Commentaires</th>
             </tr></thead>
             <tbody>${rows}</tbody>
-          </table>`;
+          </table>` : ''}`;
         })()}
         ${(p.pdf || p.pdfUrl) ? `<div class="detail-section-title">Règles du jeu</div>
           <div class="pdf-viewer-wrap">
