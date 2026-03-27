@@ -1614,7 +1614,7 @@ a:hover { color: var(--primary-700); }
   border-bottom: 2px solid var(--border);
 }
 .agenda-week-header {
-  font-size: .72rem; font-weight: 500; color: var(--text-300);
+  font-size: .72rem; font-weight: 700; color: var(--text-500);
   margin: .65rem 0 .2rem .25rem;
 }
 .agenda-entry {

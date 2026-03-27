@@ -4050,7 +4050,7 @@ function openDetail(type, id) {
           const versionKeys = Object.keys(byVersion).sort((a, b) => {
             if (!a && b) return 1;
             if (a && !b) return -1;
-            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+            return b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' });
           });
           const rows = versionKeys.map(v => {
             const groupSessions = [...byVersion[v]].sort((a,b) => b.date.localeCompare(a.date));
