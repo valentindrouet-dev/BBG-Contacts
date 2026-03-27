@@ -2946,13 +2946,38 @@ function renderAgenda() {
 
   const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
 
+  const isoWeekInfo = dateStr => {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return null;
+    const day = d.getDay() || 7;
+    const mon = new Date(d); mon.setDate(d.getDate() - day + 1);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    const jan4 = new Date(mon.getFullYear(), 0, 4);
+    const w1mon = new Date(jan4); w1mon.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+    const weekNum = Math.round((mon - w1mon) / 604800000) + 1;
+    const key = `${mon.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
+    const monDay = mon.toLocaleDateString('fr-FR', { day: 'numeric' });
+    const sunStr = mon.getMonth() === sun.getMonth()
+      ? sun.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+      : sun.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return { key, label: `Semaine ${weekNum} — ${monDay} au ${sunStr}` };
+  };
+
   let html = '';
 
   for (const [month, evts] of Object.entries(groups)) {
     html += `<div class="agenda-month-header">${month}</div>`;
+    let lastWeekKey = null;
     evts.forEach(e => {
       const d = new Date(e.date);
       const dateStr = isNaN(d) ? e.date : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+      if (!isNaN(d)) {
+        const wi = isoWeekInfo(e.date);
+        if (wi && wi.key !== lastWeekKey) {
+          html += `<div class="agenda-week-header">${wi.label}</div>`;
+          lastWeekKey = wi.key;
+        }
+      }
       if (e._source === 'evals') {
         html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
           <span class="agenda-date">${dateStr}</span>

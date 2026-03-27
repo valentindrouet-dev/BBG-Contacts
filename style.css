@@ -1613,6 +1613,10 @@ a:hover { color: var(--primary-700); }
   margin: 1.25rem 0 .5rem; padding-bottom: .35rem;
   border-bottom: 2px solid var(--border);
 }
+.agenda-week-header {
+  font-size: .72rem; font-weight: 500; color: var(--text-300);
+  margin: .65rem 0 .2rem .25rem;
+}
 .agenda-entry {
   display: flex; align-items: center; gap: .75rem;
   padding: .55rem .75rem; border-radius: var(--rx-lg);
