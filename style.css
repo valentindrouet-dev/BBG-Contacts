@@ -673,14 +673,14 @@ a:hover { color: var(--primary-700); }
   background: #ffffff;
   border: 1px solid var(--border);
   border-radius: var(--rx-xl);
-  width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
+  width: calc(100% - 2rem);
+  max-width: 560px;
+  max-height: 92vh;
   overflow-y: auto;
   box-shadow: var(--shadow-modal);
   animation: slide-up .2s ease;
 }
-.modal-wide { max-width: 620px; }
+.modal-wide { max-width: 900px; }
 .modal-sm   { max-width: 380px; }
 
 .modal-header {
