@@ -884,6 +884,13 @@ function renderPrototypesStats() {
     s, n: all.filter(p => p.status === s).length
   })).filter(x => x.n > 0);
 
+  // Sessions test — jeux en À Tester ou En Développement
+  const testProtos = all
+    .filter(p => p.status === 'tester' || p.status === 'développement')
+    .map(p => ({ title: p.title, count: (p.testSessions || []).length }))
+    .sort((a, b) => b.count - a.count);
+  const totalTests = testProtos.reduce((s, p) => s + p.count, 0);
+
   el.innerHTML = `
     <div class="fstat-block">
       <div class="fstat-title">Jeux</div>
@@ -897,6 +904,15 @@ function renderPrototypesStats() {
         `<div class="fstat-row"><span>${PROTO_ICONS[s]||''} ${STATUS_LABELS[s]||s}</span><span class="fstat-row-val">${n}</span></div>`
       ).join('')}
     </div>
+
+    ${testProtos.length ? `
+    <div class="fstat-block">
+      <div class="fstat-title">🧪 Sessions test</div>
+      ${testProtos.map(p =>
+        `<div class="fstat-row"><span>${esc(p.title)}</span><span class="fstat-row-val">${p.count}</span></div>`
+      ).join('')}
+      ${totalTests ? `<div class="fstat-total-row"><span>Total</span><span>${totalTests}</span></div>` : ''}
+    </div>` : ''}
 
     <div class="fstat-block">
       <div class="fstat-title">Liens</div>
