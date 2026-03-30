@@ -3784,6 +3784,7 @@ function openDetail(type, id) {
 
     el.innerHTML = `
       <div class="modal-header">
+        <button class="btn-pdf-detail" onclick="exportContactPdf('${c.id}')" title="Exporter en PDF">📄 PDF</button>
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${avatar}
           <div style="min-width:0">
@@ -3899,6 +3900,7 @@ function openDetail(type, id) {
 
     el.innerHTML = `
       <div class="modal-header">
+        <button class="btn-pdf-detail" onclick="exportPrototypePdf('${p.id}')" title="Exporter en PDF">📄 PDF</button>
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${p.photo
             ? `<img src="${esc(p.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" />`
@@ -4121,6 +4123,298 @@ function openDetail(type, id) {
     const proto = state.prototypes.find(x => x.id === openId);
     if (proto?.pdf) requestAnimationFrame(() => injectPdfViewer(openId));
   }
+}
+
+// ═══════════════════════════════════════════════════
+// EXPORT PDF (impression navigateur)
+// ═══════════════════════════════════════════════════
+
+function exportContactPdf(id) {
+  const c = state.contacts.find(x => x.id === id);
+  if (!c) return;
+
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+  const pendingTasks = (c.tasks || []).filter(t => !t.done);
+  const recentExchanges = [...(c.exchanges || [])].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  const linkedProtos = state.prototypes.filter(p => (p.contactLinks || []).some(l => l.contactId === c.id));
+  const avatarHtml = c.photo
+    ? `<div class="avatar" style="background-image:url('${c.photo}');background-size:cover;background-position:center"></div>`
+    : `<div class="avatar av-letter">${(c.name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()}</div>`;
+
+  const catColors = { auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#d97706', distributeur: '#16a34a', fabricant: '#dc2626' };
+  const catColor = catColors[c.category] || '#6b7280';
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<title>Fiche Contact — ${c.name.replace(/</g,'&lt;')}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;color:#1a1a2e;background:#fff}
+@page{size:A4;margin:12mm 15mm}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.page{min-height:267mm;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:3px solid ${catColor};margin-bottom:12px}
+.avatar{width:54px;height:54px;border-radius:50%;flex-shrink:0;border:2px solid ${catColor}}
+.av-letter{background:${catColor};display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:700;color:#fff}
+.hdr-info{flex:1}
+.hdr-info h1{font-size:15pt;font-weight:700;color:#1e1b4b}
+.hdr-info .sub{font-size:9pt;color:#6b7280;margin-top:2px}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:8pt;font-weight:700;background:${catColor}20;color:${catColor};border:1px solid ${catColor}40}
+.hdr-right{text-align:right;font-size:8pt;color:#9ca3af;flex-shrink:0}
+.sec{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:${catColor};margin:9px 0 4px;border-bottom:1px solid ${catColor}30;padding-bottom:2px}
+.kv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 14px}
+.kv label{display:block;font-size:7pt;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.kv span,.kv a{font-size:9pt;color:#1e1b4b;text-decoration:none;word-break:break-all}
+.task{display:flex;align-items:flex-start;gap:6px;padding:2.5px 0;font-size:9pt}
+.tbadge{font-size:7pt;font-weight:700;padding:1px 5px;border-radius:10px;white-space:nowrap}
+.tc{background:#fee2e2;color:#dc2626}.tu{background:#fef3c7;color:#d97706}
+.tn{background:#e0f2fe;color:#0284c7}.tf{background:#f1f5f9;color:#64748b}
+.exch{display:flex;align-items:flex-start;gap:8px;padding:2.5px 0;font-size:9pt;border-bottom:1px solid #f1f5f9}
+.exch-date{color:#6b7280;font-size:8pt;white-space:nowrap;min-width:72px}
+.exch-type{color:${catColor};font-weight:600;white-space:nowrap;min-width:72px}
+.exch-note{color:#374151}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.proto{display:flex;align-items:center;gap:5px;padding:2px 0;font-size:9pt}
+.pstt{font-size:7.5pt;padding:1px 5px;border-radius:10px;background:#f0fdf4;color:#16a34a;margin-left:auto;white-space:nowrap}
+.notes{font-size:9pt;color:#374151;white-space:pre-wrap;background:#f9fafb;border-radius:4px;padding:6px 8px;margin-top:3px;border:1px solid #e5e7eb}
+.socials{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.schip{font-size:8pt;padding:2px 8px;background:#f1f5f9;border-radius:10px;color:#374151}
+.footer{margin-top:auto;padding-top:8px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:7pt;color:#9ca3af}
+</style></head>
+<body><div class="page">
+<div class="hdr">
+  ${avatarHtml}
+  <div class="hdr-info">
+    <h1>${esc(c.name)}</h1>
+    <div class="sub">${c.company ? esc(c.company) + ' &nbsp;·&nbsp; ' : ''}<span class="badge">${esc(c.category)}</span>${c.favorite ? ' &nbsp;⭐' : ''}</div>
+  </div>
+  <div class="hdr-right">Fiche générée le<br>${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+</div>
+
+<div class="sec">Coordonnées</div>
+<div class="kv-grid">
+  ${c.email ? `<div class="kv"><label>Email</label><span>${esc(c.email)}</span></div>` : ''}
+  ${c.phone ? `<div class="kv"><label>Téléphone</label><span>${esc(c.phone)}</span></div>` : ''}
+  ${c.website ? `<div class="kv"><label>Site web</label><a href="${esc(c.website)}">${esc(c.website.replace(/^https?:\/\//, ''))}</a></div>` : ''}
+</div>
+
+${(c.socials || []).length > 0 ? `<div class="sec">Réseaux sociaux</div>
+<div class="socials">${(c.socials || []).map(s => `<span class="schip">${esc(s.type)}: ${esc(s.url)}</span>`).join('')}</div>` : ''}
+
+${pendingTasks.length > 0 ? `<div class="sec">Tâches en cours (${pendingTasks.length})</div>
+${pendingTasks.map(t => `<div class="task">
+  <span class="tbadge t${(t.urgency || 'n')[0]}">${esc(t.urgency || 'normal')}</span>
+  <span>${esc(t.text)}</span>
+  ${t.dueDate ? `<span style="margin-left:auto;font-size:8pt;color:#9ca3af">📅 ${fmtDate(t.dueDate)}</span>` : ''}
+</div>`).join('')}` : ''}
+
+<div class="two">
+<div>
+${recentExchanges.length > 0 ? `<div class="sec">Derniers échanges</div>
+${recentExchanges.map(e => `<div class="exch">
+  <span class="exch-date">${fmtDate(e.date)}</span>
+  <span class="exch-type">${esc(e.type || '')}</span>
+  <span class="exch-note">${esc(e.note || '')}</span>
+</div>`).join('')}` : ''}
+</div>
+<div>
+${linkedProtos.length > 0 ? `<div class="sec">Prototypes liés (${linkedProtos.length})</div>
+${linkedProtos.map(p => {
+    const role = (p.contactLinks || []).find(l => l.contactId === c.id)?.role || '';
+    return `<div class="proto">
+  <span>${PROTO_ICONS[p.status] || '🎮'} ${esc(p.title)}</span>
+  ${role ? `<span style="font-size:8pt;color:#6b7280">(${esc(role)})</span>` : ''}
+  <span class="pstt">${esc(STATUS_LABELS[p.status] || p.status)}</span>
+</div>`;
+  }).join('')}` : ''}
+</div>
+</div>
+
+${c.notes ? `<div class="sec">Notes</div><div class="notes">${esc(c.notes)}</div>` : ''}
+
+<div class="footer">
+  <span>BBG Contacts</span>
+  <span>${esc(c.name)} · ${new Date().toLocaleDateString('fr-FR')}</span>
+</div>
+</div>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=820,height=1160');
+  if (!win) { alert('Veuillez autoriser les popups pour exporter en PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.addEventListener('load', () => setTimeout(() => win.print(), 200));
+}
+
+function exportPrototypePdf(id) {
+  const p = state.prototypes.find(x => x.id === id);
+  if (!p) return;
+
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+  const icon = PROTO_ICONS[p.status] || '🎮';
+  const statusLabel = STATUS_LABELS[p.status] || p.status;
+  const pendingTasks = (p.tasks || []).filter(t => !t.done);
+  const recentDevLog = [...(p.devLog || [])].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const linkedContacts = (p.contactLinks || []).map(l => {
+    const contact = state.contacts.find(x => x.id === l.contactId);
+    return contact ? { contact, role: l.role } : null;
+  }).filter(Boolean);
+  const costs = p.costs || [];
+  const totalCost = costs.reduce((s, c) => s + (c.price || 0), 0);
+  const testSessions = (p.testSessions || []).filter(s => s.rating);
+  const avgRating = testSessions.length ? (testSessions.reduce((s, x) => s + x.rating, 0) / testSessions.length) : null;
+
+  const avatarHtml = p.photo
+    ? `<div class="avatar" style="background-image:url('${p.photo}');background-size:cover;background-position:center"></div>`
+    : `<div class="avatar av-icon">${icon}</div>`;
+
+  const statusColors = {
+    développement: '#4f46e5', tester: '#0891b2', évalué: '#16a34a', imprimer: '#d97706',
+    pnp: '#6b7280', production: '#7c3aed', standby: '#9ca3af', sorti: '#f59e0b',
+    abandonné: '#ef4444', 'non-retenu': '#ef4444'
+  };
+  const stColor = statusColors[p.status] || '#6b7280';
+
+  const ev = getEval(p);
+  const hasEval = ev.primary.some(c => (c.score || 0) > 0);
+  const evalScore = hasEval ? ev.primary.reduce((s, c) => s + (c.score || 0), 0) : null;
+  const evalMax = 25;
+  const PRIMARY_CRITERIA = ['Originalité mécanique', 'Potentiel commercial', 'Rejouabilité', 'Adéq. ligne BBG', 'Durée adaptée'];
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<title>Fiche Jeu — ${p.title.replace(/</g,'&lt;')}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;color:#1a1a2e;background:#fff}
+@page{size:A4;margin:12mm 15mm}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.page{min-height:267mm;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:3px solid ${stColor};margin-bottom:12px}
+.avatar{width:54px;height:54px;border-radius:8px;flex-shrink:0;border:2px solid ${stColor}}
+.av-icon{background:${stColor}20;display:flex;align-items:center;justify-content:center;font-size:1.6rem}
+.hdr-info{flex:1}
+.hdr-info h1{font-size:15pt;font-weight:700;color:#1e1b4b}
+.hdr-info .sub{font-size:9pt;color:#6b7280;margin-top:2px}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:8pt;font-weight:700;background:${stColor}20;color:${stColor};border:1px solid ${stColor}40}
+.hdr-right{text-align:right;font-size:8pt;color:#9ca3af;flex-shrink:0}
+.sec{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:${stColor};margin:9px 0 4px;border-bottom:1px solid ${stColor}30;padding-bottom:2px}
+.specs{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+.spec{font-size:8.5pt;padding:2px 8px;background:#f1f5f9;border-radius:10px;color:#374151;border:1px solid #e5e7eb}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.tag{font-size:8pt;padding:2px 7px;background:${stColor}15;border-radius:10px;color:${stColor};border:1px solid ${stColor}30}
+.task{display:flex;align-items:flex-start;gap:6px;padding:2.5px 0;font-size:9pt}
+.tbadge{font-size:7pt;font-weight:700;padding:1px 5px;border-radius:10px;white-space:nowrap}
+.tc{background:#fee2e2;color:#dc2626}.tu{background:#fef3c7;color:#d97706}
+.tn{background:#e0f2fe;color:#0284c7}.tf{background:#f1f5f9;color:#64748b}
+.contact-row{display:flex;align-items:center;gap:6px;padding:2.5px 0;font-size:9pt}
+.cat-badge{font-size:7.5pt;padding:1px 5px;border-radius:10px;background:#e0e7ff;color:#3730a3;margin-left:auto;white-space:nowrap}
+.devlog{display:flex;align-items:flex-start;gap:8px;padding:2.5px 0;font-size:9pt;border-bottom:1px solid #f1f5f9}
+.dl-date{color:#6b7280;font-size:8pt;white-space:nowrap;min-width:72px}
+.dl-note{color:#374151}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.notes{font-size:9pt;color:#374151;white-space:pre-wrap;background:#f9fafb;border-radius:4px;padding:6px 8px;margin-top:3px;border:1px solid #e5e7eb}
+.eval-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:4px}
+.eval-cell{text-align:center;padding:4px;background:#f9fafb;border-radius:4px;border:1px solid #e5e7eb}
+.eval-name{font-size:6.5pt;color:#6b7280;margin-bottom:2px}
+.eval-score{font-size:11pt;font-weight:700;color:${stColor}}
+.eval-score-sub{font-size:7pt;color:#9ca3af}
+.score-bar-wrap{margin-top:5px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden}
+.score-bar{height:100%;background:${stColor};border-radius:3px}
+.costs-tbl{width:100%;border-collapse:collapse;font-size:9pt;margin-top:3px}
+.costs-tbl th{text-align:left;padding:2px 4px;font-size:7.5pt;color:#9ca3af;font-weight:700;border-bottom:1px solid #e5e7eb}
+.costs-tbl td{padding:2.5px 4px;border-bottom:1px solid #f1f5f9}
+.costs-tbl .total td{font-weight:700;border-top:2px solid #e5e7eb;border-bottom:none}
+.footer{margin-top:auto;padding-top:8px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:7pt;color:#9ca3af}
+</style></head>
+<body><div class="page">
+<div class="hdr">
+  ${avatarHtml}
+  <div class="hdr-info">
+    <h1>${esc(p.title)}</h1>
+    <div class="sub">${p.genre ? esc(p.genre) + ' &nbsp;·&nbsp; ' : ''}<span class="badge">${icon} ${esc(statusLabel)}</span></div>
+  </div>
+  <div class="hdr-right">Fiche générée le<br>${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
+    ${avgRating !== null ? `<br><span style="font-size:9pt">⭐ ${avgRating.toFixed(1)}/5 moy.</span>` : ''}
+  </div>
+</div>
+
+<div class="sec">Caractéristiques</div>
+<div class="specs">
+  ${p.players ? `<span class="spec">👥 ${esc(p.players)} joueurs</span>` : ''}
+  ${p.duration ? `<span class="spec">⏱ ${esc(p.duration)}</span>` : ''}
+  ${p.age ? `<span class="spec">👶 dès ${esc(p.age)} ans</span>` : ''}
+  ${p.interest ? `<span class="spec">${'⭐'.repeat(p.interest)} ${INTEREST_LABELS[p.interest] || ''}</span>` : ''}
+  ${p.createdAt ? `<span class="spec">📅 Créé le ${new Date(p.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>` : ''}
+</div>
+
+${(p.tags || []).length > 0 ? `<div class="tags">${(p.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+
+${p.description ? `<div class="sec">Description</div><div class="notes">${esc(p.description)}</div>` : ''}
+
+<div class="two">
+<div>
+${linkedContacts.length > 0 ? `<div class="sec">Contacts (${linkedContacts.length})</div>
+${linkedContacts.map(({ contact, role }) => `<div class="contact-row">
+  <span style="font-size:10pt">${(contact.name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+  <span>${esc(contact.name)}</span>
+  ${role ? `<span style="font-size:8pt;color:#6b7280">(${esc(role)})</span>` : ''}
+  <span class="cat-badge">${esc(contact.category)}</span>
+</div>`).join('')}` : ''}
+
+${pendingTasks.length > 0 ? `<div class="sec">Tâches en cours (${pendingTasks.length})</div>
+${pendingTasks.map(t => `<div class="task">
+  <span class="tbadge t${(t.urgency || 'n')[0]}">${esc(t.urgency || 'normal')}</span>
+  <span>${esc(t.text)}</span>
+</div>`).join('')}` : ''}
+</div>
+
+<div>
+${recentDevLog.length > 0 ? `<div class="sec">Journal de développement</div>
+${recentDevLog.map(e => `<div class="devlog">
+  <span class="dl-date">${fmtDate(e.date)}</span>
+  <span class="dl-note">${esc(e.note)}</span>
+</div>`).join('')}` : ''}
+
+${costs.length > 0 ? `<div class="sec">Coûts</div>
+<table class="costs-tbl">
+  <thead><tr><th>Description</th><th style="text-align:right">Prix</th></tr></thead>
+  <tbody>
+    ${costs.map(c => `<tr><td>${esc(c.description)}</td><td style="text-align:right">${c.price != null ? Number(c.price).toFixed(2) + ' €' : '—'}</td></tr>`).join('')}
+    <tr class="total"><td>Total</td><td style="text-align:right">${totalCost.toFixed(2)} €</td></tr>
+  </tbody>
+</table>` : ''}
+</div>
+</div>
+
+${hasEval ? `<div class="sec">Évaluation (${evalScore}/${evalMax} pts — ${Math.round(evalScore / evalMax * 100)} %)</div>
+<div class="eval-grid">
+${ev.primary.map((c, i) => `<div class="eval-cell">
+  <div class="eval-name">${PRIMARY_CRITERIA[i]}</div>
+  <div class="eval-score">${c.score || '—'}<span class="eval-score-sub">/5</span></div>
+  ${c.score ? `<div class="score-bar-wrap"><div class="score-bar" style="width:${c.score / 5 * 100}%"></div></div>` : ''}
+</div>`).join('')}
+</div>
+${ev.strengths ? `<div style="margin-top:5px;font-size:9pt"><strong>Points forts :</strong> ${esc(ev.strengths)}</div>` : ''}
+${ev.improvements ? `<div style="margin-top:3px;font-size:9pt"><strong>Améliorations :</strong> ${esc(ev.improvements)}</div>` : ''}
+${ev.status ? `<div style="margin-top:3px;font-size:9pt"><strong>Décision :</strong> ${esc(ev.status)}${ev.nextSteps ? ' — ' + esc(ev.nextSteps) : ''}</div>` : ''}` : ''}
+
+${p.notes ? `<div class="sec">Notes de développement</div><div class="notes">${esc(p.notes)}</div>` : ''}
+
+<div class="footer">
+  <span>BBG Contacts</span>
+  <span>${esc(p.title)} · ${new Date().toLocaleDateString('fr-FR')}</span>
+</div>
+</div>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=820,height=1160');
+  if (!win) { alert('Veuillez autoriser les popups pour exporter en PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.addEventListener('load', () => setTimeout(() => win.print(), 200));
 }
 
 // ═══════════════════════════════════════════════════

@@ -838,6 +838,15 @@ a:hover { color: var(--primary-700); }
   color: var(--text-500); transition: background var(--transition), color var(--transition);
 }
 .btn-edit-detail:hover { background: var(--primary-100); color: var(--primary-700); border-color: var(--primary-400); }
+.btn-pdf-detail {
+  flex-shrink: 0; margin-right: .5rem;
+  display: flex; align-items: center; justify-content: center; gap: .25rem;
+  height: 28px; padding: 0 .6rem; border-radius: var(--rx-md);
+  border: 1px solid var(--border-input); background: var(--bg);
+  color: var(--text-500); font-size: .72rem; font-weight: 600; cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.btn-pdf-detail:hover { background: #f0fdf4; color: #16a34a; border-color: #86efac; }
 .btn-quick-task-toggle {
   font-size: .72rem; font-weight: 600; color: var(--primary-600);
   background: none; border: none; padding: 0; cursor: pointer; flex-shrink: 0;
