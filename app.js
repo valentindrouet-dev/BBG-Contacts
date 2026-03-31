@@ -4433,6 +4433,235 @@ ${p.notes ? `<div class="sec">Notes de développement</div><div class="notes">${
 }
 
 // ═══════════════════════════════════════════════════
+// PDF — LISTES (pages entières)
+// ═══════════════════════════════════════════════════
+
+const _PDF_PAGE_CSS = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:9.5pt;color:#1a1a2e;background:#fff}
+@page{size:A4 landscape;margin:10mm 12mm}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+h1{font-size:14pt;font-weight:700;color:#1e1b4b;margin-bottom:2px}
+.meta{font-size:8pt;color:#6b7280;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:8.5pt}
+th{text-align:left;padding:4px 6px;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;border-bottom:2px solid #e5e7eb;white-space:nowrap}
+td{padding:4px 6px;border-bottom:1px solid #f1f5f9;vertical-align:top;max-width:220px;word-break:break-word}
+tr:nth-child(even) td{background:#fafafa}
+.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:7pt;font-weight:700;white-space:nowrap}
+.footer{margin-top:8px;font-size:7pt;color:#9ca3af;display:flex;justify-content:space-between;border-top:1px solid #e5e7eb;padding-top:4px}
+`;
+
+function exportContactsListPdf() {
+  const list = state.contacts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—';
+  const catColors = { auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309', distributeur: '#16a34a', fabricant: '#dc2626' };
+
+  const rows = list.map(c => {
+    const ac = catColors[c.category] || '#6b7280';
+    const lastEx = [...(c.exchanges || [])].sort((a, b) => b.date.localeCompare(a.date))[0];
+    const pendingTasks = (c.tasks || []).filter(t => !t.done).length;
+    return `<tr>
+      <td><strong>${esc(c.name)}</strong>${c.favorite ? ' ⭐' : ''}</td>
+      <td><span class="badge" style="background:${ac}18;color:${ac};border:1px solid ${ac}30">${esc(CAT_LABELS[c.category] || c.category)}</span></td>
+      <td>${esc(c.company || '—')}</td>
+      <td>${c.email ? `<a href="mailto:${esc(c.email)}" style="color:#1e1b4b">${esc(c.email)}</a>` : '—'}</td>
+      <td>${esc(c.phone || '—')}</td>
+      <td>${esc(c.relationStatus || '—')}</td>
+      <td>${lastEx ? fmtDate(lastEx.date) : '—'}</td>
+      <td>${pendingTasks > 0 ? `<span style="color:#dc2626;font-weight:700">${pendingTasks}</span>` : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Contacts BBG</title>
+<style>${_PDF_PAGE_CSS}</style></head><body>
+<h1>📇 Carnet de Contacts BBG</h1>
+<div class="meta">${list.length} contact${list.length > 1 ? 's' : ''} · Généré le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+<table>
+  <thead><tr><th>Nom</th><th>Catégorie</th><th>Entreprise</th><th>Email</th><th>Téléphone</th><th>Relation</th><th>Dernier échange</th><th>Tâches</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer"><span>BBG Contacts</span><span>Contacts · ${new Date().toLocaleDateString('fr-FR')}</span></div>
+</body></html>`;
+  _pdfOpenWindow(html, 'Contacts BBG');
+}
+
+function exportPrototypesListPdf() {
+  const list = state.prototypes.slice().sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fr'));
+  const statusColors = {
+    développement: '#4f46e5', tester: '#0891b2', évalué: '#16a34a', imprimer: '#d97706',
+    pnp: '#6b7280', production: '#7c3aed', standby: '#9ca3af', sorti: '#f59e0b',
+    abandonné: '#ef4444', 'non-retenu': '#ef4444'
+  };
+  const interestStars = n => n ? '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n)) : '—';
+
+  const rows = list.map(p => {
+    const sc = statusColors[p.status] || '#6b7280';
+    const icon = PROTO_ICONS[p.status] || '🎮';
+    const pendingTasks = (p.tasks || []).filter(t => !t.done).length;
+    const tags = (p.tags || []).slice(0, 4).map(t => `<span style="font-size:7pt;padding:1px 5px;background:#f1f5f9;border-radius:8px;margin-right:2px">${esc(t)}</span>`).join('');
+    return `<tr>
+      <td><strong>${esc(p.title)}</strong></td>
+      <td><span class="badge" style="background:${sc}18;color:${sc};border:1px solid ${sc}30">${icon} ${esc(STATUS_LABELS[p.status] || p.status)}</span></td>
+      <td>${esc(p.genre || '—')}</td>
+      <td>${p.players ? esc(p.players) + ' j.' : '—'}</td>
+      <td>${esc(p.duration || '—')}</td>
+      <td>${p.age ? esc(p.age) + '+' : '—'}</td>
+      <td style="color:#f59e0b;letter-spacing:1px">${interestStars(p.interest)}</td>
+      <td>${tags || '—'}</td>
+      <td>${pendingTasks > 0 ? `<span style="color:#dc2626;font-weight:700">${pendingTasks}</span>` : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Jeux BBG</title>
+<style>${_PDF_PAGE_CSS}</style></head><body>
+<h1>🎲 Catalogue des Jeux BBG</h1>
+<div class="meta">${list.length} jeu${list.length > 1 ? 'x' : ''} · Généré le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+<table>
+  <thead><tr><th>Titre</th><th>Statut</th><th>Genre</th><th>Joueurs</th><th>Durée</th><th>Âge</th><th>Intérêt</th><th>Tags</th><th>Tâches</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer"><span>BBG Contacts</span><span>Jeux · ${new Date().toLocaleDateString('fr-FR')}</span></div>
+</body></html>`;
+  _pdfOpenWindow(html, 'Jeux BBG');
+}
+
+function exportFestivalsListPdf() {
+  const list = [...(state.festivals || [])].sort((a, b) => (a.dateStart || '').localeCompare(b.dateStart || ''));
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '';
+
+  const rows = list.map(f => {
+    const icon = FEST_ICONS[f.category] || '🎪';
+    const dateStr = f.dateStart
+      ? (f.dateEnd && f.dateEnd !== f.dateStart ? `${fmtDate(f.dateStart)} → ${fmtDate(f.dateEnd)}` : fmtDate(f.dateStart))
+      : '—';
+    const partBadge = f.participating
+      ? `<span class="badge" style="background:#dcfce7;color:#16a34a;border:1px solid #86efac">✓ Participe</span>`
+      : `<span class="badge" style="background:#f1f5f9;color:#6b7280;border:1px solid #e5e7eb">—</span>`;
+    const presences = (f.presences || []).filter(p => !p.done).length;
+    return `<tr>
+      <td><strong>${esc(f.name)}</strong></td>
+      <td>${icon} ${esc(FEST_LABELS[f.category] || f.category || '—')}</td>
+      <td>${esc(f.city || '—')}</td>
+      <td>${dateStr}</td>
+      <td>${f.distance ? esc(String(f.distance)) + ' km' : '—'}</td>
+      <td>${partBadge}</td>
+      <td>${presences > 0 ? presences + ' présence(s)' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Festivals BBG</title>
+<style>${_PDF_PAGE_CSS}</style></head><body>
+<h1>🎪 Festivals BBG</h1>
+<div class="meta">${list.length} festival${list.length > 1 ? 's' : ''} · Généré le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+<table>
+  <thead><tr><th>Nom</th><th>Type</th><th>Ville</th><th>Dates</th><th>Distance</th><th>Participation</th><th>Présences à venir</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer"><span>BBG Contacts</span><span>Festivals · ${new Date().toLocaleDateString('fr-FR')}</span></div>
+</body></html>`;
+  _pdfOpenWindow(html, 'Festivals BBG');
+}
+
+function exportAgendaListPdf() {
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—';
+  const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', developpement: '🛠️', autre: '📝' };
+
+  // Gather all entries (same logic as renderAgenda)
+  const entries = [];
+  state.contacts.forEach(c => {
+    (c.exchanges || []).forEach(e => {
+      entries.push({ date: e.date, source: '👤 ' + esc(c.name), type: (EXCH_EMOJI[e.type] || '📝') + ' ' + esc(e.type || 'autre'), note: esc(e.note || '') });
+    });
+  });
+  (state.festivals || []).forEach(f => {
+    (f.presences || []).forEach(p => {
+      const d2 = p.dateEnd && p.dateEnd !== p.dateStart ? ` → ${fmtDate(p.dateEnd)}` : '';
+      entries.push({ date: p.dateStart || p.date || '', source: '🎪 ' + esc(f.name), type: 'Présence', note: esc(p.note || '') + d2 });
+    });
+  });
+  (state.prototypes || []).forEach(p => {
+    (p.devLog || []).forEach(e => {
+      entries.push({ date: e.date, source: '🎮 ' + esc(p.title), type: '🛠️ Dev log', note: esc(e.note || '') });
+    });
+    if (p.evaluation?.date) entries.push({ date: p.evaluation.date, source: '🎮 ' + esc(p.title), type: '⭐ Évaluation', note: '' });
+    (p.testSessions || []).forEach(s => {
+      entries.push({ date: s.date || '', source: '🎮 ' + esc(p.title), type: '🧪 Session test', note: s.rating ? `${s.rating}/5` : '' });
+    });
+  });
+  entries.sort((a, b) => b.date.localeCompare(a.date));
+
+  const rows = entries.map(e => `<tr>
+    <td style="white-space:nowrap">${fmtDate(e.date)}</td>
+    <td>${e.source}</td>
+    <td>${e.type}</td>
+    <td>${e.note}</td>
+  </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Agenda BBG</title>
+<style>${_PDF_PAGE_CSS}</style></head><body>
+<h1>📅 Agenda BBG</h1>
+<div class="meta">${entries.length} entrée${entries.length > 1 ? 's' : ''} · Généré le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+<table>
+  <thead><tr><th>Date</th><th>Source</th><th>Type</th><th>Note</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer"><span>BBG Contacts</span><span>Agenda · ${new Date().toLocaleDateString('fr-FR')}</span></div>
+</body></html>`;
+  _pdfOpenWindow(html, 'Agenda BBG');
+}
+
+function exportTasksListPdf() {
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—';
+  const urgencyLabel = { critique: '🔴 Critique', haute: '🟠 Haute', normal: '🔵 Normale', basse: '⚪ Basse' };
+  const urgencyColor = { critique: '#dc2626', haute: '#d97706', normal: '#0284c7', basse: '#6b7280' };
+
+  let tasks = [];
+  state.contacts.forEach(c => {
+    (c.tasks || []).filter(t => !t.done).forEach(t => {
+      tasks.push({ urgency: t.urgency || 'normal', text: t.text, source: '👤 ' + c.name, dueDate: t.dueDate });
+    });
+  });
+  state.prototypes.forEach(p => {
+    (p.tasks || []).filter(t => !t.done).forEach(t => {
+      tasks.push({ urgency: t.urgency || 'normal', text: t.text, source: '🎮 ' + p.title, dueDate: t.dueDate });
+    });
+  });
+  (state.standaloneTasks || []).filter(t => !t.done).forEach(t => {
+    tasks.push({ urgency: t.urgency || 'normal', text: t.text, source: '📌 Tâche libre', dueDate: t.dueDate });
+  });
+  (state.festivals || []).forEach(f => {
+    (f.presences || []).filter(p => !p.done).forEach(p => {
+      tasks.push({ urgency: 'normal', text: `Présence${p.note ? ' — ' + p.note : ''}`, source: '🎪 ' + f.name, dueDate: p.dateStart || p.date });
+    });
+  });
+
+  const URGENCY_ORDER = { critique: 0, haute: 1, normal: 2, basse: 3 };
+  tasks.sort((a, b) => (URGENCY_ORDER[a.urgency] || 2) - (URGENCY_ORDER[b.urgency] || 2));
+
+  const rows = tasks.map(t => {
+    const uc = urgencyColor[t.urgency] || '#6b7280';
+    return `<tr>
+      <td><span class="badge" style="background:${uc}15;color:${uc};border:1px solid ${uc}30">${urgencyLabel[t.urgency] || t.urgency}</span></td>
+      <td>${esc(t.text)}</td>
+      <td>${esc(t.source)}</td>
+      <td style="white-space:nowrap">${fmtDate(t.dueDate)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Tâches BBG</title>
+<style>${_PDF_PAGE_CSS}</style></head><body>
+<h1>✅ Tâches en cours — BBG</h1>
+<div class="meta">${tasks.length} tâche${tasks.length > 1 ? 's' : ''} en cours · Généré le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+<table>
+  <thead><tr><th>Urgence</th><th>Tâche</th><th>Source</th><th>Échéance</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer"><span>BBG Contacts</span><span>Tâches · ${new Date().toLocaleDateString('fr-FR')}</span></div>
+</body></html>`;
+  _pdfOpenWindow(html, 'Tâches BBG');
+}
+
+// ═══════════════════════════════════════════════════
 // IMPORT / EXPORT EXCEL
 // ═══════════════════════════════════════════════════
 function toggleImportExport() {

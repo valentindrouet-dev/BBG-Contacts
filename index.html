@@ -145,6 +145,10 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nouveau
         </button>
+        <button class="btn-pdf-list" onclick="exportContactsListPdf()" title="Exporter la liste en PDF">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          PDF
+        </button>
       </div>
       <div class="toolbar-right">
         <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--text-600);cursor:pointer;white-space:nowrap;padding:.3rem .5rem;border-radius:var(--rx-lg);border:1px solid var(--border-input);background:var(--surface)">
@@ -285,6 +289,10 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nouveau
         </button>
+        <button class="btn-pdf-list" onclick="exportPrototypesListPdf()" title="Exporter la liste en PDF">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          PDF
+        </button>
       </div>
       <div class="toolbar-right">
         <div class="zoom-wrap" id="prototypes-zoom-wrap">
@@ -371,6 +379,10 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:.3rem"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nouvelle tâche
         </button>
+        <button class="btn-pdf-list" onclick="exportTasksListPdf()" title="Exporter les tâches en PDF">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          PDF
+        </button>
         <div class="sort-wrap">
           <select class="sort-select" id="tasks-sort" onchange="renderTasks()">
             <option value="urgency">Urgence</option>
@@ -434,6 +446,10 @@
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="agenda-count">0 échange</p>
       <div class="toolbar-right">
+        <button class="btn-pdf-list" onclick="exportAgendaListPdf()" title="Exporter l'agenda en PDF">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          PDF
+        </button>
         <button class="sort-order-btn" id="agenda-sort-order" onclick="toggleAgendaSort()" title="Inverser l'ordre chronologique">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="agenda-sort-icon">
             <polyline points="6 9 12 15 18 9"/>
@@ -522,6 +538,10 @@
             <button class="btn-primary btn-add-inline" onclick="openModal('festival')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nouveau
+            </button>
+            <button class="btn-pdf-list" onclick="exportFestivalsListPdf()" title="Exporter la liste en PDF">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              PDF
             </button>
           </div>
           <div class="toolbar-right">
