@@ -3784,7 +3784,6 @@ function openDetail(type, id) {
 
     el.innerHTML = `
       <div class="modal-header">
-        <button class="btn-pdf-detail" onclick="exportContactPdf('${c.id}')" title="Exporter en PDF">📄 PDF</button>
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${avatar}
           <div style="min-width:0">
@@ -3793,6 +3792,7 @@ function openDetail(type, id) {
           </div>
           <span class="badge badge-${c.category}" style="margin-left:auto;flex-shrink:0">${esc(c.category)}</span>
         </div>
+        <button class="btn-pdf-detail" onclick="exportContactPdf('${c.id}')" title="Exporter en PDF">📄 PDF</button>
         <button class="btn-edit-detail" onclick="closeModal('detail');editContact('${c.id}')" title="Modifier">${ICONS.pencil}</button>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
@@ -3900,7 +3900,6 @@ function openDetail(type, id) {
 
     el.innerHTML = `
       <div class="modal-header">
-        <button class="btn-pdf-detail" onclick="exportPrototypePdf('${p.id}')" title="Exporter en PDF">📄 PDF</button>
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${p.photo
             ? `<img src="${esc(p.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" />`
@@ -3911,6 +3910,7 @@ function openDetail(type, id) {
           </div>
           <span class="badge badge-${p.status}" style="margin-left:auto;flex-shrink:0">${icon} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
         </div>
+        <button class="btn-pdf-detail" onclick="exportPrototypePdf('${p.id}')" title="Exporter en PDF">📄 PDF</button>
         <button class="btn-edit-detail" onclick="closeModal('detail');editPrototype('${p.id}')" title="Modifier">${ICONS.pencil}</button>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
@@ -4129,20 +4129,31 @@ function openDetail(type, id) {
 // EXPORT PDF (impression navigateur)
 // ═══════════════════════════════════════════════════
 
+function _pdfOpenWindow(html, title) {
+  const win = window.open('', '_blank', 'width=900,height=1200');
+  if (!win) { alert('Veuillez autoriser les popups pour exporter en PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.addEventListener('load', () => setTimeout(() => win.print(), 300));
+}
+
 function exportContactPdf(id) {
   const c = state.contacts.find(x => x.id === id);
   if (!c) return;
 
-  const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-  const pendingTasks = (c.tasks || []).filter(t => !t.done);
-  const recentExchanges = [...(c.exchanges || [])].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const allTasks    = (c.tasks || []).slice().sort((a, b) => (URGENCY_ORDER[a.urgency||'normal']||2) - (URGENCY_ORDER[b.urgency||'normal']||2));
+  const pendingTasks = allTasks.filter(t => !t.done);
+  const doneTasks    = allTasks.filter(t =>  t.done);
+  const allExchanges = [...(c.exchanges || [])].sort((a, b) => b.date.localeCompare(a.date));
   const linkedProtos = state.prototypes.filter(p => (p.contactLinks || []).some(l => l.contactId === c.id));
+
+  const catColors = { auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309', distributeur: '#16a34a', fabricant: '#dc2626' };
+  const ac = catColors[c.category] || '#6b7280';
   const avatarHtml = c.photo
     ? `<div class="avatar" style="background-image:url('${c.photo}');background-size:cover;background-position:center"></div>`
     : `<div class="avatar av-letter">${(c.name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()}</div>`;
-
-  const catColors = { auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#d97706', distributeur: '#16a34a', fabricant: '#dc2626' };
-  const catColor = catColors[c.category] || '#6b7280';
 
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
@@ -4153,15 +4164,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;color:#1a1a2e;backgr
 @page{size:A4;margin:12mm 15mm}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 .page{min-height:267mm;display:flex;flex-direction:column}
-.hdr{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:3px solid ${catColor};margin-bottom:12px}
-.avatar{width:54px;height:54px;border-radius:50%;flex-shrink:0;border:2px solid ${catColor}}
-.av-letter{background:${catColor};display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:700;color:#fff}
+.hdr{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:3px solid ${ac};margin-bottom:12px}
+.avatar{width:54px;height:54px;border-radius:50%;flex-shrink:0;border:2px solid ${ac}}
+.av-letter{background:${ac};display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:700;color:#fff}
 .hdr-info{flex:1}
 .hdr-info h1{font-size:15pt;font-weight:700;color:#1e1b4b}
 .hdr-info .sub{font-size:9pt;color:#6b7280;margin-top:2px}
-.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:8pt;font-weight:700;background:${catColor}20;color:${catColor};border:1px solid ${catColor}40}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:8pt;font-weight:700;background:${ac}20;color:${ac};border:1px solid ${ac}40}
 .hdr-right{text-align:right;font-size:8pt;color:#9ca3af;flex-shrink:0}
-.sec{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:${catColor};margin:9px 0 4px;border-bottom:1px solid ${catColor}30;padding-bottom:2px}
+.sec{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:${ac};margin:9px 0 4px;border-bottom:1px solid ${ac}30;padding-bottom:2px}
 .kv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 14px}
 .kv label{display:block;font-size:7pt;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
 .kv span,.kv a{font-size:9pt;color:#1e1b4b;text-decoration:none;word-break:break-all}
@@ -4171,7 +4182,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;color:#1a1a2e;backgr
 .tn{background:#e0f2fe;color:#0284c7}.tf{background:#f1f5f9;color:#64748b}
 .exch{display:flex;align-items:flex-start;gap:8px;padding:2.5px 0;font-size:9pt;border-bottom:1px solid #f1f5f9}
 .exch-date{color:#6b7280;font-size:8pt;white-space:nowrap;min-width:72px}
-.exch-type{color:${catColor};font-weight:600;white-space:nowrap;min-width:72px}
+.exch-type{color:${ac};font-weight:600;white-space:nowrap;min-width:72px}
 .exch-note{color:#374151}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
 .proto{display:flex;align-items:center;gap:5px;padding:2px 0;font-size:9pt}
@@ -4208,10 +4219,16 @@ ${pendingTasks.map(t => `<div class="task">
   ${t.dueDate ? `<span style="margin-left:auto;font-size:8pt;color:#9ca3af">📅 ${fmtDate(t.dueDate)}</span>` : ''}
 </div>`).join('')}` : ''}
 
+${doneTasks.length > 0 ? `<div class="sec" style="color:#6b7280">Tâches terminées (${doneTasks.length})</div>
+${doneTasks.map(t => `<div class="task" style="opacity:.6;text-decoration:line-through">
+  <span class="tbadge tf">✓</span>
+  <span>${esc(t.text)}</span>
+</div>`).join('')}` : ''}
+
 <div class="two">
 <div>
-${recentExchanges.length > 0 ? `<div class="sec">Derniers échanges</div>
-${recentExchanges.map(e => `<div class="exch">
+${allExchanges.length > 0 ? `<div class="sec">Échanges (${allExchanges.length})</div>
+${allExchanges.map(e => `<div class="exch">
   <span class="exch-date">${fmtDate(e.date)}</span>
   <span class="exch-type">${esc(e.type || '')}</span>
   <span class="exch-note">${esc(e.note || '')}</span>
@@ -4239,12 +4256,7 @@ ${c.notes ? `<div class="sec">Notes</div><div class="notes">${esc(c.notes)}</div
 </div>
 </body></html>`;
 
-  const win = window.open('', '_blank', 'width=820,height=1160');
-  if (!win) { alert('Veuillez autoriser les popups pour exporter en PDF.'); return; }
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  win.addEventListener('load', () => setTimeout(() => win.print(), 200));
+  _pdfOpenWindow(html);
 }
 
 function exportPrototypePdf(id) {
@@ -4409,12 +4421,7 @@ ${p.notes ? `<div class="sec">Notes de développement</div><div class="notes">${
 </div>
 </body></html>`;
 
-  const win = window.open('', '_blank', 'width=820,height=1160');
-  if (!win) { alert('Veuillez autoriser les popups pour exporter en PDF.'); return; }
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  win.addEventListener('load', () => setTimeout(() => win.print(), 200));
+  _pdfOpenWindow(html);
 }
 
 // ═══════════════════════════════════════════════════
