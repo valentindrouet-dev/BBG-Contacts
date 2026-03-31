@@ -4267,6 +4267,7 @@ function exportPrototypePdf(id) {
   const icon = PROTO_ICONS[p.status] || '🎮';
   const statusLabel = STATUS_LABELS[p.status] || p.status;
   const pendingTasks = (p.tasks || []).filter(t => !t.done);
+  const doneTasks = (p.tasks || []).filter(t => t.done);
   const recentDevLog = [...(p.devLog || [])].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
   const linkedContacts = (p.contactLinks || []).map(l => {
     const contact = state.contacts.find(x => x.id === l.contactId);
@@ -4274,8 +4275,9 @@ function exportPrototypePdf(id) {
   }).filter(Boolean);
   const costs = p.costs || [];
   const totalCost = costs.reduce((s, c) => s + (c.price || 0), 0);
-  const testSessions = (p.testSessions || []).filter(s => s.rating);
-  const avgRating = testSessions.length ? (testSessions.reduce((s, x) => s + x.rating, 0) / testSessions.length) : null;
+  const testSessions = [...(p.testSessions || [])].filter(s => s.date || s.comments || s.rating).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const ratedSessions = testSessions.filter(s => s.rating);
+  const avgRating = ratedSessions.length ? (ratedSessions.reduce((s, x) => s + x.rating, 0) / ratedSessions.length) : null;
 
   const avatarHtml = p.photo
     ? `<div class="avatar" style="background-image:url('${p.photo}');background-size:cover;background-position:center"></div>`
@@ -4287,12 +4289,6 @@ function exportPrototypePdf(id) {
     abandonné: '#ef4444', 'non-retenu': '#ef4444'
   };
   const stColor = statusColors[p.status] || '#6b7280';
-
-  const ev = getEval(p);
-  const hasEval = ev.primary.some(c => (c.score || 0) > 0);
-  const evalScore = hasEval ? ev.primary.reduce((s, c) => s + (c.score || 0), 0) : null;
-  const evalMax = 25;
-  const PRIMARY_CRITERIA = ['Originalité mécanique', 'Potentiel commercial', 'Rejouabilité', 'Adéq. ligne BBG', 'Durée adaptée'];
 
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
@@ -4338,6 +4334,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;color:#1a1a2e;backgr
 .costs-tbl th{text-align:left;padding:2px 4px;font-size:7.5pt;color:#9ca3af;font-weight:700;border-bottom:1px solid #e5e7eb}
 .costs-tbl td{padding:2.5px 4px;border-bottom:1px solid #f1f5f9}
 .costs-tbl .total td{font-weight:700;border-top:2px solid #e5e7eb;border-bottom:none}
+.task-done{display:flex;align-items:flex-start;gap:6px;padding:2px 0;font-size:9pt;color:#6b7280;text-decoration:line-through}
+.test-tbl{width:100%;border-collapse:collapse;font-size:9pt;margin-top:3px}
+.test-tbl th{text-align:left;padding:2px 4px;font-size:7.5pt;color:#9ca3af;font-weight:700;border-bottom:1px solid #e5e7eb}
+.test-tbl td{padding:3px 4px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.stars{color:#f59e0b;letter-spacing:1px}
 .footer{margin-top:auto;padding-top:8px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:7pt;color:#9ca3af}
 </style></head>
 <body><div class="page">
@@ -4378,6 +4379,11 @@ ${linkedContacts.map(({ contact, role }) => `<div class="contact-row">
 ${pendingTasks.length > 0 ? `<div class="sec">Tâches en cours (${pendingTasks.length})</div>
 ${pendingTasks.map(t => `<div class="task">
   <span class="tbadge t${(t.urgency || 'n')[0]}">${esc(t.urgency || 'normal')}</span>
+  <span>${esc(t.text)}${t.dueDate ? ` <span style="font-size:7.5pt;color:#9ca3af">— échéance ${fmtDate(t.dueDate)}</span>` : ''}</span>
+</div>`).join('')}` : ''}
+${doneTasks.length > 0 ? `<div class="sec">Tâches accomplies (${doneTasks.length})</div>
+${doneTasks.map(t => `<div class="task-done">
+  <span style="font-size:9pt">✓</span>
   <span>${esc(t.text)}</span>
 </div>`).join('')}` : ''}
 </div>
@@ -4400,17 +4406,19 @@ ${costs.length > 0 ? `<div class="sec">Coûts</div>
 </div>
 </div>
 
-${hasEval ? `<div class="sec">Évaluation (${evalScore}/${evalMax} pts — ${Math.round(evalScore / evalMax * 100)} %)</div>
-<div class="eval-grid">
-${ev.primary.map((c, i) => `<div class="eval-cell">
-  <div class="eval-name">${PRIMARY_CRITERIA[i]}</div>
-  <div class="eval-score">${c.score || '—'}<span class="eval-score-sub">/5</span></div>
-  ${c.score ? `<div class="score-bar-wrap"><div class="score-bar" style="width:${c.score / 5 * 100}%"></div></div>` : ''}
-</div>`).join('')}
-</div>
-${ev.strengths ? `<div style="margin-top:5px;font-size:9pt"><strong>Points forts :</strong> ${esc(ev.strengths)}</div>` : ''}
-${ev.improvements ? `<div style="margin-top:3px;font-size:9pt"><strong>Améliorations :</strong> ${esc(ev.improvements)}</div>` : ''}
-${ev.status ? `<div style="margin-top:3px;font-size:9pt"><strong>Décision :</strong> ${esc(ev.status)}${ev.nextSteps ? ' — ' + esc(ev.nextSteps) : ''}</div>` : ''}` : ''}
+${testSessions.length > 0 ? `<div class="sec">Sessions de test (${testSessions.length}${avgRating !== null ? ` — moy. ⭐ ${avgRating.toFixed(1)}/5` : ''})</div>
+<table class="test-tbl">
+  <thead><tr><th>Date</th><th>Version</th><th>Joueurs</th><th>Note</th><th>Commentaires</th></tr></thead>
+  <tbody>
+    ${testSessions.map(s => `<tr>
+      <td style="white-space:nowrap">${s.date ? fmtDate(s.date) : '—'}</td>
+      <td>${s.version ? esc(s.version) : '—'}</td>
+      <td style="text-align:center">${s.players || '—'}</td>
+      <td style="white-space:nowrap"><span class="stars">${s.rating ? '★'.repeat(s.rating) + '<span style="color:#d1d5db">' + '★'.repeat(5 - s.rating) + '</span>' : '—'}</span></td>
+      <td>${s.comments ? esc(s.comments) : ''}</td>
+    </tr>`).join('')}
+  </tbody>
+</table>` : ''}
 
 ${p.notes ? `<div class="sec">Notes de développement</div><div class="notes">${esc(p.notes)}</div>` : ''}
 
