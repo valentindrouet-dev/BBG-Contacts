@@ -432,7 +432,6 @@ function renderDashboard() {
           const statusBadge = t._emoji ? `<span style="font-size:1.2rem;flex-shrink:0">${t._emoji}</span>` : '';
           return `
           <div class="dash-task-row" style="cursor:pointer" onclick="switchPage('prototypes');openDetail('prototype','${t._id}')">
-            <span style="font-size:1.1rem">🧪</span>
             <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0">
               ${statusBadge}<span class="dash-task-text"><strong>${esc(t._name)}</strong> — ${esc(t.text)}</span>
             </div>
