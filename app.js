@@ -323,6 +323,15 @@ function renderDashboard() {
     .sort((a,b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, 8);
 
+  // Test counter tasks
+  const testCounterTasks = pendingTasks
+    .filter(t => t.subtype === 'test_counter')
+    .sort((a,b) => {
+      const pa = (a._sessionCount||0) / (a.targetCount||1);
+      const pb = (b._sessionCount||0) / (b.targetCount||1);
+      return pb - pa;
+    });
+
   // Top protos (by interest, not sorti)
   const topProtos = [...state.prototypes]
     .filter(p => p.status !== 'sorti' && p.status !== 'non-retenu')
@@ -403,6 +412,31 @@ function renderDashboard() {
             <span class="dash-task-source">${esc(t._name)}</span>
             <span class="dash-task-date dash-task-date-editable" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${dateLabel}</span>
             <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
+    ${testCounterTasks.length > 0 ? `
+    <div class="dash-section">
+      <div class="dash-section-title">🧪 Sessions de test</div>
+      ${testCounterTasks.map(t => {
+        const cur = t._sessionCount || 0;
+        const target = t.targetCount || 1;
+        const pct = Math.min(100, Math.round(cur / target * 100));
+        const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
+        return `
+        <div class="dash-task-row" style="cursor:pointer" onclick="switchPage('prototypes');openDetail('prototype','${t._id}')">
+          <span style="font-size:1.1rem">🧪</span>
+          <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0">
+            <span class="dash-task-text">${esc(t.text)}</span>
+            <span class="dash-task-source">${esc(t._name)}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+            <div style="width:80px;height:6px;background:var(--border-input);border-radius:3px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s"></div>
+            </div>
+            <span style="font-size:.8rem;font-weight:600;color:${barColor};white-space:nowrap">${cur}/${target}</span>
           </div>
         </div>`;
       }).join('')}
