@@ -1856,11 +1856,11 @@ a:hover { color: var(--primary-700); }
 .dash-stat-num   { font-size: 1.75rem; font-weight: 700; color: var(--primary-700); line-height: 1; }
 .dash-stat-label { font-size: .72rem; color: var(--text-500); margin-top: .3rem; }
 
-.dash-section { margin-bottom: 1.25rem; }
-.dash-section-title { font-size: .8rem; font-weight: 600; color: var(--text-500); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .5rem; }
+.dash-section { margin-bottom: 1.5rem; }
+.dash-section-title { font-size: .8rem; font-weight: 600; color: var(--text-500); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .65rem; }
 .dash-task-row {
   display: flex; align-items: center; gap: .5rem;
-  padding: .45rem .6rem; border-radius: var(--rx-lg);
+  padding: .5rem .6rem; border-radius: var(--rx-lg);
   transition: background .1s;
   border-bottom: 1px solid var(--border);
   font-size: .82rem;
@@ -1873,7 +1873,7 @@ a:hover { color: var(--primary-700); }
 .dash-task-date   { font-size: .72rem; color: var(--text-400); white-space: nowrap; flex-shrink: 0; }
 .dash-days-badge  { font-size: .72rem; font-weight: 600; padding: .1rem .45rem; border-radius: var(--rx-full); white-space: nowrap; flex-shrink: 0; }
 
-.dash-cols { display: flex; gap: 1rem; flex-wrap: wrap; }
+.dash-cols { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
 
 /* ═══════════════════════════════════════════════════
    AGENDA STATS BAR CHART
