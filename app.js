@@ -1207,10 +1207,14 @@ function renderTasks() {
     });
   });
   state.prototypes.forEach(p => {
+    const sessionCount = (p.testSessions || []).filter(s => s.date || s.comments || s.rating).length;
     (p.tasks || []).forEach(t => {
       tasks.push({ itemId: p.id, taskId: t.id, type: 'prototype', name: p.title,
         category: 'prototype',
-        task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt,
+        subtype: t.subtype, targetCount: t.targetCount,
+        currentCount: t.subtype === 'test_counter' ? sessionCount : undefined,
+      });
     });
   });
   (state.standaloneTasks || []).forEach(t => {
@@ -1378,12 +1382,20 @@ function taskCard(t) {
     : t.type === 'festival'
       ? `<button class="task-del-btn" onclick="event.stopPropagation();removeFestivalPresence('${t.itemId}','${t.taskId}')" title="Supprimer">✕</button>`
       : '';
+  let taskTextHtml = `<span class="task-text">${esc(t.task)}</span>`;
+  if (t.subtype === 'test_counter' && t.targetCount) {
+    const cur = t.currentCount || 0;
+    const pct = Math.min(100, Math.round(cur / t.targetCount * 100));
+    taskTextHtml = `<span class="task-text">${esc(t.task)}</span>
+      <span class="test-counter-badge">${cur}/${t.targetCount}</span>
+      <span class="test-counter-bar-wrap"><span class="test-counter-bar-fill" style="width:${pct}%"></span></span>`;
+  }
   return `<div class="task-card${t.done ? ' done' : ''}">
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
       onclick="event.stopPropagation();toggleTaskDone('${t.type}','${t.itemId}','${t.taskId}')" />
     <div class="task-body" ${clickBody}>
       <span class="task-source">${typeEmoji} ${esc(t.name)}</span>
-      <span class="task-text">${esc(t.task)}</span>
+      ${taskTextHtml}
       <span class="task-meta">${dueBadge}${doneAtBadge}<span class="badge badge-urgence-${t.urgency}">${esc(t.urgency)}</span></span>
     </div>
     ${delBtn}
@@ -1461,6 +1473,18 @@ function setTaskDueDateInline(type, itemId, taskId, newDate) {
   if (state.activePage === 'home') renderDashboard();
 }
 
+function updateTestCounterTasks(p) {
+  const sessionCount = (p.testSessions || []).filter(s => s.date || s.comments || s.rating).length;
+  (p.tasks || []).forEach(t => {
+    if (t.subtype === 'test_counter' && t.targetCount && !t.done) {
+      if (sessionCount >= t.targetCount) {
+        t.done = true;
+        t.doneAt = new Date().toISOString();
+      }
+    }
+  });
+}
+
 function saveQuickTestSession(protoId) {
   const date     = document.getElementById('qts-date')?.value || today();
   const version  = document.getElementById('qts-version')?.value.trim() || '';
@@ -1472,6 +1496,7 @@ function saveQuickTestSession(protoId) {
   if (!p) return;
   p.testSessions = p.testSessions || [];
   p.testSessions.unshift(session);
+  updateTestCounterTasks(p);
   saveState();
   renderPrototypes();
   if (state.activePage === 'agenda') renderAgenda();
@@ -1757,13 +1782,50 @@ function addTaskRow(prefix, task = {}) {
   tbody.appendChild(tr);
 }
 
+function addTestCounterRow(prefix, task = {}) {
+  const tbody = document.getElementById(`${prefix}-tasks-body`);
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const urgencies = ['faible', 'normal', 'urgent', 'critique'];
+  const opts = urgencies.map(u =>
+    `<option value="${u}" ${(task.urgency || 'normal') === u ? 'selected' : ''}>${u.charAt(0).toUpperCase() + u.slice(1)}</option>`
+  ).join('');
+  const tid = task.id || uid();
+  tr.dataset.taskId = tid;
+  tr.dataset.subtype = 'test_counter';
+  tr.innerHTML = `
+    <td><label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;white-space:nowrap">
+      🧪 Tester
+      <input type="number" class="test-counter-target" min="1" value="${task.targetCount || 5}"
+        style="width:3.5rem;padding:.2rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);font-size:.82rem;font-family:inherit" />
+      fois
+    </label></td>
+    <td><select>${opts}</select></td>
+    <td><input type="date" value="${esc(task.dueDate || '')}" style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
+    <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
 function getTasksFromForm(prefix) {
   const tbody = document.getElementById(`${prefix}-tasks-body`);
   if (!tbody) return [];
   return Array.from(tbody.querySelectorAll('tr')).map(tr => {
-    const text    = tr.querySelector('input[type="text"]')?.value.trim() || '';
+    const subtype = tr.dataset.subtype || '';
     const urgency = tr.querySelector('select')?.value || 'normal';
     const dueDate = tr.querySelector('input[type="date"]')?.value || '';
+    if (subtype === 'test_counter') {
+      const targetCount = parseInt(tr.querySelector('.test-counter-target')?.value) || 1;
+      return {
+        id: tr.dataset.taskId || uid(),
+        text: `Tester ${targetCount} fois`,
+        urgency,
+        dueDate: dueDate || undefined,
+        done: false,
+        subtype: 'test_counter',
+        targetCount,
+      };
+    }
+    const text = tr.querySelector('input[type="text"]')?.value.trim() || '';
     return {
       id:      tr.dataset.taskId || uid(),
       text,
@@ -1771,14 +1833,17 @@ function getTasksFromForm(prefix) {
       dueDate: dueDate || undefined,
       done:    false,
     };
-  }).filter(t => t.text);
+  }).filter(t => t.text || t.subtype === 'test_counter');
 }
 
 function populateTasksForm(prefix, tasks = []) {
   const tbody = document.getElementById(`${prefix}-tasks-body`);
   if (!tbody) return;
   tbody.innerHTML = '';
-  tasks.forEach(t => addTaskRow(prefix, t));
+  tasks.forEach(t => {
+    if (t.subtype === 'test_counter') addTestCounterRow(prefix, t);
+    else addTaskRow(prefix, t);
+  });
 }
 
 // ═══════════════════════════════════════════════════
@@ -3398,8 +3463,10 @@ function submitPrototype(e) {
       return old ? { ...t, done: old.done, doneAt: old.doneAt } : t;
     });
     state.prototypes[i] = { ...existing, ...data };
+    updateTestCounterTasks(state.prototypes[i]);
   } else {
     state.prototypes.unshift({ id: uid(), createdAt: today(), tasks: newTasks, ...data });
+    updateTestCounterTasks(state.prototypes[0]);
   }
   saveState(); closeModal('prototype'); renderPrototypes();
 }
@@ -3941,14 +4008,24 @@ function openDetail(type, id) {
           if (!allT.length) return '';
           const pending = allT.filter(t => !t.done);
           const done    = allT.filter(t => t.done);
-          const row = t => `
+          const sessionCount = (p.testSessions || []).filter(s => s.date || s.comments || s.rating).length;
+          const row = t => {
+            const isCounter = t.subtype === 'test_counter' && t.targetCount;
+            const progressHtml = isCounter ? (() => {
+              const pct = Math.min(100, Math.round(sessionCount / t.targetCount * 100));
+              return `<span class="test-counter-badge">${sessionCount}/${t.targetCount}</span>
+                <span class="test-counter-bar-wrap"><span class="test-counter-bar-fill" style="width:${pct}%"></span></span>`;
+            })() : '';
+            return `
             <div class="detail-task-row">
               <input type="checkbox" ${t.done?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary-600)"
                 onchange="toggleTaskDone('prototype','${p.id}','${t.id}');openDetail('prototype','${p.id}')" />
               <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
               <span style="font-size:.875rem;color:var(--text-700);${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</span>
+              ${progressHtml}
               ${(t.done && t.doneAt) ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>` : ''}
             </div>`;
+          };
           const n = done.length;
           const showLbl = `Afficher ${n} tâche${n>1?'s':''} terminée${n>1?'s':''}`;
           return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">Tâches

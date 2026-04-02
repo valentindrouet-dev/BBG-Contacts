@@ -1951,6 +1951,29 @@ a:hover { color: var(--primary-700); }
   white-space: nowrap;
 }
 
+/* Test counter task — progress badge + bar */
+.test-counter-badge {
+  font-size: .7rem; font-weight: 700;
+  padding: .1rem .4rem; border-radius: 10px;
+  background: #e0f2fe; color: #0891b2;
+  white-space: nowrap; flex-shrink: 0;
+}
+.test-counter-bar-wrap {
+  display: inline-block; width: 48px; height: 6px;
+  background: #e5e7eb; border-radius: 3px;
+  vertical-align: middle; overflow: hidden; flex-shrink: 0;
+}
+.test-counter-bar-fill {
+  display: block; height: 100%;
+  background: #0891b2; border-radius: 3px;
+  transition: width .3s;
+}
+.btn-add-test-counter {
+  color: #0891b2;
+  background: #e0f2fe;
+}
+.btn-add-test-counter:hover { background: #bae6fd; color: #0369a1; }
+
 /* Inline add button in toolbar */
 .btn-add-inline {
   padding: .4rem .9rem;
