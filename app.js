@@ -297,7 +297,7 @@ function renderDashboard() {
     ...state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'contact', _name: c.name, _id: c.id}))),
     ...state.prototypes.flatMap(p => {
       const _sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
-      return (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id, _sessionCount: _sc}));
+      return (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id, _sessionCount: _sc, _status: p.status}));
     }),
     ...(state.standaloneTasks||[]).filter(t => !t.done).map(t => ({...t, _from:'standalone', _name:'Tâche libre', _id:t.id})),
   ].sort((a,b) => {
@@ -323,13 +323,14 @@ function renderDashboard() {
     .sort((a,b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, 8);
 
-  // Test counter tasks
+  // Test counter tasks — triés par statut : En développement, À tester, À imprimer
+  const TEST_STATUS_ORDER = { développement: 0, tester: 1, imprimer: 2 };
   const testCounterTasks = pendingTasks
     .filter(t => t.subtype === 'test_counter')
     .sort((a,b) => {
-      const pa = (a._sessionCount||0) / (a.targetCount||1);
-      const pb = (b._sessionCount||0) / (b.targetCount||1);
-      return pb - pa;
+      const sa = TEST_STATUS_ORDER[a._status] ?? 99;
+      const sb = TEST_STATUS_ORDER[b._status] ?? 99;
+      return sa - sb;
     });
 
   // Top protos (by interest, not sorti)
@@ -428,11 +429,12 @@ function renderDashboard() {
           const target = t.targetCount || 1;
           const pct = Math.min(100, Math.round(cur / target * 100));
           const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
+          const statusBadge = t._status ? `<span class="badge badge-${t._status}" style="font-size:.65rem;flex-shrink:0">${PROTO_ICONS[t._status]||''} ${esc(STATUS_LABELS[t._status]||t._status)}</span>` : '';
           return `
           <div class="dash-task-row" style="cursor:pointer" onclick="switchPage('prototypes');openDetail('prototype','${t._id}')">
             <span style="font-size:1.1rem">🧪</span>
             <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0">
-              <span class="dash-task-text"><strong>${esc(t._name)}</strong> — ${esc(t.text)}</span>
+              ${statusBadge}<span class="dash-task-text"><strong>${esc(t._name)}</strong> — ${esc(t.text)}</span>
             </div>
             <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
               <div style="width:80px;height:6px;background:var(--border-input);border-radius:3px;overflow:hidden">
@@ -934,16 +936,21 @@ function renderPrototypesStats() {
     s, n: all.filter(p => p.status === s).length
   })).filter(x => x.n > 0);
 
-  // Sessions test — jeux avec tâches test_counter
+  // Sessions test — jeux avec tâches test_counter, triés par statut : En développement, À tester, À imprimer
+  const TEST_STATUS_ORDER_STATS = { développement: 0, tester: 1, imprimer: 2 };
   const testProtos = all
     .filter(p => (p.tasks||[]).some(t => !t.done && t.subtype === 'test_counter'))
     .map(p => {
       const sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
       const counterTask = (p.tasks||[]).find(t => !t.done && t.subtype === 'test_counter');
       const target = counterTask ? (counterTask.targetCount || 1) : 1;
-      return { title: p.title, count: sc, target };
+      return { title: p.title, count: sc, target, status: p.status };
     })
-    .sort((a, b) => (b.count/b.target) - (a.count/a.target));
+    .sort((a, b) => {
+      const sa = TEST_STATUS_ORDER_STATS[a.status] ?? 99;
+      const sb = TEST_STATUS_ORDER_STATS[b.status] ?? 99;
+      return sa - sb;
+    });
   const totalTests = testProtos.reduce((s, p) => s + p.count, 0);
 
   el.innerHTML = `
@@ -966,8 +973,9 @@ function renderPrototypesStats() {
       ${testProtos.map(p => {
         const pct = Math.min(100, Math.round(p.count / p.target * 100));
         const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
+        const sIcon = p.status ? (PROTO_ICONS[p.status]||'') : '';
         return `<div class="fstat-row" style="flex-wrap:wrap;gap:.2rem .5rem">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</span>
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(STATUS_LABELS[p.status]||p.status||'')}">${sIcon ? sIcon+' ' : ''}${esc(p.title)}</span>
           <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0">
             <div style="width:52px;height:5px;background:var(--border-input);border-radius:3px;overflow:hidden">
               <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px"></div>
