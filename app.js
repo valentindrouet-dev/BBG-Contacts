@@ -432,8 +432,7 @@ function renderDashboard() {
           <div class="dash-task-row" style="cursor:pointer" onclick="switchPage('prototypes');openDetail('prototype','${t._id}')">
             <span style="font-size:1.1rem">🧪</span>
             <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0">
-              <span class="dash-task-text">${esc(t.text)}</span>
-              <span class="dash-task-source">${esc(t._name)}</span>
+              <span class="dash-task-text"><strong>${esc(t._name)}</strong> — ${esc(t.text)}</span>
             </div>
             <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
               <div style="width:80px;height:6px;background:var(--border-input);border-radius:3px;overflow:hidden">
@@ -935,11 +934,16 @@ function renderPrototypesStats() {
     s, n: all.filter(p => p.status === s).length
   })).filter(x => x.n > 0);
 
-  // Sessions test — jeux en À Tester ou En Développement
+  // Sessions test — jeux avec tâches test_counter
   const testProtos = all
-    .filter(p => p.status === 'tester' || p.status === 'développement')
-    .map(p => ({ title: p.title, count: (p.testSessions || []).length }))
-    .sort((a, b) => b.count - a.count);
+    .filter(p => (p.tasks||[]).some(t => !t.done && t.subtype === 'test_counter'))
+    .map(p => {
+      const sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
+      const counterTask = (p.tasks||[]).find(t => !t.done && t.subtype === 'test_counter');
+      const target = counterTask ? (counterTask.targetCount || 1) : 1;
+      return { title: p.title, count: sc, target };
+    })
+    .sort((a, b) => (b.count/b.target) - (a.count/a.target));
   const totalTests = testProtos.reduce((s, p) => s + p.count, 0);
 
   el.innerHTML = `
@@ -959,9 +963,19 @@ function renderPrototypesStats() {
     ${testProtos.length ? `
     <div class="fstat-block">
       <div class="fstat-title">🧪 Sessions test</div>
-      ${testProtos.map(p =>
-        `<div class="fstat-row"><span>${esc(p.title)}</span><span class="fstat-row-val">${p.count}</span></div>`
-      ).join('')}
+      ${testProtos.map(p => {
+        const pct = Math.min(100, Math.round(p.count / p.target * 100));
+        const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
+        return `<div class="fstat-row" style="flex-wrap:wrap;gap:.2rem .5rem">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</span>
+          <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0">
+            <div style="width:52px;height:5px;background:var(--border-input);border-radius:3px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px"></div>
+            </div>
+            <span class="fstat-row-val" style="color:${barColor}">${p.count}/${p.target}</span>
+          </div>
+        </div>`;
+      }).join('')}
       ${totalTests ? `<div class="fstat-total-row"><span>Total</span><span>${totalTests}</span></div>` : ''}
     </div>` : ''}
 
