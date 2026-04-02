@@ -297,7 +297,7 @@ function renderDashboard() {
     ...state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'contact', _name: c.name, _id: c.id}))),
     ...state.prototypes.flatMap(p => {
       const _sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
-      return (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id, _sessionCount: _sc, _status: p.status}));
+      return (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id, _sessionCount: _sc, _status: p.status, _emoji: p.emoji}));
     }),
     ...(state.standaloneTasks||[]).filter(t => !t.done).map(t => ({...t, _from:'standalone', _name:'Tâche libre', _id:t.id})),
   ].sort((a,b) => {
@@ -429,7 +429,7 @@ function renderDashboard() {
           const target = t.targetCount || 1;
           const pct = Math.min(100, Math.round(cur / target * 100));
           const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
-          const statusBadge = t._status ? `<span class="badge badge-${t._status}" style="font-size:.65rem;flex-shrink:0">${PROTO_ICONS[t._status]||''} ${esc(STATUS_LABELS[t._status]||t._status)}</span>` : '';
+          const statusBadge = t._emoji ? `<span style="font-size:1.2rem;flex-shrink:0">${t._emoji}</span>` : '';
           return `
           <div class="dash-task-row" style="cursor:pointer" onclick="switchPage('prototypes');openDetail('prototype','${t._id}')">
             <span style="font-size:1.1rem">🧪</span>
