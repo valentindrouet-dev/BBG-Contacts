@@ -1103,9 +1103,10 @@ function prototypeCard(p, zoom) {
   const editBtn = `<button class="card-edit-btn" ${isMin ? 'style="padding:.2rem"' : ''}
     onclick="event.stopPropagation();editPrototype('${p.id}')" title="Modifier">${ICONS.pencil}</button>`;
 
+  const displayIcon = p.emoji || icon;
   const mediaContent = p.photo
     ? `<img src="${esc(p.photo)}" class="card-photo" alt="" />`
-    : `<span class="card-game-icon">${icon}</span>`;
+    : `<span class="card-game-icon">${displayIcon}</span>`;
 
   const urgEmoji = (topTask && (urg === 'urgent' || urg === 'critique'))
     ? `<span class="card-urg-emoji" data-urg="${urg}" title="Tâche ${urg}">${URGENCY_EMOJI[urg] || ''}</span>`
@@ -1191,7 +1192,7 @@ function buildPrototypesTable(list) {
             ${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}
           </div>` : '';
       return `<tr onclick="openDetail('prototype','${p.id}')">
-        <td class="col-avatar"><span class="list-proto-icon">${PROTO_ICONS[p.status]||'🎮'}</span></td>
+        <td class="col-avatar"><span class="list-proto-icon">${p.emoji || PROTO_ICONS[p.status]||'🎮'}</span></td>
         <td class="td-fw">${esc(p.title)}</td>
         <td><span class="badge badge-${p.status}">${PROTO_ICONS[p.status]||'🎮'} ${esc(STATUS_LABELS[p.status]||p.status)}</span></td>
         <td style="font-size:.85rem">${'⭐'.repeat(p.interest||3)}</td>
@@ -1743,6 +1744,14 @@ function clearProtoPhoto() {
   document.getElementById('proto-photo-url').value = '';
   document.getElementById('proto-photo-file').value = '';
   _updatePhotoPreview('proto', '');
+}
+function previewProtoEmoji() {
+  const emoji = document.getElementById('proto-emoji')?.value.trim() || '';
+  const wrap = document.getElementById('proto-photo-preview');
+  const photoUrl = document.getElementById('proto-photo-url')?.value.trim() || '';
+  if (!photoUrl && emoji && wrap) {
+    wrap.innerHTML = `<div class="photo-placeholder" style="font-size:2rem">${emoji}</div>`;
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -3433,7 +3442,7 @@ function submitContact(e) {
 function resetPrototypeForm() {
   ['prototype-id','prototype-title','prototype-genre','prototype-players',
    'prototype-duration','prototype-age','prototype-description',
-   'prototype-notes','proto-photo-url'].forEach(id => {
+   'prototype-notes','proto-photo-url','proto-emoji'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('prototype-status').value = '';
@@ -3467,6 +3476,8 @@ function editPrototype(id) {
   document.getElementById('prototype-notes').value       = p.notes        || '';
   document.getElementById('proto-photo-url').value       = p.photo        || '';
   _updatePhotoPreview('proto', p.photo || '');
+  const emojiEl = document.getElementById('proto-emoji');
+  if (emojiEl) emojiEl.value = p.emoji || '';
 
   const intVal = p.interest || 3;
   const intEl = document.querySelector(`input[name="proto-interest"][value="${intVal}"]`);
@@ -3520,6 +3531,7 @@ function submitPrototype(e) {
     notes:        document.getElementById('prototype-notes').value.trim(),
     interest:     intVal,
     photo:        document.getElementById('proto-photo-url').value.trim(),
+    emoji:        document.getElementById('proto-emoji')?.value.trim() || '',
     pdf:          _protoPdfData,
     pdfName,
     pdfUrl,

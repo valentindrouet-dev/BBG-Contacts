@@ -862,6 +862,13 @@
               </label>
               <button type="button" class="photo-clear-btn" onclick="clearProtoPhoto()">Effacer</button>
             </div>
+            <div class="photo-row" style="margin-top:.4rem;align-items:center;gap:.5rem">
+              <label style="font-size:.8rem;color:var(--text-muted);flex-shrink:0">Emoji personnalisé :</label>
+              <input type="text" id="proto-emoji" maxlength="4"
+                placeholder="ex: 🃏" oninput="previewProtoEmoji()"
+                style="width:3.5rem;font-size:1.4rem;text-align:center;padding:.2rem .3rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-input,#fff)" />
+              <span style="font-size:.75rem;color:var(--text-muted)">(si pas de photo)</span>
+            </div>
           </div>
         </div>
       </div>
