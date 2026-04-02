@@ -283,6 +283,7 @@ function switchPage(page) {
   if (page === 'tasks')      renderTasks();
   if (page === 'agenda')     renderAgenda();
   if (page === 'festivals')  renderFestivals();
+  if (page === 'stats')      renderStats();
 }
 
 // ═══════════════════════════════════════════════════
@@ -5135,6 +5136,212 @@ document.querySelectorAll('.task-filter-pill').forEach(btn => {
 document.getElementById('modal-compare')?.addEventListener('click', e => {
   if (e.target === document.getElementById('modal-compare')) closeModal('compare');
 });
+
+// ═══════════════════════════════════════════════════
+// RENDER — STATISTIQUES
+// ═══════════════════════════════════════════════════
+function renderStats() {
+  const el = document.getElementById('stats-content');
+  if (!el) return;
+
+  const EXCH_EMOJI = {
+    rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪',
+    message: '💬', developpement: '🛠️', autre: '📝',
+    festival: '🎪', évaluation: '⭐', test: '🧪'
+  };
+  const SRC_LABELS = {
+    contact: '👤 Contacts', prototype: '🎮 Jeux',
+    standalone: '✨ Libres', festival: '🎪 Festivals'
+  };
+
+  // ── Collect all exchanges / actions (by date) ──
+  const exchanges = [];
+
+  state.contacts.forEach(c => {
+    (c.exchanges || []).forEach(e => {
+      if (!e.date) return;
+      exchanges.push({ date: e.date, type: e.type || 'autre', source: 'contact', label: c.name });
+    });
+  });
+
+  (state.prototypes || []).forEach(p => {
+    (p.devLog || []).forEach(e => {
+      if (!e.date) return;
+      exchanges.push({ date: e.date, type: 'developpement', source: 'jeux', label: p.title });
+    });
+    if (p.evaluation?.date) {
+      exchanges.push({ date: p.evaluation.date, type: 'évaluation', source: 'eval', label: p.title });
+    }
+    (p.testSessions || []).forEach(s => {
+      if (!s.date) return;
+      exchanges.push({ date: s.date, type: 'test', source: 'test', label: p.title });
+    });
+  });
+
+  (state.festivals || []).forEach(f => {
+    (f.presences || []).forEach(p => {
+      const d = p.dateStart || p.date || '';
+      if (!d) return;
+      exchanges.push({ date: d, type: 'festival', source: 'festival', label: f.name });
+    });
+  });
+
+  // ── Collect all completed tasks (by doneAt) ──
+  const completedTasks = [];
+
+  state.contacts.forEach(c => {
+    (c.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
+      completedTasks.push({ date: t.doneAt.slice(0, 10), source: 'contact', name: c.name, text: t.text });
+    });
+  });
+
+  (state.prototypes || []).forEach(p => {
+    (p.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
+      completedTasks.push({ date: t.doneAt.slice(0, 10), source: 'prototype', name: p.title, text: t.text });
+    });
+  });
+
+  (state.standaloneTasks || []).filter(t => t.done && t.doneAt).forEach(t => {
+    completedTasks.push({ date: t.doneAt.slice(0, 10), source: 'standalone', name: 'Tâche libre', text: t.text });
+  });
+
+  (state.festivals || []).forEach(f => {
+    (f.presences || []).filter(p => p.done && p.doneAt).forEach(p => {
+      completedTasks.push({ date: p.doneAt.slice(0, 10), source: 'festival', name: f.name, text: 'Présence festival' });
+    });
+  });
+
+  // ── Group by YYYY-MM ──
+  const months = {};
+  exchanges.forEach(e => {
+    const key = e.date.slice(0, 7);
+    if (!months[key]) months[key] = { exchanges: [], tasks: [] };
+    months[key].exchanges.push(e);
+  });
+  completedTasks.forEach(t => {
+    const key = t.date.slice(0, 7);
+    if (!months[key]) months[key] = { exchanges: [], tasks: [] };
+    months[key].tasks.push(t);
+  });
+
+  const allMonths = Object.keys(months).sort().reverse();
+
+  if (allMonths.length === 0) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <h3>Aucune donnée</h3>
+        <p>Ajoutez des échanges et des tâches pour voir vos statistiques.</p>
+      </div>`;
+    return;
+  }
+
+  // ── Global summary ──
+  const totalExchanges = exchanges.length;
+  const totalTasks = completedTasks.length;
+  const activeMonths = allMonths.length;
+
+  // Find most active month (by combined activity)
+  let busiest = allMonths[0];
+  allMonths.forEach(k => {
+    if ((months[k].exchanges.length + months[k].tasks.length) >
+        (months[busiest].exchanges.length + months[busiest].tasks.length)) {
+      busiest = k;
+    }
+  });
+  const busiestLabel = (() => {
+    const [y, m] = busiest.split('-');
+    const lbl = new Date(+y, +m - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    return lbl.charAt(0).toUpperCase() + lbl.slice(1);
+  })();
+
+  let html = `
+    <div class="stats-summary-bar">
+      <div class="stats-summary-item">
+        <div class="stats-summary-num">${totalExchanges}</div>
+        <div class="stats-summary-label">échanges & actions</div>
+      </div>
+      <div class="stats-summary-item">
+        <div class="stats-summary-num">${totalTasks}</div>
+        <div class="stats-summary-label">tâches terminées</div>
+      </div>
+      <div class="stats-summary-item">
+        <div class="stats-summary-num">${activeMonths}</div>
+        <div class="stats-summary-label">mois d'activité</div>
+      </div>
+      <div class="stats-summary-item stats-summary-item--highlight">
+        <div class="stats-summary-num stats-summary-num--sm">${busiestLabel}</div>
+        <div class="stats-summary-label">mois le plus actif</div>
+      </div>
+    </div>
+    <div class="stats-months-list">
+  `;
+
+  allMonths.forEach(key => {
+    const m = months[key];
+    const [year, month] = key.split('-');
+    const monthLabel = (() => {
+      const lbl = new Date(+year, +month - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      return lbl.charAt(0).toUpperCase() + lbl.slice(1);
+    })();
+
+    // Exchange breakdown by type
+    const exchByType = {};
+    m.exchanges.forEach(e => {
+      const k = e.type || 'autre';
+      exchByType[k] = (exchByType[k] || 0) + 1;
+    });
+
+    // Task breakdown by source
+    const tasksBySrc = {};
+    m.tasks.forEach(t => {
+      tasksBySrc[t.source] = (tasksBySrc[t.source] || 0) + 1;
+    });
+
+    const exchRows = Object.entries(exchByType)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) =>
+        `<div class="stats-month-row">
+          <span>${EXCH_EMOJI[type] || '📝'} ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+          <span class="stats-month-val">${count}</span>
+        </div>`
+      ).join('');
+
+    const taskRows = Object.entries(tasksBySrc)
+      .sort((a, b) => b[1] - a[1])
+      .map(([src, count]) =>
+        `<div class="stats-month-row">
+          <span>${SRC_LABELS[src] || src}</span>
+          <span class="stats-month-val">${count}</span>
+        </div>`
+      ).join('');
+
+    html += `
+      <div class="stats-month-card">
+        <div class="stats-month-header">
+          <span class="stats-month-title">${monthLabel}</span>
+          <div class="stats-month-totals">
+            ${m.exchanges.length ? `<span class="stats-month-chip">📅 ${m.exchanges.length} échange${m.exchanges.length > 1 ? 's' : ''}</span>` : ''}
+            ${m.tasks.length ? `<span class="stats-month-chip stats-chip-done">✅ ${m.tasks.length} tâche${m.tasks.length > 1 ? 's' : ''} terminée${m.tasks.length > 1 ? 's' : ''}</span>` : ''}
+          </div>
+        </div>
+        <div class="stats-month-body">
+          <div class="stats-month-col">
+            <div class="stats-col-title">Échanges & Actions</div>
+            ${exchRows || '<div class="stats-empty-col">—</div>'}
+          </div>
+          <div class="stats-month-col">
+            <div class="stats-col-title">Tâches terminées</div>
+            ${taskRows || '<div class="stats-empty-col">—</div>'}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div>';
+  el.innerHTML = html;
+}
 
 // ═══════════════════════════════════════════════════
 // INIT
