@@ -198,6 +198,16 @@ const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'deve
 const STATUS_ORDER = ['développement', 'tester', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné', 'non-retenu'];
 
 // ── Task helpers ───────────────────────────────────
+// Returns display text for a task, adding "X/N" progress for test_counter tasks.
+// sessionCount: current number of test sessions (pass for prototype context).
+function taskLabel(t, sessionCount) {
+  if (t.subtype === 'test_counter' && t.targetCount) {
+    const cur = sessionCount != null ? sessionCount : (t._sessionCount || 0);
+    return `${t.text} — ${cur}/${t.targetCount}`;
+  }
+  return t.text;
+}
+
 function getTopTask(item) {
   const pending = (item.tasks || []).filter(t => !t.done);
   if (!pending.length) return null;
@@ -285,7 +295,10 @@ function renderDashboard() {
   const today_str = today();
   const pendingTasks = [
     ...state.contacts.flatMap(c => (c.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'contact', _name: c.name, _id: c.id}))),
-    ...state.prototypes.flatMap(p => (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id}))),
+    ...state.prototypes.flatMap(p => {
+      const _sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
+      return (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id, _sessionCount: _sc}));
+    }),
     ...(state.standaloneTasks||[]).filter(t => !t.done).map(t => ({...t, _from:'standalone', _name:'Tâche libre', _id:t.id})),
   ].sort((a,b) => {
     const oa = URGENCY_ORDER[a.urgency||'normal'] ?? 99;
@@ -361,7 +374,7 @@ function renderDashboard() {
           <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
           <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;cursor:pointer" onclick="${nav}">
             <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
-            <span class="dash-task-text">${esc(t.text)}</span>
+            <span class="dash-task-text">${esc(taskLabel(t))}</span>
             <span class="dash-task-source">${esc(t._name)}</span>
             <span class="dash-task-date dash-task-date-editable" style="color:${lateColor}" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'})}</span>
             <span class="dash-days-badge" style="color:${lateColor};background:${lateColor}1a">${lateLabel}</span>
@@ -386,7 +399,7 @@ function renderDashboard() {
           <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
           <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;cursor:pointer" onclick="${nav}">
             <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
-            <span class="dash-task-text">${esc(t.text)}</span>
+            <span class="dash-task-text">${esc(taskLabel(t))}</span>
             <span class="dash-task-source">${esc(t._name)}</span>
             <span class="dash-task-date dash-task-date-editable" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${dateLabel}</span>
             <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
@@ -1110,10 +1123,11 @@ function buildPrototypesTable(list) {
       const topTask = getTopTask(p);
       const urg  = topTask ? (topTask.urgency || 'normal') : 'normal';
       const pendingCount = (p.tasks || []).filter(t => !t.done).length;
+      const _pSC = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
       const taskCell = topTask
         ? `<div class="td-task">
             <span class="badge badge-urgence-${urg}" style="flex-shrink:0">${esc(urg)}</span>
-            <span class="td-task-text">${esc(topTask.text)}</span>
+            <span class="td-task-text">${esc(taskLabel(topTask, _pSC))}</span>
             ${pendingCount > 1 ? `<span class="card-task-count">${pendingCount}</span>` : ''}
           </div>` : '';
       return `<tr onclick="openDetail('prototype','${p.id}')">
