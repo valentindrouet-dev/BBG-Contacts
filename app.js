@@ -368,103 +368,107 @@ function renderDashboard() {
       </div>
     </div>
 
-    ${dueNow.length > 0 ? `
-    <div class="dash-section">
-      <div class="dash-section-title">🔔 Échéances dépassées ou du jour</div>
-      ${dueNow.map(t => {
-        const nav = t._from === 'standalone'
-          ? "switchPage('tasks')"
-          : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
-        const diffDays = Math.floor((new Date(today_str) - new Date(t.dueDate)) / 86400000);
-        const lateLabel = diffDays === 0 ? "Aujourd'hui" : diffDays === 1 ? '1j de retard' : `${diffDays}j de retard`;
-        const lateColor = diffDays === 0 ? '#7c3aed' : '#dc2626';
-        return `
-        <div class="dash-task-row dash-task-due">
-          <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
-          <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;cursor:pointer" onclick="${nav}">
-            <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
-            <span class="dash-task-text">${esc(taskLabel(t))}</span>
-            <span class="dash-task-source">${esc(t._name)}</span>
-            <span class="dash-task-date dash-task-date-editable" style="color:${lateColor}" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'})}</span>
-            <span class="dash-days-badge" style="color:${lateColor};background:${lateColor}1a">${lateLabel}</span>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>` : ''}
-
-    ${upcomingTasks.length > 0 ? `
-    <div class="dash-section">
-      <div class="dash-section-title">📆 Tâches à venir</div>
-      ${upcomingTasks.map(t => {
-        const days = Math.ceil((new Date(t.dueDate) - new Date(today_str)) / 86400000);
-        const dayLabel = days === 1 ? 'demain' : `dans ${days} j`;
-        const dayColor = days <= 3 ? '#ea580c' : days <= 7 ? '#ca8a04' : '#16a34a';
-        const dateLabel = new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
-        const nav = t._from === 'standalone'
-          ? "switchPage('tasks')"
-          : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
-        return `
-        <div class="dash-task-row">
-          <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
-          <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;cursor:pointer" onclick="${nav}">
-            <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
-            <span class="dash-task-text">${esc(taskLabel(t))}</span>
-            <span class="dash-task-source">${esc(t._name)}</span>
-            <span class="dash-task-date dash-task-date-editable" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${dateLabel}</span>
-            <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>` : ''}
-
-    ${testCounterTasks.length > 0 ? `
-    <div class="dash-section">
-      <div class="dash-section-title">🧪 Sessions de test</div>
-      ${testCounterTasks.map(t => {
-        const cur = t._sessionCount || 0;
-        const target = t.targetCount || 1;
-        const pct = Math.min(100, Math.round(cur / target * 100));
-        const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
-        return `
-        <div class="dash-task-row" style="cursor:pointer" onclick="switchPage('prototypes');openDetail('prototype','${t._id}')">
-          <span style="font-size:1.1rem">🧪</span>
-          <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0">
-            <span class="dash-task-text">${esc(t.text)}</span>
-            <span class="dash-task-source">${esc(t._name)}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
-            <div style="width:80px;height:6px;background:var(--border-input);border-radius:3px;overflow:hidden">
-              <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s"></div>
+    <div class="dash-cols">
+      ${dueNow.length > 0 ? `
+      <div class="dash-section" style="flex:1;min-width:0">
+        <div class="dash-section-title">🔔 Échéances dépassées ou du jour</div>
+        ${dueNow.map(t => {
+          const nav = t._from === 'standalone'
+            ? "switchPage('tasks')"
+            : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+          const diffDays = Math.floor((new Date(today_str) - new Date(t.dueDate)) / 86400000);
+          const lateLabel = diffDays === 0 ? "Aujourd'hui" : diffDays === 1 ? '1j de retard' : `${diffDays}j de retard`;
+          const lateColor = diffDays === 0 ? '#7c3aed' : '#dc2626';
+          return `
+          <div class="dash-task-row dash-task-due">
+            <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
+            <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;cursor:pointer" onclick="${nav}">
+              <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
+              <span class="dash-task-text">${esc(taskLabel(t))}</span>
+              <span class="dash-task-source">${esc(t._name)}</span>
+              <span class="dash-task-date dash-task-date-editable" style="color:${lateColor}" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'})}</span>
+              <span class="dash-days-badge" style="color:${lateColor};background:${lateColor}1a">${lateLabel}</span>
             </div>
-            <span style="font-size:.8rem;font-weight:600;color:${barColor};white-space:nowrap">${cur}/${target}</span>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>` : ''}
-
-    ${(() => {
-      const upcomingFests = [...state.festivals]
-        .filter(f => f.dateStart && f.dateStart > today_str)
-        .sort((a,b) => a.dateStart.localeCompare(b.dateStart))
-        .slice(0, 5);
-      if (!upcomingFests.length) return `<div class="dash-section"><p style="color:var(--text-500);font-size:.875rem">🎪 Aucun festival à venir.</p></div>`;
-      return `<div class="dash-section">
-        <div class="dash-section-title">🎪 Festivals à venir</div>
-        ${upcomingFests.map(f => {
-          const days = Math.ceil((new Date(f.dateStart) - new Date(today_str)) / 86400000);
-          const dayLabel = days === 1 ? 'demain' : `dans ${days} j`;
-          const dayColor = days <= 7 ? '#ea580c' : days <= 30 ? '#ca8a04' : '#16a34a';
-          const dateLabel = new Date(f.dateStart).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
-          return `<div class="dash-task-row" onclick="switchPage('festivals');openFestivalDetail('${f.id}')">
-            <span class="badge badge-fest-${f.category}" style="font-size:.7rem">${FEST_ICONS[f.category]||'🎪'} ${esc(FEST_LABELS[f.category]||'')}</span>
-            <span class="dash-task-text">${esc(f.name)}</span>
-            ${f.city ? `<span class="dash-task-source">📍 ${esc(f.city)}</span>` : ''}
-            <span class="dash-task-date">${dateLabel}</span>
-            <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
           </div>`;
         }).join('')}
-      </div>`;
-    })()}
+      </div>` : ''}
+
+      ${upcomingTasks.length > 0 ? `
+      <div class="dash-section" style="flex:1;min-width:0">
+        <div class="dash-section-title">📆 Tâches à venir</div>
+        ${upcomingTasks.map(t => {
+          const days = Math.ceil((new Date(t.dueDate) - new Date(today_str)) / 86400000);
+          const dayLabel = days === 1 ? 'demain' : `dans ${days} j`;
+          const dayColor = days <= 3 ? '#ea580c' : days <= 7 ? '#ca8a04' : '#16a34a';
+          const dateLabel = new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
+          const nav = t._from === 'standalone'
+            ? "switchPage('tasks')"
+            : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+          return `
+          <div class="dash-task-row">
+            <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
+            <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;cursor:pointer" onclick="${nav}">
+              <span class="badge badge-urgence-${t.urgency||'normal'}">${URGENCY_EMOJI[t.urgency||'normal']||''} ${t.urgency||'normal'}</span>
+              <span class="dash-task-text">${esc(taskLabel(t))}</span>
+              <span class="dash-task-source">${esc(t._name)}</span>
+              <span class="dash-task-date dash-task-date-editable" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t._from}','${t._id}','${t.id}')" title="Modifier la date">${dateLabel}</span>
+              <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+    </div>
+
+    <div class="dash-cols">
+      ${testCounterTasks.length > 0 ? `
+      <div class="dash-section" style="flex:1;min-width:0">
+        <div class="dash-section-title">🧪 Sessions de test</div>
+        ${testCounterTasks.map(t => {
+          const cur = t._sessionCount || 0;
+          const target = t.targetCount || 1;
+          const pct = Math.min(100, Math.round(cur / target * 100));
+          const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
+          return `
+          <div class="dash-task-row" style="cursor:pointer" onclick="switchPage('prototypes');openDetail('prototype','${t._id}')">
+            <span style="font-size:1.1rem">🧪</span>
+            <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0">
+              <span class="dash-task-text">${esc(t.text)}</span>
+              <span class="dash-task-source">${esc(t._name)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+              <div style="width:80px;height:6px;background:var(--border-input);border-radius:3px;overflow:hidden">
+                <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s"></div>
+              </div>
+              <span style="font-size:.8rem;font-weight:600;color:${barColor};white-space:nowrap">${cur}/${target}</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+
+      ${(() => {
+        const upcomingFests = [...state.festivals]
+          .filter(f => f.dateStart && f.dateStart > today_str)
+          .sort((a,b) => a.dateStart.localeCompare(b.dateStart))
+          .slice(0, 5);
+        if (!upcomingFests.length) return `<div class="dash-section" style="flex:1;min-width:0"><p style="color:var(--text-500);font-size:.875rem">🎪 Aucun festival à venir.</p></div>`;
+        return `<div class="dash-section" style="flex:1;min-width:0">
+          <div class="dash-section-title">🎪 Festivals à venir</div>
+          ${upcomingFests.map(f => {
+            const days = Math.ceil((new Date(f.dateStart) - new Date(today_str)) / 86400000);
+            const dayLabel = days === 1 ? 'demain' : `dans ${days} j`;
+            const dayColor = days <= 7 ? '#ea580c' : days <= 30 ? '#ca8a04' : '#16a34a';
+            const dateLabel = new Date(f.dateStart).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
+            return `<div class="dash-task-row" onclick="switchPage('festivals');openFestivalDetail('${f.id}')">
+              <span class="badge badge-fest-${f.category}" style="font-size:.7rem">${FEST_ICONS[f.category]||'🎪'} ${esc(FEST_LABELS[f.category]||'')}</span>
+              <span class="dash-task-text">${esc(f.name)}</span>
+              ${f.city ? `<span class="dash-task-source">📍 ${esc(f.city)}</span>` : ''}
+              <span class="dash-task-date">${dateLabel}</span>
+              <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+      })()}
+    </div>
 
     <div class="dash-cols">
       <div class="dash-section" style="flex:1;min-width:0">
