@@ -62,6 +62,12 @@
         Tâches
         <span class="nav-count" id="nav-tasks-count">0</span>
       </button>
+      <button class="nav-tab" data-page="admin">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>
+        </svg>
+        Admin
+      </button>
       <button class="nav-tab" data-page="stats">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
@@ -604,6 +610,13 @@
 
 
   <!-- ╔═════════════════════════════════╗
+       ║         PAGE — ADMIN           ║
+       ╚═════════════════════════════════╝ -->
+  <div class="page" id="page-admin">
+    <div id="admin-content"></div>
+  </div><!-- /page-admin -->
+
+  <!-- ╔═════════════════════════════════╗
        ║      PAGE — STATISTIQUES       ║
        ╚═════════════════════════════════╝ -->
   <div class="page" id="page-stats">
@@ -612,6 +625,63 @@
 
 </main>
 
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — ADMIN CARD
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-admin" onclick="if(event.target===this)closeAdminModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="admin-modal-title">Nouvelle vignette</h2>
+      <button class="modal-close" onclick="closeAdminModal()">✕</button>
+    </div>
+    <form class="modal-form" onsubmit="submitAdminCard(event)">
+      <input type="hidden" id="admin-card-id" />
+
+      <div class="form-group full">
+        <label>Titre <span class="req">*</span></label>
+        <input type="text" id="admin-card-title" required placeholder="Ex : Déclarer TVA Q1" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Catégorie</label>
+          <select id="admin-card-category">
+            <option value="comptabilite">Comptabilité</option>
+            <option value="contrats">Contrats</option>
+            <option value="impots">Impôts</option>
+            <option value="communication">Communication</option>
+            <option value="juridique">Juridique</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Statut</label>
+          <select id="admin-card-status">
+            <option value="todo">À faire</option>
+            <option value="en-cours">En cours</option>
+            <option value="fait">Fait</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group full">
+        <label>Date limite</label>
+        <input type="date" id="admin-card-due" />
+      </div>
+
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="admin-card-note" rows="3" placeholder="Détails, liens, remarques…"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeAdminModal()">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════
      MODAL — CONTACT

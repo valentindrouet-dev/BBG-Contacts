@@ -36,6 +36,8 @@ const state = {
   festivalsZoom:          1,
 
   standaloneTasks:    [],
+  adminCards:         [],
+  adminCatFilter:     '',
   compareMode:        false,
   selectedForCompare: [],
   tasksFilter:        'all',
@@ -52,6 +54,7 @@ function saveState() {
   localStorage.setItem('bbg-prototypes',       JSON.stringify(state.prototypes));
   localStorage.setItem('bbg-festivals',        JSON.stringify(state.festivals));
   localStorage.setItem('bbg-standalone-tasks', JSON.stringify(state.standaloneTasks));
+  localStorage.setItem('bbg-admin-cards',      JSON.stringify(state.adminCards));
 }
 // ── Data migration ──────────────────────────────
 function migrateContact(c) {
@@ -113,6 +116,8 @@ function loadState() {
   try { p = localStorage.getItem('bbg-prototypes'); } catch(e) {}
   try { f = localStorage.getItem('bbg-festivals'); } catch(e) {}
   try { s = localStorage.getItem('bbg-standalone-tasks'); } catch(e) {}
+  let a;
+  try { a = localStorage.getItem('bbg-admin-cards'); } catch(e) {}
 
   try {
     state.contacts = (c ? JSON.parse(c) : SEED_CONTACTS).map(migrateContact);
@@ -136,6 +141,11 @@ function loadState() {
     state.standaloneTasks = s ? JSON.parse(s) : [];
   } catch(e) {
     state.standaloneTasks = [];
+  }
+  try {
+    state.adminCards = a ? JSON.parse(a) : [];
+  } catch(e) {
+    state.adminCards = [];
   }
   // Only seed if truly empty (no existing localStorage data)
   if (!c) saveState();
@@ -284,6 +294,7 @@ function switchPage(page) {
   if (page === 'tasks')      renderTasks();
   if (page === 'agenda')     renderAgenda();
   if (page === 'festivals')  renderFestivals();
+  if (page === 'admin')      renderAdmin();
   if (page === 'stats')      renderStats();
 }
 
@@ -3157,7 +3168,11 @@ function renderAgenda() {
     });
   });
 
-  document.getElementById('nav-agenda-count').textContent = entries.length;
+  // Exclude future events (date strictly after today)
+  const todayStr = today();
+  const pastEntries = entries.filter(e => !e.date || e.date <= todayStr);
+
+  document.getElementById('nav-agenda-count').textContent = pastEntries.length;
 
   // Source filter (Contacts / Jeux / Festivals / Tâches)
   const activeSrc = state.agendaSourceFilter || [];
@@ -3170,7 +3185,7 @@ function renderAgenda() {
 
   // Type filter — applies to contact exchanges
   const activeTypes = state.agendaTypeFilters || [];
-  let filtered = entries.filter(e => {
+  let filtered = pastEntries.filter(e => {
     if (e._source === 'festival') return showFestivals;
     if (e._source === 'jeux')    return showJeux;
     if (e._source === 'evals')   return showEvals;
@@ -3188,7 +3203,7 @@ function renderAgenda() {
   document.getElementById('agenda-count').textContent =
     `${filtered.length} échange${filtered.length !== 1 ? 's' : ''}${activeTypes.length || activeSrc.length ? ' (filtré)' : ''}`;
 
-  renderAgendaStats(entries);  // stats always on full dataset
+  renderAgendaStats(pastEntries);  // stats on past/present events only
 
   if (filtered.length === 0) {
     listEl.innerHTML = '';
@@ -5446,6 +5461,157 @@ function renderStats() {
 
   html += '</div>';
   el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════════
+const ADMIN_CATEGORIES = [
+  { value: 'comptabilite',  label: 'Comptabilité',  color: '#6366f1' },
+  { value: 'contrats',      label: 'Contrats',       color: '#f59e0b' },
+  { value: 'impots',        label: 'Impôts',         color: '#ef4444' },
+  { value: 'communication', label: 'Communication',  color: '#10b981' },
+  { value: 'juridique',     label: 'Juridique',      color: '#8b5cf6' },
+  { value: 'autre',         label: 'Autre',          color: '#64748b' },
+];
+
+function adminCatInfo(val) {
+  return ADMIN_CATEGORIES.find(c => c.value === val) || ADMIN_CATEGORIES[ADMIN_CATEGORIES.length - 1];
+}
+
+function renderAdmin() {
+  const el = document.getElementById('admin-content');
+  if (!el) return;
+  const cards = state.adminCards || [];
+
+  const total  = cards.length;
+  const pending = cards.filter(c => c.status !== 'fait').length;
+  const done    = cards.filter(c => c.status === 'fait').length;
+
+  // Category filter
+  const filterCat = state.adminCatFilter || '';
+
+  const filtered = filterCat
+    ? cards.filter(c => c.category === filterCat)
+    : cards;
+
+  const catOptions = ADMIN_CATEGORIES.map(c =>
+    `<option value="${c.value}" ${filterCat === c.value ? 'selected' : ''}>${c.label}</option>`
+  ).join('');
+
+  const cardHtml = filtered.map(card => {
+    const cat = adminCatInfo(card.category);
+    const statusClass = card.status === 'fait' ? 'admin-card-done' : card.status === 'en-cours' ? 'admin-card-inprogress' : '';
+    const statusLabel = card.status === 'fait' ? '✓ Fait' : card.status === 'en-cours' ? '⏳ En cours' : '○ À faire';
+    const dueFmt = card.dueDate
+      ? new Date(card.dueDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+      : '';
+    const overdue = card.dueDate && card.dueDate < today() && card.status !== 'fait';
+    return `
+      <div class="admin-card ${statusClass}" data-id="${card.id}">
+        <div class="admin-card-top" style="background:${cat.color}">
+          <span class="admin-card-cat">${cat.label}</span>
+          <div class="admin-card-actions">
+            <button class="admin-btn-edit" onclick="openAdminModal('${card.id}')" title="Modifier">✎</button>
+            <button class="admin-btn-del" onclick="deleteAdminCard('${card.id}')" title="Supprimer">✕</button>
+          </div>
+        </div>
+        <div class="admin-card-body">
+          <div class="admin-card-title ${card.status === 'fait' ? 'admin-title-done' : ''}">${esc(card.title)}</div>
+          ${card.note ? `<div class="admin-card-note">${esc(card.note)}</div>` : ''}
+          ${dueFmt ? `<div class="admin-card-due ${overdue ? 'admin-due-overdue' : ''}">📅 ${dueFmt}${overdue ? ' — En retard' : ''}</div>` : ''}
+          <div class="admin-card-footer">
+            <button class="admin-status-btn" onclick="cycleAdminStatus('${card.id}')">${statusLabel}</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="admin-toolbar">
+      <div class="admin-summary">
+        <span class="admin-summary-stat"><strong>${total}</strong> vignette${total !== 1 ? 's' : ''}</span>
+        <span class="admin-summary-sep">·</span>
+        <span class="admin-summary-stat"><strong>${pending}</strong> en cours</span>
+        <span class="admin-summary-sep">·</span>
+        <span class="admin-summary-stat admin-done-count"><strong>${done}</strong> terminée${done !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="admin-toolbar-right">
+        <select class="sort-select" onchange="state.adminCatFilter=this.value;renderAdmin()">
+          <option value="">Toutes catégories</option>
+          ${catOptions}
+        </select>
+        <button class="btn-primary" onclick="openAdminModal(null)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouvelle vignette
+        </button>
+      </div>
+    </div>
+    ${filtered.length === 0
+      ? `<div class="empty-state"><div class="empty-icon">🗂️</div><h3>${filterCat ? 'Aucune vignette dans cette catégorie' : 'Aucune vignette'}</h3><p>Ajoutez vos tâches administratives.</p><button class="btn-primary" onclick="openAdminModal(null)">Ajouter une vignette</button></div>`
+      : `<div class="admin-grid">${cardHtml}</div>`
+    }
+  `;
+}
+
+function openAdminModal(id) {
+  const card = id ? (state.adminCards || []).find(c => c.id === id) : null;
+  document.getElementById('admin-modal-title').textContent = card ? 'Modifier la vignette' : 'Nouvelle vignette';
+  document.getElementById('admin-card-id').value   = card ? card.id : '';
+  document.getElementById('admin-card-title').value = card ? card.title : '';
+  document.getElementById('admin-card-note').value  = card ? (card.note || '') : '';
+  document.getElementById('admin-card-due').value   = card ? (card.dueDate || '') : '';
+  document.getElementById('admin-card-status').value = card ? (card.status || 'todo') : 'todo';
+  document.getElementById('admin-card-category').value = card ? (card.category || 'autre') : 'autre';
+  document.getElementById('modal-admin').classList.remove('hidden');
+  setTimeout(() => document.getElementById('admin-card-title').focus(), 50);
+}
+
+function closeAdminModal() {
+  document.getElementById('modal-admin').classList.add('hidden');
+}
+
+function submitAdminCard(e) {
+  e.preventDefault();
+  const id    = document.getElementById('admin-card-id').value;
+  const title = document.getElementById('admin-card-title').value.trim();
+  if (!title) return;
+  const card = {
+    id:       id || uid(),
+    title,
+    note:     document.getElementById('admin-card-note').value.trim(),
+    dueDate:  document.getElementById('admin-card-due').value || '',
+    status:   document.getElementById('admin-card-status').value || 'todo',
+    category: document.getElementById('admin-card-category').value || 'autre',
+    createdAt: id ? ((state.adminCards || []).find(c => c.id === id)?.createdAt || today()) : today(),
+  };
+  if (!state.adminCards) state.adminCards = [];
+  if (id) {
+    const idx = state.adminCards.findIndex(c => c.id === id);
+    if (idx >= 0) state.adminCards[idx] = card;
+  } else {
+    state.adminCards.unshift(card);
+  }
+  saveState();
+  closeAdminModal();
+  renderAdmin();
+}
+
+function deleteAdminCard(id) {
+  if (!confirm('Supprimer cette vignette ?')) return;
+  state.adminCards = (state.adminCards || []).filter(c => c.id !== id);
+  saveState();
+  renderAdmin();
+}
+
+function cycleAdminStatus(id) {
+  const card = (state.adminCards || []).find(c => c.id === id);
+  if (!card) return;
+  const cycle = ['todo', 'en-cours', 'fait'];
+  const next = cycle[(cycle.indexOf(card.status || 'todo') + 1) % cycle.length];
+  card.status = next;
+  saveState();
+  renderAdmin();
 }
 
 // ═══════════════════════════════════════════════════
