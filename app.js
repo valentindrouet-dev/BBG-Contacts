@@ -78,6 +78,7 @@ function migrateFestival(f) {
   if (!Array.isArray(f.contactLinks)) f.contactLinks = [];
   if (!Array.isArray(f.gameLinks))    f.gameLinks    = [];
   if (!Array.isArray(f.presences))    f.presences    = [];
+  if (!Array.isArray(f.tasks))        f.tasks        = [];
   if (!Array.isArray(f.photos))       f.photos       = [];
   if (!f.costs || typeof f.costs !== 'object') f.costs = {};
   if (typeof f.participating === 'undefined')  f.participating = false;
@@ -301,6 +302,7 @@ function renderDashboard() {
       return (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id, _sessionCount: _sc, _status: p.status, _emoji: p.emoji}));
     }),
     ...(state.standaloneTasks||[]).filter(t => !t.done).map(t => ({...t, _from:'standalone', _name:'Tâche libre', _id:t.id})),
+    ...state.festivals.flatMap(f => (f.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'festival-task', _name: f.name, _id: f.id}))),
   ].sort((a,b) => {
     const oa = URGENCY_ORDER[a.urgency||'normal'] ?? 99;
     const ob = URGENCY_ORDER[b.urgency||'normal'] ?? 99;
@@ -377,7 +379,9 @@ function renderDashboard() {
         ${dueNow.map(t => {
           const nav = t._from === 'standalone'
             ? "switchPage('tasks')"
-            : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+            : t._from === 'festival-task'
+              ? `switchPage('festivals');openFestivalDetail('${t._id}')`
+              : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
           const diffDays = Math.floor((new Date(today_str) - new Date(t.dueDate)) / 86400000);
           const lateLabel = diffDays === 0 ? "Aujourd'hui" : diffDays === 1 ? '1j de retard' : `${diffDays}j de retard`;
           const lateColor = diffDays === 0 ? '#7c3aed' : '#dc2626';
@@ -405,7 +409,9 @@ function renderDashboard() {
           const dateLabel = new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
           const nav = t._from === 'standalone'
             ? "switchPage('tasks')"
-            : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+            : t._from === 'festival-task'
+              ? `switchPage('festivals');openFestivalDetail('${t._id}')`
+              : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
           return `
           <div class="dash-task-row">
             <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
@@ -1308,6 +1314,11 @@ function renderTasks() {
         task: `Présence${period ? ' · ' + period : ''}${p.note ? ' — ' + p.note : ''}`,
         urgency: 'normal', done: p.done || false, dueDate: ds, doneAt: p.doneAt });
     });
+    (f.tasks || []).forEach(t => {
+      tasks.push({ itemId: f.id, taskId: t.id, type: 'festival-task', name: f.name,
+        category: 'festival',
+        task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
+    });
   });
 
   // Stats sidebar (always on full dataset, before any filter)
@@ -1319,6 +1330,7 @@ function renderTasks() {
     tasks = tasks.filter(t => {
       if (srcFilter.includes('contacts') && (t.type === 'contact' || t.type === 'standalone')) return true;
       if (srcFilter.includes('jeux') && t.type === 'prototype') return true;
+      if (srcFilter.includes('festivals') && (t.type === 'festival' || t.type === 'festival-task')) return true;
       return false;
     });
   }
@@ -1374,8 +1386,8 @@ function renderTasks() {
   }
   emptyEl.classList.add('hidden');
 
-  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'prototype', 'standalone'];
-  const CAT_TASK_LABELS = { ...CAT_LABELS, prototype: 'Prototypes', standalone: 'Tâches libres' };
+  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'prototype', 'festival', 'standalone'];
+  const CAT_TASK_LABELS = { ...CAT_LABELS, prototype: 'Prototypes', festival: 'Festivals', standalone: 'Tâches libres' };
 
   // Sort
   tasks.sort((a, b) => {
@@ -1417,7 +1429,7 @@ function renderTasks() {
     });
     listEl.innerHTML = Object.values(groups).map(g => `
       <div class="task-source-group-header">
-        <span>${g.type === 'contact' ? '👤' : '🎲'}</span>
+        <span>${g.type === 'contact' ? '👤' : (g.type === 'festival' || g.type === 'festival-task') ? '🎪' : '🎲'}</span>
         <span style="color:var(--text-700);font-size:.78rem">${esc(g.name)}</span>
       </div>
       ${g.tasks.map(t => taskCard(t)).join('')}
@@ -1440,7 +1452,7 @@ function renderTasks() {
 }
 
 function taskCard(t) {
-  const typeEmoji = t.type === 'standalone' ? '📋' : t.type === 'contact' ? '👤' : t.type === 'festival' ? '🎪' : '🎲';
+  const typeEmoji = t.type === 'standalone' ? '📋' : t.type === 'contact' ? '👤' : (t.type === 'festival' || t.type === 'festival-task') ? '🎪' : '🎲';
   const dueBadge = t.dueDate
     ? `<span class="task-due task-due-editable${t.dueDate < today() ? ' overdue' : ''}" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t.type}','${t.itemId}','${t.taskId}')" title="Modifier la date">${t.dueDate}</span>`
     : `<span class="task-due task-due-add" data-date="" onclick="event.stopPropagation();openTaskDatePicker(this,'${t.type}','${t.itemId}','${t.taskId}')" title="Ajouter une date">+ date</span>`;
@@ -1449,14 +1461,16 @@ function taskCard(t) {
     : '';
   const clickBody = t.type === 'standalone'
     ? `onclick="editStandaloneTask('${t.itemId}')"`
-    : t.type === 'festival'
+    : (t.type === 'festival' || t.type === 'festival-task')
       ? `onclick="openFestivalDetail('${t.itemId}')"`
       : `onclick="openDetail('${t.type}','${t.itemId}')"`;
   const delBtn = t.type === 'standalone'
     ? `<button class="task-del-btn" onclick="event.stopPropagation();deleteStandaloneTask('${t.itemId}')" title="Supprimer">✕</button>`
     : t.type === 'festival'
       ? `<button class="task-del-btn" onclick="event.stopPropagation();removeFestivalPresence('${t.itemId}','${t.taskId}')" title="Supprimer">✕</button>`
-      : '';
+      : t.type === 'festival-task'
+        ? `<button class="task-del-btn" onclick="event.stopPropagation();deleteFestivalTask('${t.itemId}','${t.taskId}')" title="Supprimer">✕</button>`
+        : '';
   let taskTextHtml = `<span class="task-text">${esc(t.task)}</span>`;
   if (t.subtype === 'test_counter' && t.targetCount) {
     const cur = t.currentCount || 0;
@@ -1503,6 +1517,14 @@ function toggleTaskDone(type, itemId, taskId) {
     }
     saveState();
     renderFestivals();
+  } else if (type === 'festival-task') {
+    const f = state.festivals.find(x => x.id === itemId);
+    if (f) {
+      const t = (f.tasks || []).find(x => x.id === taskId);
+      if (t) setTaskDone(t, !t.done);
+    }
+    saveState();
+    renderFestivals();
   } else {
     const p = state.prototypes.find(x => x.id === itemId);
     if (p) {
@@ -1539,6 +1561,9 @@ function setTaskDueDateInline(type, itemId, taskId, newDate) {
   } else if (type === 'festival') {
     const f = state.festivals.find(x => x.id === itemId);
     if (f) { const p = (f.presences || []).find(x => x.id === taskId); if (p) p.dateStart = newDate; }
+  } else if (type === 'festival-task') {
+    const f = state.festivals.find(x => x.id === itemId);
+    if (f) { const t = (f.tasks || []).find(x => x.id === taskId); if (t) t.dueDate = newDate; }
   } else {
     const p = state.prototypes.find(x => x.id === itemId);
     if (p) { const t = (p.tasks || []).find(x => x.id === taskId); if (t) t.dueDate = newDate; }
@@ -1619,6 +1644,31 @@ function deleteStandaloneTask(id) {
   state.standaloneTasks = (state.standaloneTasks || []).filter(t => t.id !== id);
   saveState();
   renderTasks();
+}
+
+function saveQuickFestivalTask(festId) {
+  const text = document.getElementById('qt-f-text')?.value.trim();
+  if (!text) { document.getElementById('qt-f-text')?.focus(); return; }
+  const urgency = document.getElementById('qt-f-urg')?.value || 'normal';
+  const due = document.getElementById('qt-f-date')?.value || undefined;
+  const task = { id: uid(), text, urgency, dueDate: due || undefined, done: false };
+  const f = state.festivals.find(x => x.id === festId);
+  if (!f) return;
+  f.tasks = f.tasks || [];
+  f.tasks.unshift(task);
+  saveState();
+  if (state.activePage === 'home') renderDashboard();
+  if (state.activePage === 'tasks') renderTasks();
+  openFestivalDetail(festId);
+}
+
+function deleteFestivalTask(festId, taskId) {
+  const f = state.festivals.find(x => x.id === festId);
+  if (!f) return;
+  f.tasks = (f.tasks || []).filter(t => t.id !== taskId);
+  saveState();
+  if (state.activePage === 'tasks') renderTasks();
+  if (state.activePage === 'home') renderDashboard();
 }
 
 function editStandaloneTask(id) {
@@ -2611,6 +2661,45 @@ function openFestivalDetail(id) {
         <button class="btn-primary" style="padding:.3rem .7rem;font-size:.8rem" onclick="addFestivalPresence('${f.id}')">+ Présence</button>
       </div>
 
+      ${(() => {
+        const fTasks = f.tasks || [];
+        const pending = fTasks.filter(t => !t.done);
+        const done = fTasks.filter(t => t.done);
+        const row = t => {
+          const dueBadge = t.dueDate
+            ? `<span class="task-due task-due-editable${t.dueDate < today() ? ' overdue' : ''}" style="font-size:.75rem;cursor:pointer" data-date="${t.dueDate}" onclick="openTaskDatePicker(this,'festival-task','${f.id}','${t.id}')" title="Modifier la date">${t.dueDate}</span>`
+            : `<span class="task-due task-due-add" style="font-size:.75rem;cursor:pointer" data-date="" onclick="openTaskDatePicker(this,'festival-task','${f.id}','${t.id}')" title="Ajouter une date">+ date</span>`;
+          return `<div class="task-card${t.done ? ' done' : ''}" style="margin-bottom:.25rem">
+            <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''} onclick="toggleTaskDone('festival-task','${f.id}','${t.id}');openFestivalDetail('${f.id}')" />
+            <div class="task-body" style="flex:1;min-width:0">
+              <span class="task-text">${esc(t.text)}</span>
+              <span class="task-meta">${dueBadge}<span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span></span>
+            </div>
+            <button class="task-del-btn" onclick="deleteFestivalTask('${f.id}','${t.id}');openFestivalDetail('${f.id}')" title="Supprimer">✕</button>
+          </div>`;
+        };
+        const n = done.length;
+        const showLbl = `Afficher ${n} tâche${n>1?'s':''} terminée${n>1?'s':''}`;
+        return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between;margin-top:.75rem">Tâches
+            <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('qt-f');f.classList.toggle('hidden');f.querySelector('input[type=text]').focus()">+ Tâche</button>
+          </div>
+          <div id="qt-f" class="quick-task-form hidden">
+            <input type="text" id="qt-f-text" placeholder="Description de la tâche…" class="form-input" style="flex:1;min-width:100px" />
+            <select id="qt-f-urg" class="form-select" style="width:auto">
+              <option value="normal">Normal</option>
+              <option value="urgent">Urgent</option>
+              <option value="critique">Critique</option>
+              <option value="faible">Faible</option>
+            </select>
+            <input type="date" id="qt-f-date" class="form-input" style="width:auto" />
+            <button onclick="saveQuickFestivalTask('${f.id}')" class="btn-save" style="padding:.25rem .75rem;font-size:.8rem">Ajouter</button>
+            <button onclick="document.getElementById('qt-f').classList.add('hidden')" class="btn-cancel" style="padding:.25rem .5rem;font-size:.8rem">✕</button>
+          </div>
+          ${pending.length ? pending.map(row).join('') : '<p style="font-size:.82rem;color:var(--text-400);margin:.2rem 0 .5rem">Aucune tâche en cours.</p>'}
+          ${n ? `<button class="btn-show-done" onclick="var d=document.getElementById('done-f-${f.id}');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'${showLbl}':'Masquer les terminées'">${showLbl}</button>
+          <div id="done-f-${f.id}" class="hidden">${done.map(row).join('')}</div>` : ''}`;
+      })()}
+
       ${f.notes ? `<div class="detail-section-title" style="margin-top:.75rem">Notes</div><div class="detail-notes">${esc(f.notes)}</div>` : ''}
 
       <div class="detail-actions">
@@ -3053,6 +3142,20 @@ function renderAgenda() {
       });
     });
   });
+  (state.festivals || []).forEach(f => {
+    (f.tasks || []).filter(t => t.done && t.doneAt).forEach(t => {
+      entries.push({
+        id: t.id,
+        date: t.doneAt.slice(0, 10),
+        _source: 'tasks',
+        taskText:     t.text,
+        taskUrgency:  t.urgency || 'normal',
+        taskFrom:     'festival',
+        taskFromId:   f.id,
+        taskFromName: f.name,
+      });
+    });
+  });
 
   document.getElementById('nav-agenda-count').textContent = entries.length;
 
@@ -3187,8 +3290,10 @@ function renderAgenda() {
       } else if (e._source === 'tasks') {
         const nav = e.taskFrom === 'contact'
           ? `openDetail('contact','${e.taskFromId}')`
-          : `openDetail('prototype','${e.taskFromId}')`;
-        const fromIcon = e.taskFrom === 'contact' ? '👤' : '🎲';
+          : e.taskFrom === 'festival'
+            ? `openFestivalDetail('${e.taskFromId}')`
+            : `openDetail('prototype','${e.taskFromId}')`;
+        const fromIcon = e.taskFrom === 'contact' ? '👤' : e.taskFrom === 'festival' ? '🎪' : '🎲';
         const avatarHtml = e.taskFromPhoto
           ? `<img src="${esc(e.taskFromPhoto)}" class="agenda-avatar" alt="" />`
           : e.taskFromCat
