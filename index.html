@@ -420,6 +420,10 @@
           <input type="checkbox" id="tasks-filter-festivals" value="festivals" onchange="onTasksSourceFilter(this)" />
           🎪 Festivals
         </label>
+        <label class="tasks-show-done-label">
+          <input type="checkbox" id="tasks-filter-admin" value="admin" onchange="onTasksSourceFilter(this)" />
+          🗂️ Admin
+        </label>
       </div>
     </div>
 
@@ -656,6 +660,25 @@
           </select>
         </div>
         <div class="form-group">
+          <label>Urgence</label>
+          <select id="admin-card-urgency">
+            <option value="faible">💤 Faible</option>
+            <option value="normal">📌 Normal</option>
+            <option value="urgent">⚠️ Urgent</option>
+            <option value="critique">🚨 Critique</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Récurrence</label>
+          <select id="admin-card-recurrence" onchange="onAdminRecurrenceChange(this.value)">
+            <option value="">Ponctuel</option>
+            <option value="monthly">🔄 Mensuel</option>
+          </select>
+        </div>
+        <div class="form-group" id="admin-status-group">
           <label>Statut</label>
           <select id="admin-card-status">
             <option value="todo">À faire</option>
@@ -663,9 +686,13 @@
             <option value="fait">Fait</option>
           </select>
         </div>
+        <div class="form-group hidden" id="admin-dayofmonth-group">
+          <label>Jour du mois (échéance)</label>
+          <input type="number" id="admin-card-dayofmonth" min="1" max="28" placeholder="Ex : 5" />
+        </div>
       </div>
 
-      <div class="form-group full">
+      <div class="form-group full" id="admin-due-group">
         <label>Date limite</label>
         <input type="date" id="admin-card-due" />
       </div>

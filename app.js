@@ -109,6 +109,14 @@ function migratePrototype(p) {
   return p;
 }
 
+function migrateAdminCard(card) {
+  if (!card.urgency)           card.urgency           = 'normal';
+  if (!card.recurrence)        card.recurrence        = null;
+  if (card.dayOfMonth == null) card.dayOfMonth        = null;
+  if (!Array.isArray(card.completionHistory)) card.completionHistory = [];
+  return card;
+}
+
 function loadState() {
   // SAFE load: never overwrite localStorage on error to avoid data loss
   let c, p, f, s;
@@ -143,7 +151,7 @@ function loadState() {
     state.standaloneTasks = [];
   }
   try {
-    state.adminCards = a ? JSON.parse(a) : [];
+    state.adminCards = a ? JSON.parse(a).map(migrateAdminCard) : [];
   } catch(e) {
     state.adminCards = [];
   }
@@ -314,6 +322,7 @@ function renderDashboard() {
     }),
     ...(state.standaloneTasks||[]).filter(t => !t.done).map(t => ({...t, _from:'standalone', _name:'Tâche libre', _id:t.id})),
     ...state.festivals.flatMap(f => (f.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'festival-task', _name: f.name, _id: f.id}))),
+    ...(state.adminCards||[]).filter(c => !isAdminCardDone(c)).map(c => adminCardToTask(c)),
   ].sort((a,b) => {
     const oa = URGENCY_ORDER[a.urgency||'normal'] ?? 99;
     const ob = URGENCY_ORDER[b.urgency||'normal'] ?? 99;
@@ -392,7 +401,9 @@ function renderDashboard() {
             ? "switchPage('tasks')"
             : t._from === 'festival-task'
               ? `switchPage('festivals');openFestivalDetail('${t._id}')`
-              : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+              : t._from === 'admin'
+                ? "switchPage('admin')"
+                : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
           const diffDays = Math.floor((new Date(today_str) - new Date(t.dueDate)) / 86400000);
           const lateLabel = diffDays === 0 ? "Aujourd'hui" : diffDays === 1 ? '1j de retard' : `${diffDays}j de retard`;
           const lateColor = diffDays === 0 ? '#7c3aed' : '#dc2626';
@@ -422,7 +433,9 @@ function renderDashboard() {
             ? "switchPage('tasks')"
             : t._from === 'festival-task'
               ? `switchPage('festivals');openFestivalDetail('${t._id}')`
-              : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
+              : t._from === 'admin'
+                ? "switchPage('admin')"
+                : `switchPage('${t._from === 'contact' ? 'contacts' : 'prototypes'}');openDetail('${t._from}','${t._id}')`;
           return `
           <div class="dash-task-row">
             <input type="checkbox" class="task-check" onclick="event.stopPropagation();toggleTaskDone('${t._from}','${t._id}','${t.id}')" />
@@ -1252,6 +1265,7 @@ function renderTasksStats(allTasks) {
     prototype:  allTasks.filter(t => t.type === 'prototype').length,
     festival:   allTasks.filter(t => t.type === 'festival').length,
     standalone: allTasks.filter(t => t.type === 'standalone').length,
+    admin:      allTasks.filter(t => t.type === 'admin').length,
   };
 
   el.innerHTML = `
@@ -1275,6 +1289,7 @@ function renderTasksStats(allTasks) {
       ${srcCounts.prototype  ? `<div class="fstat-row"><span>🎮 Jeux</span><span class="fstat-row-val">${srcCounts.prototype}</span></div>` : ''}
       ${srcCounts.festival   ? `<div class="fstat-row"><span>🎪 Festivals</span><span class="fstat-row-val">${srcCounts.festival}</span></div>` : ''}
       ${srcCounts.standalone ? `<div class="fstat-row"><span>✨ Libres</span><span class="fstat-row-val">${srcCounts.standalone}</span></div>` : ''}
+      ${srcCounts.admin      ? `<div class="fstat-row"><span>🗂️ Admin</span><span class="fstat-row-val">${srcCounts.admin}</span></div>` : ''}
     </div>
   `;
 }
@@ -1331,6 +1346,13 @@ function renderTasks() {
         task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt });
     });
   });
+  (state.adminCards || []).forEach(card => {
+    tasks.push({ itemId: card.id, taskId: card.id, type: 'admin', name: adminCatInfo(card.category).label,
+      category: 'admin',
+      task: card.title, urgency: card.urgency || 'normal',
+      done: isAdminCardDone(card), dueDate: adminCardDueDate(card), doneAt: null,
+      _recurrence: card.recurrence });
+  });
 
   // Stats sidebar (always on full dataset, before any filter)
   renderTasksStats(tasks);
@@ -1342,6 +1364,7 @@ function renderTasks() {
       if (srcFilter.includes('contacts') && (t.type === 'contact' || t.type === 'standalone')) return true;
       if (srcFilter.includes('jeux') && t.type === 'prototype') return true;
       if (srcFilter.includes('festivals') && (t.type === 'festival' || t.type === 'festival-task')) return true;
+      if (srcFilter.includes('admin') && t.type === 'admin') return true;
       return false;
     });
   }
@@ -1397,8 +1420,8 @@ function renderTasks() {
   }
   emptyEl.classList.add('hidden');
 
-  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'prototype', 'festival', 'standalone'];
-  const CAT_TASK_LABELS = { ...CAT_LABELS, prototype: 'Prototypes', festival: 'Festivals', standalone: 'Tâches libres' };
+  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'prototype', 'festival', 'standalone', 'admin'];
+  const CAT_TASK_LABELS = { ...CAT_LABELS, prototype: 'Prototypes', festival: 'Festivals', standalone: 'Tâches libres', admin: 'Admin' };
 
   // Sort
   tasks.sort((a, b) => {
@@ -1463,7 +1486,7 @@ function renderTasks() {
 }
 
 function taskCard(t) {
-  const typeEmoji = t.type === 'standalone' ? '📋' : t.type === 'contact' ? '👤' : (t.type === 'festival' || t.type === 'festival-task') ? '🎪' : '🎲';
+  const typeEmoji = t.type === 'standalone' ? '📋' : t.type === 'contact' ? '👤' : (t.type === 'festival' || t.type === 'festival-task') ? '🎪' : t.type === 'admin' ? '🗂️' : '🎲';
   const dueBadge = t.dueDate
     ? `<span class="task-due task-due-editable${t.dueDate < today() ? ' overdue' : ''}" data-date="${t.dueDate}" onclick="event.stopPropagation();openTaskDatePicker(this,'${t.type}','${t.itemId}','${t.taskId}')" title="Modifier la date">${t.dueDate}</span>`
     : `<span class="task-due task-due-add" data-date="" onclick="event.stopPropagation();openTaskDatePicker(this,'${t.type}','${t.itemId}','${t.taskId}')" title="Ajouter une date">+ date</span>`;
@@ -1474,15 +1497,20 @@ function taskCard(t) {
     ? `onclick="editStandaloneTask('${t.itemId}')"`
     : (t.type === 'festival' || t.type === 'festival-task')
       ? `onclick="openFestivalDetail('${t.itemId}')"`
-      : `onclick="openDetail('${t.type}','${t.itemId}')"`;
+      : t.type === 'admin'
+        ? `onclick="openAdminModal('${t.itemId}')"`
+        : `onclick="openDetail('${t.type}','${t.itemId}')"`;
   const delBtn = t.type === 'standalone'
     ? `<button class="task-del-btn" onclick="event.stopPropagation();deleteStandaloneTask('${t.itemId}')" title="Supprimer">✕</button>`
     : t.type === 'festival'
       ? `<button class="task-del-btn" onclick="event.stopPropagation();removeFestivalPresence('${t.itemId}','${t.taskId}')" title="Supprimer">✕</button>`
       : t.type === 'festival-task'
         ? `<button class="task-del-btn" onclick="event.stopPropagation();deleteFestivalTask('${t.itemId}','${t.taskId}')" title="Supprimer">✕</button>`
-        : '';
-  let taskTextHtml = `<span class="task-text">${esc(t.task)}</span>`;
+        : t.type === 'admin'
+          ? `<button class="task-del-btn" onclick="event.stopPropagation();deleteAdminCard('${t.itemId}')" title="Supprimer">✕</button>`
+          : '';
+  const recurBadge = t._recurrence === 'monthly' ? `<span class="badge" style="background:var(--bg);border:1px solid var(--border-input);font-size:.7rem;flex-shrink:0">🔄 Mensuel</span>` : '';
+  let taskTextHtml = `<span class="task-text">${esc(t.task)}</span>${recurBadge}`;
   if (t.subtype === 'test_counter' && t.targetCount) {
     const cur = t.currentCount || 0;
     const pct = Math.min(100, Math.round(cur / t.targetCount * 100));
@@ -1536,6 +1564,26 @@ function toggleTaskDone(type, itemId, taskId) {
     }
     saveState();
     renderFestivals();
+  } else if (type === 'admin') {
+    const card = (state.adminCards || []).find(x => x.id === itemId);
+    if (card) {
+      if (card.recurrence === 'monthly') {
+        const ym = currentYearMonth();
+        const alreadyDone = (card.completionHistory || []).some(h => h.month === ym);
+        if (alreadyDone) {
+          card.completionHistory = card.completionHistory.filter(h => h.month !== ym);
+        } else {
+          if (!card.completionHistory) card.completionHistory = [];
+          card.completionHistory.push({ month: ym, doneAt: new Date().toISOString() });
+        }
+      } else {
+        card.status = card.status === 'fait' ? 'todo' : 'fait';
+        if (card.status === 'fait') card.doneAt = new Date().toISOString();
+        else delete card.doneAt;
+      }
+    }
+    saveState();
+    if (state.activePage === 'admin') renderAdmin();
   } else {
     const p = state.prototypes.find(x => x.id === itemId);
     if (p) {
@@ -1575,6 +1623,9 @@ function setTaskDueDateInline(type, itemId, taskId, newDate) {
   } else if (type === 'festival-task') {
     const f = state.festivals.find(x => x.id === itemId);
     if (f) { const t = (f.tasks || []).find(x => x.id === taskId); if (t) t.dueDate = newDate; }
+  } else if (type === 'admin') {
+    const card = (state.adminCards || []).find(x => x.id === itemId);
+    if (card && card.recurrence !== 'monthly') card.dueDate = newDate;
   } else {
     const p = state.prototypes.find(x => x.id === itemId);
     if (p) { const t = (p.tasks || []).find(x => x.id === taskId); if (t) t.dueDate = newDate; }
@@ -5466,6 +5517,46 @@ function renderStats() {
 // ═══════════════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════════════
+// ─── Admin helpers ───────────────────────────────────
+function currentYearMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function isAdminCardDone(card) {
+  if (card.recurrence === 'monthly') {
+    const ym = currentYearMonth();
+    return (card.completionHistory || []).some(h => h.month === ym);
+  }
+  return card.status === 'fait';
+}
+
+function adminCardDueDate(card) {
+  if (card.recurrence === 'monthly' && card.dayOfMonth) {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(Math.min(card.dayOfMonth, 28)).padStart(2,'0');
+    return `${year}-${month}-${day}`;
+  }
+  return card.dueDate || '';
+}
+
+function adminCardToTask(card) {
+  return {
+    id: card.id, _from: 'admin', _name: adminCatInfo(card.category).label, _id: card.id,
+    text: card.title, urgency: card.urgency || 'normal',
+    done: isAdminCardDone(card), dueDate: adminCardDueDate(card), doneAt: null,
+  };
+}
+
+function onAdminRecurrenceChange(val) {
+  const isMonthly = val === 'monthly';
+  document.getElementById('admin-status-group').classList.toggle('hidden', isMonthly);
+  document.getElementById('admin-dayofmonth-group').classList.toggle('hidden', !isMonthly);
+  document.getElementById('admin-due-group').classList.toggle('hidden', isMonthly);
+}
+
 const ADMIN_CATEGORIES = [
   { value: 'comptabilite',  label: 'Comptabilité',  color: '#6366f1' },
   { value: 'contrats',      label: 'Contrats',       color: '#f59e0b' },
@@ -5483,10 +5574,11 @@ function renderAdmin() {
   const el = document.getElementById('admin-content');
   if (!el) return;
   const cards = state.adminCards || [];
+  const ym = currentYearMonth();
 
-  const total  = cards.length;
-  const pending = cards.filter(c => c.status !== 'fait').length;
-  const done    = cards.filter(c => c.status === 'fait').length;
+  const total   = cards.length;
+  const pending = cards.filter(c => !isAdminCardDone(c)).length;
+  const done    = cards.filter(c => isAdminCardDone(c)).length;
 
   // Category filter
   const filterCat = state.adminCatFilter || '';
@@ -5499,29 +5591,67 @@ function renderAdmin() {
     `<option value="${c.value}" ${filterCat === c.value ? 'selected' : ''}>${c.label}</option>`
   ).join('');
 
+  const MONTH_NAMES = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+
   const cardHtml = filtered.map(card => {
     const cat = adminCatInfo(card.category);
-    const statusClass = card.status === 'fait' ? 'admin-card-done' : card.status === 'en-cours' ? 'admin-card-inprogress' : '';
-    const statusLabel = card.status === 'fait' ? '✓ Fait' : card.status === 'en-cours' ? '⏳ En cours' : '○ À faire';
-    const dueFmt = card.dueDate
-      ? new Date(card.dueDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+    const isDone = isAdminCardDone(card);
+    const isMonthly = card.recurrence === 'monthly';
+    const statusClass = isDone ? 'admin-card-done' : card.status === 'en-cours' ? 'admin-card-inprogress' : '';
+    const urgencyColors = { critique: '#dc2626', urgent: '#ea580c', normal: '#6366f1', faible: '#94a3b8' };
+    const urgColor = urgencyColors[card.urgency || 'normal'] || urgencyColors.normal;
+
+    // Due date display
+    const effectiveDue = adminCardDueDate(card);
+    const dueFmt = effectiveDue
+      ? new Date(effectiveDue).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: isMonthly ? undefined : 'numeric' })
       : '';
-    const overdue = card.dueDate && card.dueDate < today() && card.status !== 'fait';
+    const overdue = effectiveDue && effectiveDue < today() && !isDone;
+
+    // Monthly history (last 6 months)
+    let historyHtml = '';
+    if (isMonthly) {
+      const history = card.completionHistory || [];
+      const months = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+        const m = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const label = MONTH_NAMES[d.getMonth()];
+        const wasDone = history.some(h => h.month === m);
+        const isCurrent = m === ym;
+        months.push({ m, label, wasDone, isCurrent });
+      }
+      historyHtml = `<div class="admin-history">${months.map(mo =>
+        `<span class="admin-history-dot ${mo.wasDone ? 'done' : ''} ${mo.isCurrent ? 'current' : ''}" title="${mo.m}">${mo.label}</span>`
+      ).join('')}</div>`;
+    }
+
+    // Status button
+    let statusLabel;
+    if (isMonthly) {
+      statusLabel = isDone ? '✓ Fait ce mois' : '○ À faire ce mois';
+    } else {
+      statusLabel = isDone ? '✓ Fait' : card.status === 'en-cours' ? '⏳ En cours' : '○ À faire';
+    }
+
     return `
       <div class="admin-card ${statusClass}" data-id="${card.id}">
         <div class="admin-card-top" style="background:${cat.color}">
           <span class="admin-card-cat">${cat.label}</span>
           <div class="admin-card-actions">
+            ${isMonthly ? '<span class="admin-recur-badge">🔄</span>' : ''}
+            <span class="admin-urgency-dot" style="background:${urgColor}" title="${card.urgency||'normal'}"></span>
             <button class="admin-btn-edit" onclick="openAdminModal('${card.id}')" title="Modifier">✎</button>
             <button class="admin-btn-del" onclick="deleteAdminCard('${card.id}')" title="Supprimer">✕</button>
           </div>
         </div>
         <div class="admin-card-body">
-          <div class="admin-card-title ${card.status === 'fait' ? 'admin-title-done' : ''}">${esc(card.title)}</div>
+          <div class="admin-card-title ${isDone ? 'admin-title-done' : ''}">${esc(card.title)}</div>
           ${card.note ? `<div class="admin-card-note">${esc(card.note)}</div>` : ''}
-          ${dueFmt ? `<div class="admin-card-due ${overdue ? 'admin-due-overdue' : ''}">📅 ${dueFmt}${overdue ? ' — En retard' : ''}</div>` : ''}
+          ${dueFmt ? `<div class="admin-card-due ${overdue ? 'admin-due-overdue' : ''}">📅 ${dueFmt}${overdue ? ' — En retard' : ''}${isMonthly && card.dayOfMonth ? ` (chaque mois le ${card.dayOfMonth})` : ''}</div>` : ''}
+          ${historyHtml}
           <div class="admin-card-footer">
-            <button class="admin-status-btn" onclick="cycleAdminStatus('${card.id}')">${statusLabel}</button>
+            <button class="admin-status-btn ${isDone ? 'admin-status-btn-done' : ''}" onclick="cycleAdminStatus('${card.id}')">${statusLabel}</button>
           </div>
         </div>
       </div>`;
@@ -5557,12 +5687,16 @@ function renderAdmin() {
 function openAdminModal(id) {
   const card = id ? (state.adminCards || []).find(c => c.id === id) : null;
   document.getElementById('admin-modal-title').textContent = card ? 'Modifier la vignette' : 'Nouvelle vignette';
-  document.getElementById('admin-card-id').value   = card ? card.id : '';
-  document.getElementById('admin-card-title').value = card ? card.title : '';
-  document.getElementById('admin-card-note').value  = card ? (card.note || '') : '';
-  document.getElementById('admin-card-due').value   = card ? (card.dueDate || '') : '';
-  document.getElementById('admin-card-status').value = card ? (card.status || 'todo') : 'todo';
-  document.getElementById('admin-card-category').value = card ? (card.category || 'autre') : 'autre';
+  document.getElementById('admin-card-id').value          = card ? card.id : '';
+  document.getElementById('admin-card-title').value       = card ? card.title : '';
+  document.getElementById('admin-card-note').value        = card ? (card.note || '') : '';
+  document.getElementById('admin-card-due').value         = card ? (card.dueDate || '') : '';
+  document.getElementById('admin-card-status').value      = card ? (card.status || 'todo') : 'todo';
+  document.getElementById('admin-card-category').value    = card ? (card.category || 'autre') : 'autre';
+  document.getElementById('admin-card-urgency').value     = card ? (card.urgency || 'normal') : 'normal';
+  document.getElementById('admin-card-recurrence').value  = card ? (card.recurrence || '') : '';
+  document.getElementById('admin-card-dayofmonth').value  = card ? (card.dayOfMonth || '') : '';
+  onAdminRecurrenceChange(card ? (card.recurrence || '') : '');
   document.getElementById('modal-admin').classList.remove('hidden');
   setTimeout(() => document.getElementById('admin-card-title').focus(), 50);
 }
@@ -5573,17 +5707,23 @@ function closeAdminModal() {
 
 function submitAdminCard(e) {
   e.preventDefault();
-  const id    = document.getElementById('admin-card-id').value;
-  const title = document.getElementById('admin-card-title').value.trim();
+  const id        = document.getElementById('admin-card-id').value;
+  const title     = document.getElementById('admin-card-title').value.trim();
   if (!title) return;
+  const recurrence = document.getElementById('admin-card-recurrence').value || null;
+  const existing   = id ? (state.adminCards || []).find(c => c.id === id) : null;
   const card = {
-    id:       id || uid(),
+    id:                id || uid(),
     title,
-    note:     document.getElementById('admin-card-note').value.trim(),
-    dueDate:  document.getElementById('admin-card-due').value || '',
-    status:   document.getElementById('admin-card-status').value || 'todo',
-    category: document.getElementById('admin-card-category').value || 'autre',
-    createdAt: id ? ((state.adminCards || []).find(c => c.id === id)?.createdAt || today()) : today(),
+    note:              document.getElementById('admin-card-note').value.trim(),
+    dueDate:           recurrence === 'monthly' ? '' : (document.getElementById('admin-card-due').value || ''),
+    status:            recurrence === 'monthly' ? 'todo' : (document.getElementById('admin-card-status').value || 'todo'),
+    category:          document.getElementById('admin-card-category').value || 'autre',
+    urgency:           document.getElementById('admin-card-urgency').value || 'normal',
+    recurrence,
+    dayOfMonth:        recurrence === 'monthly' ? (parseInt(document.getElementById('admin-card-dayofmonth').value) || null) : null,
+    completionHistory: existing ? (existing.completionHistory || []) : [],
+    createdAt:         existing ? (existing.createdAt || today()) : today(),
   };
   if (!state.adminCards) state.adminCards = [];
   if (id) {
@@ -5607,11 +5747,23 @@ function deleteAdminCard(id) {
 function cycleAdminStatus(id) {
   const card = (state.adminCards || []).find(c => c.id === id);
   if (!card) return;
-  const cycle = ['todo', 'en-cours', 'fait'];
-  const next = cycle[(cycle.indexOf(card.status || 'todo') + 1) % cycle.length];
-  card.status = next;
+  if (card.recurrence === 'monthly') {
+    const ym = currentYearMonth();
+    const alreadyDone = (card.completionHistory || []).some(h => h.month === ym);
+    if (alreadyDone) {
+      card.completionHistory = card.completionHistory.filter(h => h.month !== ym);
+    } else {
+      if (!card.completionHistory) card.completionHistory = [];
+      card.completionHistory.push({ month: ym, doneAt: new Date().toISOString() });
+    }
+  } else {
+    const cycle = ['todo', 'en-cours', 'fait'];
+    card.status = cycle[(cycle.indexOf(card.status || 'todo') + 1) % cycle.length];
+  }
   saveState();
   renderAdmin();
+  if (state.activePage === 'tasks') renderTasks();
+  if (state.activePage === 'home') renderDashboard();
 }
 
 // ═══════════════════════════════════════════════════
@@ -5625,7 +5777,8 @@ updateInterestUI(3);
   document.getElementById('nav-prototypes-count').textContent = state.prototypes.length;
   const pendingTasks = state.contacts.reduce((n, c) => n + (c.tasks||[]).filter(t => !t.done).length, 0)
     + state.prototypes.reduce((n, p) => n + (p.tasks||[]).filter(t => !t.done).length, 0)
-    + (state.standaloneTasks||[]).filter(t => !t.done).length;
+    + (state.standaloneTasks||[]).filter(t => !t.done).length
+    + (state.adminCards||[]).filter(c => !isAdminCardDone(c)).length;
   document.getElementById('nav-tasks-count').textContent = pendingTasks;
   const agendaCount = state.contacts.reduce((n, c) => n + (c.exchanges||[]).length, 0);
   document.getElementById('nav-agenda-count').textContent = agendaCount;

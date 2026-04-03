@@ -2331,10 +2331,54 @@ a:hover { color: var(--primary-700); }
   color: #92400e;
   border-color: #fcd34d;
 }
-.admin-card-done .admin-status-btn {
+.admin-card-done .admin-status-btn,
+.admin-status-btn-done {
   background: #d1fae5;
   color: #065f46;
   border-color: #6ee7b7;
+}
+.admin-urgency-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  align-self: center;
+  opacity: .9;
+}
+.admin-recur-badge {
+  font-size: .75rem;
+  opacity: .85;
+  align-self: center;
+  pointer-events: none;
+}
+.admin-history {
+  display: flex;
+  gap: .25rem;
+  flex-wrap: wrap;
+  margin-top: .1rem;
+}
+.admin-history-dot {
+  font-size: .65rem;
+  padding: .1rem .3rem;
+  border-radius: 4px;
+  background: var(--bg-100);
+  color: var(--text-400);
+  border: 1px solid var(--border-input);
+  font-weight: 500;
+}
+.admin-history-dot.done {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
+}
+.admin-history-dot.current {
+  font-weight: 700;
+  border-width: 2px;
+}
+.admin-history-dot.current:not(.done) {
+  border-color: #f59e0b;
+  color: #92400e;
+  background: #fef3c7;
 }
 @media (max-width: 600px) {
   .admin-grid { grid-template-columns: 1fr; }
