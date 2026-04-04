@@ -2300,6 +2300,16 @@ a:hover { color: var(--primary-700); }
   line-height: 1.4;
   white-space: pre-wrap;
 }
+.admin-card-url {
+  font-size: .8rem;
+}
+.admin-card-url a {
+  color: var(--primary-600);
+  text-decoration: none;
+}
+.admin-card-url a:hover {
+  text-decoration: underline;
+}
 .admin-card-due {
   font-size: .75rem;
   color: var(--text-500);

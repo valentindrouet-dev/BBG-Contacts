@@ -3218,6 +3218,37 @@ function renderAgenda() {
       });
     });
   });
+  // Admin card completions (monthly history + punctual doneAt)
+  (state.adminCards || []).forEach(card => {
+    const catLabel = adminCatInfo(card.category).label;
+    if (card.recurrence === 'monthly') {
+      (card.completionHistory || []).forEach(h => {
+        if (h.doneAt) {
+          entries.push({
+            id:           `admin-${card.id}-${h.month}`,
+            date:         h.doneAt.slice(0, 10),
+            _source:      'tasks',
+            taskText:     card.title,
+            taskUrgency:  card.urgency || 'normal',
+            taskFrom:     'admin',
+            taskFromId:   card.id,
+            taskFromName: catLabel,
+          });
+        }
+      });
+    } else if (card.status === 'fait' && card.doneAt) {
+      entries.push({
+        id:           `admin-${card.id}`,
+        date:         card.doneAt.slice(0, 10),
+        _source:      'tasks',
+        taskText:     card.title,
+        taskUrgency:  card.urgency || 'normal',
+        taskFrom:     'admin',
+        taskFromId:   card.id,
+        taskFromName: catLabel,
+      });
+    }
+  });
 
   // Exclude future events (date strictly after today)
   const todayStr = today();
@@ -3358,8 +3389,10 @@ function renderAgenda() {
           ? `openDetail('contact','${e.taskFromId}')`
           : e.taskFrom === 'festival'
             ? `openFestivalDetail('${e.taskFromId}')`
-            : `openDetail('prototype','${e.taskFromId}')`;
-        const fromIcon = e.taskFrom === 'contact' ? '👤' : e.taskFrom === 'festival' ? '🎪' : '🎲';
+            : e.taskFrom === 'admin'
+              ? `switchPage('admin')`
+              : `openDetail('prototype','${e.taskFromId}')`;
+        const fromIcon = e.taskFrom === 'contact' ? '👤' : e.taskFrom === 'festival' ? '🎪' : e.taskFrom === 'admin' ? '🗂️' : '🎲';
         const avatarHtml = e.taskFromPhoto
           ? `<img src="${esc(e.taskFromPhoto)}" class="agenda-avatar" alt="" />`
           : e.taskFromCat
@@ -5622,7 +5655,7 @@ function renderAdmin() {
         months.push({ m, label, wasDone, isCurrent });
       }
       historyHtml = `<div class="admin-history">${months.map(mo =>
-        `<span class="admin-history-dot ${mo.wasDone ? 'done' : ''} ${mo.isCurrent ? 'current' : ''}" title="${mo.m}">${mo.label}</span>`
+        `<span class="admin-history-dot ${mo.wasDone ? 'done' : ''} ${mo.isCurrent ? 'current' : ''}" title="${mo.wasDone ? 'Marquer non fait' : 'Marquer fait'} — ${mo.m}" onclick="event.stopPropagation();toggleAdminMonth('${card.id}','${mo.m}')" style="cursor:pointer">${mo.label}</span>`
       ).join('')}</div>`;
     }
 
@@ -5647,6 +5680,7 @@ function renderAdmin() {
         </div>
         <div class="admin-card-body">
           <div class="admin-card-title ${isDone ? 'admin-title-done' : ''}">${esc(card.title)}</div>
+          ${card.url ? `<div class="admin-card-url"><a href="${esc(card.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="${esc(card.url)}">🔗 ${esc((() => { try { return new URL(card.url).hostname.replace(/^www\./,''); } catch(e) { return card.url; } })())}</a></div>` : ''}
           ${card.note ? `<div class="admin-card-note">${esc(card.note)}</div>` : ''}
           ${dueFmt ? `<div class="admin-card-due ${overdue ? 'admin-due-overdue' : ''}">📅 ${dueFmt}${overdue ? ' — En retard' : ''}${isMonthly && card.dayOfMonth ? ` (chaque mois le ${card.dayOfMonth})` : ''}</div>` : ''}
           ${historyHtml}
@@ -5696,6 +5730,7 @@ function openAdminModal(id) {
   document.getElementById('admin-card-urgency').value     = card ? (card.urgency || 'normal') : 'normal';
   document.getElementById('admin-card-recurrence').value  = card ? (card.recurrence || '') : '';
   document.getElementById('admin-card-dayofmonth').value  = card ? (card.dayOfMonth || '') : '';
+  document.getElementById('admin-card-url').value         = card ? (card.url || '') : '';
   onAdminRecurrenceChange(card ? (card.recurrence || '') : '');
   document.getElementById('modal-admin').classList.remove('hidden');
   setTimeout(() => document.getElementById('admin-card-title').focus(), 50);
@@ -5722,6 +5757,7 @@ function submitAdminCard(e) {
     urgency:           document.getElementById('admin-card-urgency').value || 'normal',
     recurrence,
     dayOfMonth:        recurrence === 'monthly' ? (parseInt(document.getElementById('admin-card-dayofmonth').value) || null) : null,
+    url:               document.getElementById('admin-card-url').value.trim(),
     completionHistory: existing ? (existing.completionHistory || []) : [],
     createdAt:         existing ? (existing.createdAt || today()) : today(),
   };
@@ -5759,6 +5795,24 @@ function cycleAdminStatus(id) {
   } else {
     const cycle = ['todo', 'en-cours', 'fait'];
     card.status = cycle[(cycle.indexOf(card.status || 'todo') + 1) % cycle.length];
+    if (card.status === 'fait') card.doneAt = new Date().toISOString();
+    else delete card.doneAt;
+  }
+  saveState();
+  renderAdmin();
+  if (state.activePage === 'tasks') renderTasks();
+  if (state.activePage === 'home') renderDashboard();
+}
+
+function toggleAdminMonth(cardId, ym) {
+  const card = (state.adminCards || []).find(c => c.id === cardId);
+  if (!card || card.recurrence !== 'monthly') return;
+  if (!card.completionHistory) card.completionHistory = [];
+  const alreadyDone = card.completionHistory.some(h => h.month === ym);
+  if (alreadyDone) {
+    card.completionHistory = card.completionHistory.filter(h => h.month !== ym);
+  } else {
+    card.completionHistory.push({ month: ym, doneAt: new Date().toISOString() });
   }
   saveState();
   renderAdmin();
