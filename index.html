@@ -716,6 +716,68 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════
+     MODAL — ACTIF
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-actif" onclick="if(event.target===this)closeActifModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="actif-modal-title">Nouvel actif</h2>
+      <button class="modal-close" onclick="closeActifModal()">✕</button>
+    </div>
+    <form class="modal-form" onsubmit="submitActif(event)">
+      <input type="hidden" id="actif-id" />
+
+      <div class="form-group full">
+        <label>Nom <span class="req">*</span></label>
+        <input type="text" id="actif-nom" required placeholder="Ex : MacBook Pro 14, Imprimante, Loyer…" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Catégorie</label>
+          <select id="actif-categorie">
+            <option value="immobilisations">Immobilisations</option>
+            <option value="charges">Charges</option>
+            <option value="amortissements">Amortissements</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quantité</label>
+          <input type="number" id="actif-quantite" min="0" step="1" value="1" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prix HT (€)</label>
+          <input type="number" id="actif-prixHT" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Prix TTC (€)</label>
+          <input type="number" id="actif-prixTTC" min="0" step="0.01" placeholder="0.00" />
+        </div>
+      </div>
+
+      <div class="form-group full">
+        <label>Emplacement</label>
+        <input type="text" id="actif-emplacement" placeholder="Ex : Bureau, Entrepôt, Chez Valentine…" />
+      </div>
+
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="actif-note" rows="2" placeholder="Numéro de série, remarques…"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeActifModal()">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
      MODAL — CONTACT
 ═══════════════════════════════════════════════════ -->
 <div class="modal-overlay hidden" id="modal-contact">

@@ -2487,3 +2487,148 @@ a:hover { color: var(--primary-700); }
   .admin-grid { grid-template-columns: 1fr; }
   .admin-toolbar { flex-direction: column; align-items: stretch; }
 }
+
+/* ── Actifs de la société ────────────────────────── */
+.btn-sm {
+  font-size: .8rem;
+  padding: .35rem .7rem;
+}
+
+.actifs-section {
+  margin-top: 2.5rem;
+  border-top: 2px solid var(--border);
+  padding-top: 1.5rem;
+}
+
+.actifs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+}
+
+.actifs-title {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+
+.actifs-icon { font-size: 1.3rem; }
+
+.actifs-title h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-900);
+}
+
+.actifs-total {
+  font-size: .85rem;
+  color: var(--text-500);
+  background: var(--bg-100);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: .2rem .6rem;
+}
+
+.actif-cat-block {
+  margin-bottom: 1.5rem;
+}
+
+.actif-cat-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  border-left: 4px solid var(--border);
+  padding-left: .6rem;
+  margin-bottom: .5rem;
+}
+
+.actif-cat-label {
+  font-size: .8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.actif-cat-count {
+  font-size: .75rem;
+  color: var(--text-500);
+  background: var(--bg-100);
+  border-radius: 99px;
+  padding: .1rem .5rem;
+  border: 1px solid var(--border);
+}
+
+.actif-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .875rem;
+}
+
+.actif-table thead tr {
+  background: var(--bg-100);
+}
+
+.actif-table th {
+  text-align: left;
+  padding: .5rem .75rem;
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-500);
+  border-bottom: 1px solid var(--border);
+}
+
+.actif-table td {
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-700);
+}
+
+.actif-table tbody tr:last-child td { border-bottom: none; }
+.actif-table tbody tr:hover td { background: var(--bg-50); }
+
+.actif-td-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.actif-td-actions {
+  text-align: right;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.actif-table tr:hover .actif-td-actions { opacity: 1; }
+
+.actif-btn-edit,
+.actif-btn-del {
+  font-size: .8rem;
+  padding: .15rem .4rem;
+  border-radius: 4px;
+  line-height: 1;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.actif-btn-edit { color: var(--text-500); }
+.actif-btn-edit:hover { background: var(--bg-200); color: var(--text-900); }
+.actif-btn-del  { color: var(--text-500); }
+.actif-btn-del:hover  { background: #fee2e2; color: #dc2626; }
+
+.actif-empty {
+  color: var(--text-400);
+  font-size: .9rem;
+  font-style: italic;
+  padding: 1rem 0;
+}
+
+@media (max-width: 700px) {
+  .actifs-header { flex-direction: column; align-items: flex-start; }
+  .actif-table { font-size: .8rem; }
+}

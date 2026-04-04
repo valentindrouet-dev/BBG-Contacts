@@ -37,6 +37,7 @@ const state = {
 
   standaloneTasks:    [],
   adminCards:         [],
+  actifs:             [],
   adminCatFilter:     '',
   compareMode:        false,
   selectedForCompare: [],
@@ -55,6 +56,7 @@ function saveState() {
   localStorage.setItem('bbg-festivals',        JSON.stringify(state.festivals));
   localStorage.setItem('bbg-standalone-tasks', JSON.stringify(state.standaloneTasks));
   localStorage.setItem('bbg-admin-cards',      JSON.stringify(state.adminCards));
+  localStorage.setItem('bbg-actifs',           JSON.stringify(state.actifs));
 }
 // ── Data migration ──────────────────────────────
 function migrateContact(c) {
@@ -124,8 +126,9 @@ function loadState() {
   try { p = localStorage.getItem('bbg-prototypes'); } catch(e) {}
   try { f = localStorage.getItem('bbg-festivals'); } catch(e) {}
   try { s = localStorage.getItem('bbg-standalone-tasks'); } catch(e) {}
-  let a;
-  try { a = localStorage.getItem('bbg-admin-cards'); } catch(e) {}
+  let a, act;
+  try { a   = localStorage.getItem('bbg-admin-cards'); } catch(e) {}
+  try { act = localStorage.getItem('bbg-actifs');      } catch(e) {}
 
   try {
     state.contacts = (c ? JSON.parse(c) : SEED_CONTACTS).map(migrateContact);
@@ -154,6 +157,11 @@ function loadState() {
     state.adminCards = a ? JSON.parse(a).map(migrateAdminCard) : [];
   } catch(e) {
     state.adminCards = [];
+  }
+  try {
+    state.actifs = act ? JSON.parse(act) : [];
+  } catch(e) {
+    state.actifs = [];
   }
   // Only seed if truly empty (no existing localStorage data)
   if (!c) saveState();
@@ -5674,7 +5682,7 @@ function renderAdminCard(card, ym, MONTH_NAMES) {
         <div class="admin-card-title ${isDone ? 'admin-title-done' : ''}">${esc(card.title)}</div>
         ${card.url ? `<div class="admin-card-url"><a href="${esc(card.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="${esc(card.url)}">🔗 ${esc((() => { try { return new URL(card.url).hostname.replace(/^www\./,''); } catch(e) { return card.url; } })())}</a></div>` : ''}
         ${card.note ? `<div class="admin-card-note">${esc(card.note)}</div>` : ''}
-        ${dueFmt ? `<div class="admin-card-due ${overdue ? 'admin-due-overdue' : ''}">📅 ${dueFmt}${adminJBadge(days, isDone)}${overdue ? ' — En retard' : ''}${isMonthly && card.dayOfMonth ? ` (chaque mois le ${card.dayOfMonth})` : ''}</div>` : ''}
+        ${dueFmt ? `<div class="admin-card-due ${overdue ? 'admin-due-overdue' : ''}">📅 ${dueFmt}${adminJBadge(days, isDone)}${overdue ? ' — En retard' : ''}${isMonthly ? ' (chaque mois)' : ''}</div>` : ''}
         ${historyHtml}
         <div class="admin-card-footer">
           <button class="admin-status-btn ${isDone ? 'admin-status-btn-done' : ''}" onclick="cycleAdminStatus('${card.id}')">${statusLabel}</button>
@@ -5775,6 +5783,7 @@ function renderAdmin() {
       ? `<div class="empty-state"><div class="empty-icon">🗂️</div><h3>${filterCat ? 'Aucune vignette dans cette catégorie' : 'Aucune vignette'}</h3><p>Ajoutez vos tâches administratives.</p><button class="btn-primary" onclick="openAdminModal(null)">Ajouter une vignette</button></div>`
       : sectionsHtml
     }
+    ${renderActifsSection()}
   `;
 }
 
@@ -5878,6 +5887,129 @@ function toggleAdminMonth(cardId, ym) {
   renderAdmin();
   if (state.activePage === 'tasks') renderTasks();
   if (state.activePage === 'home') renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════
+// ACTIFS DE LA SOCIÉTÉ
+// ═══════════════════════════════════════════════════
+
+const ACTIF_CATEGORIES = [
+  { value: 'immobilisations', label: 'Immobilisations', color: '#6366f1' },
+  { value: 'charges',         label: 'Charges',         color: '#ef4444' },
+  { value: 'amortissements',  label: 'Amortissements',  color: '#f59e0b' },
+  { value: 'autre',           label: 'Autre',           color: '#64748b' },
+];
+
+function formatEur(v) {
+  const n = parseFloat(v);
+  if (isNaN(n) || v === '' || v === null || v === undefined) return '—';
+  return n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+}
+
+function renderActifsSection() {
+  const actifs = state.actifs || [];
+  const totalTTC = actifs.reduce((s, a) => s + (parseFloat(a.prixTTC) || 0) * (parseFloat(a.quantite) || 1), 0);
+
+  const groups = ACTIF_CATEGORIES.map(cat => ({
+    ...cat,
+    items: actifs.filter(a => a.categorie === cat.value),
+  })).filter(g => g.items.length > 0);
+
+  const tableRows = items => items.map(a => `
+    <tr>
+      <td>${esc(a.nom)}</td>
+      <td class="actif-td-num">${a.quantite ?? '—'}</td>
+      <td class="actif-td-num">${formatEur(a.prixHT)}</td>
+      <td class="actif-td-num">${formatEur(a.prixTTC)}</td>
+      <td>${esc(a.emplacement || '—')}</td>
+      <td class="actif-td-actions">
+        <button class="actif-btn-edit" onclick="openActifModal('${a.id}')" title="Modifier">✎</button>
+        <button class="actif-btn-del" onclick="deleteActif('${a.id}')" title="Supprimer">✕</button>
+      </td>
+    </tr>`).join('');
+
+  const body = groups.length
+    ? groups.map(g => `
+      <div class="actif-cat-block">
+        <div class="actif-cat-header" style="border-left-color:${g.color}">
+          <span class="actif-cat-label" style="color:${g.color}">${g.label}</span>
+          <span class="actif-cat-count">${g.items.length} actif${g.items.length > 1 ? 's' : ''}</span>
+        </div>
+        <table class="actif-table">
+          <thead><tr><th>Nom</th><th>Qté</th><th>Prix HT</th><th>Prix TTC</th><th>Emplacement</th><th></th></tr></thead>
+          <tbody>${tableRows(g.items)}</tbody>
+        </table>
+      </div>`).join('')
+    : `<div class="actif-empty">Aucun actif enregistré. Ajoutez vos biens, charges et amortissements.</div>`;
+
+  return `
+    <div class="actifs-section">
+      <div class="actifs-header">
+        <div class="actifs-title">
+          <span class="actifs-icon">🏢</span>
+          <h3>Actifs de la société</h3>
+          ${actifs.length ? `<span class="actifs-total">Total TTC : <strong>${formatEur(totalTTC)}</strong></span>` : ''}
+        </div>
+        <button class="btn-primary btn-sm" onclick="openActifModal(null)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un actif
+        </button>
+      </div>
+      ${body}
+    </div>`;
+}
+
+function openActifModal(id) {
+  const a = id ? (state.actifs || []).find(x => x.id === id) : null;
+  document.getElementById('actif-modal-title').textContent = a ? "Modifier l'actif" : 'Nouvel actif';
+  document.getElementById('actif-id').value          = a ? a.id : '';
+  document.getElementById('actif-nom').value         = a ? a.nom : '';
+  document.getElementById('actif-categorie').value   = a ? (a.categorie || 'immobilisations') : 'immobilisations';
+  document.getElementById('actif-quantite').value    = a ? (a.quantite ?? 1) : 1;
+  document.getElementById('actif-prixHT').value      = a ? (a.prixHT ?? '') : '';
+  document.getElementById('actif-prixTTC').value     = a ? (a.prixTTC ?? '') : '';
+  document.getElementById('actif-emplacement').value = a ? (a.emplacement || '') : '';
+  document.getElementById('actif-note').value        = a ? (a.note || '') : '';
+  document.getElementById('modal-actif').classList.remove('hidden');
+}
+
+function closeActifModal() {
+  document.getElementById('modal-actif').classList.add('hidden');
+}
+
+function submitActif(event) {
+  event.preventDefault();
+  const id = document.getElementById('actif-id').value;
+  const existing = id ? (state.actifs || []).find(x => x.id === id) : null;
+  const data = {
+    id:          id || uid(),
+    nom:         document.getElementById('actif-nom').value.trim(),
+    categorie:   document.getElementById('actif-categorie').value,
+    quantite:    parseFloat(document.getElementById('actif-quantite').value) || 1,
+    prixHT:      document.getElementById('actif-prixHT').value !== '' ? parseFloat(document.getElementById('actif-prixHT').value) : '',
+    prixTTC:     document.getElementById('actif-prixTTC').value !== '' ? parseFloat(document.getElementById('actif-prixTTC').value) : '',
+    emplacement: document.getElementById('actif-emplacement').value.trim(),
+    note:        document.getElementById('actif-note').value.trim(),
+    createdAt:   existing ? existing.createdAt : new Date().toISOString(),
+  };
+  if (!data.nom) return;
+  if (!state.actifs) state.actifs = [];
+  if (existing) {
+    const idx = state.actifs.findIndex(x => x.id === id);
+    state.actifs[idx] = data;
+  } else {
+    state.actifs.push(data);
+  }
+  saveState();
+  closeActifModal();
+  renderAdmin();
+}
+
+function deleteActif(id) {
+  if (!confirm('Supprimer cet actif ?')) return;
+  state.actifs = (state.actifs || []).filter(x => x.id !== id);
+  saveState();
+  renderAdmin();
 }
 
 // ═══════════════════════════════════════════════════
