@@ -5603,6 +5603,99 @@ function adminCatInfo(val) {
   return ADMIN_CATEGORIES.find(c => c.value === val) || ADMIN_CATEGORIES[ADMIN_CATEGORIES.length - 1];
 }
 
+function adminDaysUntil(card) {
+  const due = adminCardDueDate(card);
+  if (!due) return null;
+  const todayMs = new Date(today()).getTime();
+  const dueMs   = new Date(due).getTime();
+  return Math.round((dueMs - todayMs) / 86400000);
+}
+
+function adminJBadge(days, isDone) {
+  if (isDone || days === null) return '';
+  if (days < 0)  return `<span class="admin-j-badge admin-j-late">+${-days}j</span>`;
+  if (days === 0) return `<span class="admin-j-badge admin-j-today">Aujourd'hui</span>`;
+  if (days <= 7) return `<span class="admin-j-badge admin-j-soon">J-${days}</span>`;
+  if (days <= 30) return `<span class="admin-j-badge admin-j-month">J-${days}</span>`;
+  return `<span class="admin-j-badge admin-j-far">J-${days}</span>`;
+}
+
+function renderAdminCard(card, ym, MONTH_NAMES) {
+  const cat = adminCatInfo(card.category);
+  const isDone = isAdminCardDone(card);
+  const isMonthly = card.recurrence === 'monthly';
+  const statusClass = isDone ? 'admin-card-done' : card.status === 'en-cours' ? 'admin-card-inprogress' : '';
+  const urgencyColors = { critique: '#dc2626', urgent: '#ea580c', normal: '#6366f1', faible: '#94a3b8' };
+  const urgColor = urgencyColors[card.urgency || 'normal'] || urgencyColors.normal;
+
+  const effectiveDue = adminCardDueDate(card);
+  const days = adminDaysUntil(card);
+  const dueFmt = effectiveDue
+    ? new Date(effectiveDue).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: isMonthly ? undefined : 'numeric' })
+    : '';
+  const overdue = effectiveDue && effectiveDue < today() && !isDone;
+
+  let historyHtml = '';
+  if (isMonthly) {
+    const history = card.completionHistory || [];
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+      const m = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const label = MONTH_NAMES[d.getMonth()];
+      const wasDone = history.some(h => h.month === m);
+      const isCurrent = m === ym;
+      months.push({ m, label, wasDone, isCurrent });
+    }
+    historyHtml = `<div class="admin-history">${months.map(mo =>
+      `<span class="admin-history-dot ${mo.wasDone ? 'done' : ''} ${mo.isCurrent ? 'current' : ''}" title="${mo.wasDone ? 'Marquer non fait' : 'Marquer fait'} — ${mo.m}" onclick="event.stopPropagation();toggleAdminMonth('${card.id}','${mo.m}')" style="cursor:pointer">${mo.label}</span>`
+    ).join('')}</div>`;
+  }
+
+  let statusLabel;
+  if (isMonthly) {
+    statusLabel = isDone ? '✓ Fait ce mois' : '○ À faire ce mois';
+  } else {
+    statusLabel = isDone ? '✓ Fait' : card.status === 'en-cours' ? '⏳ En cours' : '○ À faire';
+  }
+
+  return `
+    <div class="admin-card ${statusClass}" data-id="${card.id}">
+      <div class="admin-card-top" style="background:${cat.color}">
+        <span class="admin-card-cat">${cat.label}</span>
+        <div class="admin-card-actions">
+          ${isMonthly ? '<span class="admin-recur-badge">🔄</span>' : ''}
+          <span class="admin-urgency-dot" style="background:${urgColor}" title="${card.urgency||'normal'}"></span>
+          <button class="admin-btn-edit" onclick="openAdminModal('${card.id}')" title="Modifier">✎</button>
+          <button class="admin-btn-del" onclick="deleteAdminCard('${card.id}')" title="Supprimer">✕</button>
+        </div>
+      </div>
+      <div class="admin-card-body">
+        <div class="admin-card-title ${isDone ? 'admin-title-done' : ''}">${esc(card.title)}</div>
+        ${card.url ? `<div class="admin-card-url"><a href="${esc(card.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="${esc(card.url)}">🔗 ${esc((() => { try { return new URL(card.url).hostname.replace(/^www\./,''); } catch(e) { return card.url; } })())}</a></div>` : ''}
+        ${card.note ? `<div class="admin-card-note">${esc(card.note)}</div>` : ''}
+        ${dueFmt ? `<div class="admin-card-due ${overdue ? 'admin-due-overdue' : ''}">📅 ${dueFmt}${adminJBadge(days, isDone)}${overdue ? ' — En retard' : ''}${isMonthly && card.dayOfMonth ? ` (chaque mois le ${card.dayOfMonth})` : ''}</div>` : ''}
+        ${historyHtml}
+        <div class="admin-card-footer">
+          <button class="admin-status-btn ${isDone ? 'admin-status-btn-done' : ''}" onclick="cycleAdminStatus('${card.id}')">${statusLabel}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderAdminSection(label, icon, cards, ym, MONTH_NAMES, extraClass) {
+  if (!cards.length) return '';
+  return `
+    <div class="admin-section${extraClass ? ' ' + extraClass : ''}">
+      <div class="admin-section-header">
+        <span class="admin-section-icon">${icon}</span>
+        <span class="admin-section-label">${label}</span>
+        <span class="admin-section-count">${cards.length}</span>
+      </div>
+      <div class="admin-grid">${cards.map(c => renderAdminCard(c, ym, MONTH_NAMES)).join('')}</div>
+    </div>`;
+}
+
 function renderAdmin() {
   const el = document.getElementById('admin-content');
   if (!el) return;
@@ -5613,12 +5706,8 @@ function renderAdmin() {
   const pending = cards.filter(c => !isAdminCardDone(c)).length;
   const done    = cards.filter(c => isAdminCardDone(c)).length;
 
-  // Category filter
   const filterCat = state.adminCatFilter || '';
-
-  const filtered = filterCat
-    ? cards.filter(c => c.category === filterCat)
-    : cards;
+  const filtered = filterCat ? cards.filter(c => c.category === filterCat) : cards;
 
   const catOptions = ADMIN_CATEGORIES.map(c =>
     `<option value="${c.value}" ${filterCat === c.value ? 'selected' : ''}>${c.label}</option>`
@@ -5626,70 +5715,41 @@ function renderAdmin() {
 
   const MONTH_NAMES = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
 
-  const cardHtml = filtered.map(card => {
-    const cat = adminCatInfo(card.category);
-    const isDone = isAdminCardDone(card);
-    const isMonthly = card.recurrence === 'monthly';
-    const statusClass = isDone ? 'admin-card-done' : card.status === 'en-cours' ? 'admin-card-inprogress' : '';
-    const urgencyColors = { critique: '#dc2626', urgent: '#ea580c', normal: '#6366f1', faible: '#94a3b8' };
-    const urgColor = urgencyColors[card.urgency || 'normal'] || urgencyColors.normal;
+  // Separate done from pending
+  const pendingCards = filtered.filter(c => !isAdminCardDone(c));
+  const doneCards    = filtered.filter(c => isAdminCardDone(c));
 
-    // Due date display
-    const effectiveDue = adminCardDueDate(card);
-    const dueFmt = effectiveDue
-      ? new Date(effectiveDue).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: isMonthly ? undefined : 'numeric' })
-      : '';
-    const overdue = effectiveDue && effectiveDue < today() && !isDone;
+  // Among pending: separate monthly from punctual
+  const monthlyCards   = pendingCards.filter(c => c.recurrence === 'monthly');
+  const punctualCards  = pendingCards.filter(c => c.recurrence !== 'monthly');
 
-    // Monthly history (last 6 months)
-    let historyHtml = '';
-    if (isMonthly) {
-      const history = card.completionHistory || [];
-      const months = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
-        const m = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        const label = MONTH_NAMES[d.getMonth()];
-        const wasDone = history.some(h => h.month === m);
-        const isCurrent = m === ym;
-        months.push({ m, label, wasDone, isCurrent });
-      }
-      historyHtml = `<div class="admin-history">${months.map(mo =>
-        `<span class="admin-history-dot ${mo.wasDone ? 'done' : ''} ${mo.isCurrent ? 'current' : ''}" title="${mo.wasDone ? 'Marquer non fait' : 'Marquer fait'} — ${mo.m}" onclick="event.stopPropagation();toggleAdminMonth('${card.id}','${mo.m}')" style="cursor:pointer">${mo.label}</span>`
-      ).join('')}</div>`;
-    }
+  // Sort punctual by due date ascending (null/empty last)
+  const sortByDue = (a, b) => {
+    const da = adminCardDueDate(a), db = adminCardDueDate(b);
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return da < db ? -1 : da > db ? 1 : 0;
+  };
+  punctualCards.sort(sortByDue);
 
-    // Status button
-    let statusLabel;
-    if (isMonthly) {
-      statusLabel = isDone ? '✓ Fait ce mois' : '○ À faire ce mois';
-    } else {
-      statusLabel = isDone ? '✓ Fait' : card.status === 'en-cours' ? '⏳ En cours' : '○ À faire';
-    }
+  // Sort monthly by dayOfMonth ascending
+  monthlyCards.sort((a, b) => (a.dayOfMonth || 99) - (b.dayOfMonth || 99));
 
-    return `
-      <div class="admin-card ${statusClass}" data-id="${card.id}">
-        <div class="admin-card-top" style="background:${cat.color}">
-          <span class="admin-card-cat">${cat.label}</span>
-          <div class="admin-card-actions">
-            ${isMonthly ? '<span class="admin-recur-badge">🔄</span>' : ''}
-            <span class="admin-urgency-dot" style="background:${urgColor}" title="${card.urgency||'normal'}"></span>
-            <button class="admin-btn-edit" onclick="openAdminModal('${card.id}')" title="Modifier">✎</button>
-            <button class="admin-btn-del" onclick="deleteAdminCard('${card.id}')" title="Supprimer">✕</button>
-          </div>
-        </div>
-        <div class="admin-card-body">
-          <div class="admin-card-title ${isDone ? 'admin-title-done' : ''}">${esc(card.title)}</div>
-          ${card.url ? `<div class="admin-card-url"><a href="${esc(card.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="${esc(card.url)}">🔗 ${esc((() => { try { return new URL(card.url).hostname.replace(/^www\./,''); } catch(e) { return card.url; } })())}</a></div>` : ''}
-          ${card.note ? `<div class="admin-card-note">${esc(card.note)}</div>` : ''}
-          ${dueFmt ? `<div class="admin-card-due ${overdue ? 'admin-due-overdue' : ''}">📅 ${dueFmt}${overdue ? ' — En retard' : ''}${isMonthly && card.dayOfMonth ? ` (chaque mois le ${card.dayOfMonth})` : ''}</div>` : ''}
-          ${historyHtml}
-          <div class="admin-card-footer">
-            <button class="admin-status-btn ${isDone ? 'admin-status-btn-done' : ''}" onclick="cycleAdminStatus('${card.id}')">${statusLabel}</button>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
+  // Group punctual into time buckets
+  const overdue   = punctualCards.filter(c => { const d = adminDaysUntil(c); return d !== null && d < 0; });
+  const thisWeek  = punctualCards.filter(c => { const d = adminDaysUntil(c); return d !== null && d >= 0 && d <= 7; });
+  const thisMonth = punctualCards.filter(c => { const d = adminDaysUntil(c); return d !== null && d > 7 && d <= 30; });
+  const later     = punctualCards.filter(c => { const d = adminDaysUntil(c); return d === null || d > 30; });
+
+  const sectionsHtml = [
+    renderAdminSection('En retard',      '🔴', overdue,    ym, MONTH_NAMES, 'admin-section-overdue'),
+    renderAdminSection('Cette semaine',  '⚡', thisWeek,   ym, MONTH_NAMES, 'admin-section-week'),
+    renderAdminSection('Ce mois',        '📅', thisMonth,  ym, MONTH_NAMES, 'admin-section-month'),
+    renderAdminSection('À venir',        '📋', later,      ym, MONTH_NAMES, ''),
+    renderAdminSection('Tâches mensuelles', '🔄', monthlyCards, ym, MONTH_NAMES, 'admin-section-monthly'),
+    renderAdminSection('Terminées',      '✓',  doneCards,  ym, MONTH_NAMES, 'admin-section-done'),
+  ].join('');
 
   el.innerHTML = `
     <div class="admin-toolbar">
@@ -5713,7 +5773,7 @@ function renderAdmin() {
     </div>
     ${filtered.length === 0
       ? `<div class="empty-state"><div class="empty-icon">🗂️</div><h3>${filterCat ? 'Aucune vignette dans cette catégorie' : 'Aucune vignette'}</h3><p>Ajoutez vos tâches administratives.</p><button class="btn-primary" onclick="openAdminModal(null)">Ajouter une vignette</button></div>`
-      : `<div class="admin-grid">${cardHtml}</div>`
+      : sectionsHtml
     }
   `;
 }
