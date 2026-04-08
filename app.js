@@ -355,9 +355,15 @@ function renderDashboard() {
     .slice(0, 8);
 
   // Test counter tasks — triés par statut : En développement, À tester, À imprimer
+  // On prend tous les protos avec une tâche test_counter (done ou non) pour ne pas les perdre
   const TEST_STATUS_ORDER = { développement: 0, tester: 1, imprimer: 2 };
-  const testCounterTasks = pendingTasks
-    .filter(t => t.subtype === 'test_counter')
+  const testCounterTasks = state.prototypes
+    .filter(p => (p.tasks||[]).some(t => t.subtype === 'test_counter'))
+    .map(p => {
+      const sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
+      const counterTask = (p.tasks||[]).find(t => t.subtype === 'test_counter');
+      return { ...counterTask, _from: 'prototype', _name: p.title, _id: p.id, _sessionCount: sc, _status: p.status, _emoji: p.emoji };
+    })
     .sort((a,b) => {
       const sa = TEST_STATUS_ORDER[a._status] ?? 99;
       const sb = TEST_STATUS_ORDER[b._status] ?? 99;
@@ -977,10 +983,10 @@ function renderPrototypesStats() {
   // Sessions test — jeux avec tâches test_counter, triés par statut : En développement, À tester, À imprimer
   const TEST_STATUS_ORDER_STATS = { développement: 0, tester: 1, imprimer: 2 };
   const testProtos = all
-    .filter(p => (p.tasks||[]).some(t => !t.done && t.subtype === 'test_counter'))
+    .filter(p => (p.tasks||[]).some(t => t.subtype === 'test_counter'))
     .map(p => {
       const sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
-      const counterTask = (p.tasks||[]).find(t => !t.done && t.subtype === 'test_counter');
+      const counterTask = (p.tasks||[]).find(t => t.subtype === 'test_counter');
       const target = counterTask ? (counterTask.targetCount || 1) : 1;
       return { title: p.title, count: sc, target, status: p.status };
     })
