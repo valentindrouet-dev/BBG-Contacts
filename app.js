@@ -5383,28 +5383,21 @@ function renderStats() {
     contact: '👤 Contacts', prototype: '🎮 Jeux',
     standalone: '✨ Libres', festival: '🎪 Festivals'
   };
+  const EXCH_TYPE_LABELS = {
+    rencontre: 'Rencontre', email: 'Email', appel: 'Appel', salon: 'Salon',
+    message: 'Message', developpement: 'Développement', autre: 'Autre', festival: 'Festival'
+  };
+  const TEST_TYPE_LABELS = {
+    test: 'Session de test', évaluation: 'Évaluation', developpement: 'Dev / Note'
+  };
 
-  // ── Collect all exchanges / actions (by date) ──
-  const exchanges = [];
+  // ── Collect exchanges : contacts & festivals (interactions humaines) ──
+  const echanges = [];
 
   state.contacts.forEach(c => {
     (c.exchanges || []).forEach(e => {
       if (!e.date) return;
-      exchanges.push({ date: e.date, type: e.type || 'autre', source: 'contact', label: c.name });
-    });
-  });
-
-  (state.prototypes || []).forEach(p => {
-    (p.devLog || []).forEach(e => {
-      if (!e.date) return;
-      exchanges.push({ date: e.date, type: 'developpement', source: 'jeux', label: p.title });
-    });
-    if (p.evaluation?.date) {
-      exchanges.push({ date: p.evaluation.date, type: 'évaluation', source: 'eval', label: p.title });
-    }
-    (p.testSessions || []).forEach(s => {
-      if (!s.date) return;
-      exchanges.push({ date: s.date, type: 'test', source: 'test', label: p.title });
+      echanges.push({ date: e.date, type: e.type || 'autre', label: c.name });
     });
   });
 
@@ -5412,7 +5405,24 @@ function renderStats() {
     (f.presences || []).forEach(p => {
       const d = p.dateStart || p.date || '';
       if (!d) return;
-      exchanges.push({ date: d, type: 'festival', source: 'festival', label: f.name });
+      echanges.push({ date: d, type: 'festival', label: f.name });
+    });
+  });
+
+  // ── Collect game tests & prototype activities ──
+  const testsJeux = [];
+
+  (state.prototypes || []).forEach(p => {
+    (p.testSessions || []).forEach(s => {
+      if (!s.date) return;
+      testsJeux.push({ date: s.date, type: 'test', label: p.title });
+    });
+    if (p.evaluation?.date) {
+      testsJeux.push({ date: p.evaluation.date, type: 'évaluation', label: p.title });
+    }
+    (p.devLog || []).forEach(e => {
+      if (!e.date) return;
+      testsJeux.push({ date: e.date, type: 'developpement', label: p.title });
     });
   });
 
@@ -5443,14 +5453,22 @@ function renderStats() {
 
   // ── Group by YYYY-MM ──
   const months = {};
-  exchanges.forEach(e => {
+  const ensureMonth = key => {
+    if (!months[key]) months[key] = { echanges: [], testsJeux: [], tasks: [] };
+  };
+  echanges.forEach(e => {
     const key = e.date.slice(0, 7);
-    if (!months[key]) months[key] = { exchanges: [], tasks: [] };
-    months[key].exchanges.push(e);
+    ensureMonth(key);
+    months[key].echanges.push(e);
+  });
+  testsJeux.forEach(e => {
+    const key = e.date.slice(0, 7);
+    ensureMonth(key);
+    months[key].testsJeux.push(e);
   });
   completedTasks.forEach(t => {
     const key = t.date.slice(0, 7);
-    if (!months[key]) months[key] = { exchanges: [], tasks: [] };
+    ensureMonth(key);
     months[key].tasks.push(t);
   });
 
@@ -5467,15 +5485,16 @@ function renderStats() {
   }
 
   // ── Global summary ──
-  const totalExchanges = exchanges.length;
+  const totalEchanges = echanges.length;
+  const totalTests = testsJeux.length;
   const totalTasks = completedTasks.length;
   const activeMonths = allMonths.length;
 
   // Find most active month (by combined activity)
   let busiest = allMonths[0];
   allMonths.forEach(k => {
-    if ((months[k].exchanges.length + months[k].tasks.length) >
-        (months[busiest].exchanges.length + months[busiest].tasks.length)) {
+    if ((months[k].echanges.length + months[k].testsJeux.length + months[k].tasks.length) >
+        (months[busiest].echanges.length + months[busiest].testsJeux.length + months[busiest].tasks.length)) {
       busiest = k;
     }
   });
@@ -5488,8 +5507,12 @@ function renderStats() {
   let html = `
     <div class="stats-summary-bar">
       <div class="stats-summary-item">
-        <div class="stats-summary-num">${totalExchanges}</div>
-        <div class="stats-summary-label">échanges & actions</div>
+        <div class="stats-summary-num">${totalEchanges}</div>
+        <div class="stats-summary-label">📅 échanges</div>
+      </div>
+      <div class="stats-summary-item stats-summary-item--tests">
+        <div class="stats-summary-num">${totalTests}</div>
+        <div class="stats-summary-label">🧪 tests de jeux</div>
       </div>
       <div class="stats-summary-item">
         <div class="stats-summary-num">${totalTasks}</div>
@@ -5515,11 +5538,18 @@ function renderStats() {
       return lbl.charAt(0).toUpperCase() + lbl.slice(1);
     })();
 
-    // Exchange breakdown by type
+    // Échanges breakdown by type
     const exchByType = {};
-    m.exchanges.forEach(e => {
+    m.echanges.forEach(e => {
       const k = e.type || 'autre';
       exchByType[k] = (exchByType[k] || 0) + 1;
+    });
+
+    // Tests de jeux breakdown by type
+    const testsByType = {};
+    m.testsJeux.forEach(e => {
+      const k = e.type || 'test';
+      testsByType[k] = (testsByType[k] || 0) + 1;
     });
 
     // Task breakdown by source
@@ -5532,7 +5562,16 @@ function renderStats() {
       .sort((a, b) => b[1] - a[1])
       .map(([type, count]) =>
         `<div class="stats-month-row">
-          <span>${EXCH_EMOJI[type] || '📝'} ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+          <span>${EXCH_EMOJI[type] || '📝'} ${EXCH_TYPE_LABELS[type] || type.charAt(0).toUpperCase() + type.slice(1)}</span>
+          <span class="stats-month-val">${count}</span>
+        </div>`
+      ).join('');
+
+    const testRows = Object.entries(testsByType)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) =>
+        `<div class="stats-month-row">
+          <span>${EXCH_EMOJI[type] || '🎮'} ${TEST_TYPE_LABELS[type] || type.charAt(0).toUpperCase() + type.slice(1)}</span>
           <span class="stats-month-val">${count}</span>
         </div>`
       ).join('');
@@ -5551,17 +5590,22 @@ function renderStats() {
         <div class="stats-month-header">
           <span class="stats-month-title">${monthLabel}</span>
           <div class="stats-month-totals">
-            ${m.exchanges.length ? `<span class="stats-month-chip">📅 ${m.exchanges.length} échange${m.exchanges.length > 1 ? 's' : ''}</span>` : ''}
+            ${m.echanges.length ? `<span class="stats-month-chip">📅 ${m.echanges.length} échange${m.echanges.length > 1 ? 's' : ''}</span>` : ''}
+            ${m.testsJeux.length ? `<span class="stats-month-chip stats-chip-test">🧪 ${m.testsJeux.length} test${m.testsJeux.length > 1 ? 's' : ''} de jeu${m.testsJeux.length > 1 ? 'x' : ''}</span>` : ''}
             ${m.tasks.length ? `<span class="stats-month-chip stats-chip-done">✅ ${m.tasks.length} tâche${m.tasks.length > 1 ? 's' : ''} terminée${m.tasks.length > 1 ? 's' : ''}</span>` : ''}
           </div>
         </div>
-        <div class="stats-month-body">
+        <div class="stats-month-body stats-month-body--3col">
           <div class="stats-month-col">
-            <div class="stats-col-title">Échanges & Actions</div>
+            <div class="stats-col-title">📅 Échanges</div>
             ${exchRows || '<div class="stats-empty-col">—</div>'}
           </div>
           <div class="stats-month-col">
-            <div class="stats-col-title">Tâches terminées</div>
+            <div class="stats-col-title">🧪 Tests de jeux</div>
+            ${testRows || '<div class="stats-empty-col">—</div>'}
+          </div>
+          <div class="stats-month-col">
+            <div class="stats-col-title">✅ Tâches terminées</div>
             ${taskRows || '<div class="stats-empty-col">—</div>'}
           </div>
         </div>
