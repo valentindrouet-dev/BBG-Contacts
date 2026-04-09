@@ -329,7 +329,16 @@ function renderDashboard() {
       return (p.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'prototype', _name: p.title, _id: p.id, _sessionCount: _sc, _status: p.status, _emoji: p.emoji}));
     }),
     ...(state.standaloneTasks||[]).filter(t => !t.done).map(t => ({...t, _from:'standalone', _name:'Tâche libre', _id:t.id})),
-    ...state.festivals.flatMap(f => (f.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'festival-task', _name: f.name, _id: f.id}))),
+    ...state.festivals.flatMap(f => [
+      ...(f.presences||[]).filter(p => !p.done).map(p => {
+        const ds = p.dateStart || p.date || '';
+        const de = p.dateEnd || '';
+        const fmt = d => d ? new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : null;
+        const period = (fmt(ds) && fmt(de) && fmt(ds) !== fmt(de)) ? `${fmt(ds)} → ${fmt(de)}` : (fmt(ds) || '');
+        return {...p, text: `Présence${period ? ' · ' + period : ''}${p.note ? ' — ' + p.note : ''}`, _from:'festival', _name: f.name, _id: f.id, urgency: p.urgency||'normal', dueDate: ds};
+      }),
+      ...(f.tasks||[]).filter(t => !t.done).map(t => ({...t, _from:'festival-task', _name: f.name, _id: f.id})),
+    ]),
     ...(state.adminCards||[]).filter(c => !isAdminCardDone(c)).map(c => adminCardToTask(c)),
   ].sort((a,b) => {
     const oa = URGENCY_ORDER[a.urgency||'normal'] ?? 99;
@@ -413,7 +422,7 @@ function renderDashboard() {
         ${dueNow.map(t => {
           const nav = t._from === 'standalone'
             ? "switchPage('tasks')"
-            : t._from === 'festival-task'
+            : (t._from === 'festival-task' || t._from === 'festival')
               ? `switchPage('festivals');openFestivalDetail('${t._id}')`
               : t._from === 'admin'
                 ? "switchPage('admin')"
@@ -445,7 +454,7 @@ function renderDashboard() {
           const dateLabel = new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
           const nav = t._from === 'standalone'
             ? "switchPage('tasks')"
-            : t._from === 'festival-task'
+            : (t._from === 'festival-task' || t._from === 'festival')
               ? `switchPage('festivals');openFestivalDetail('${t._id}')`
               : t._from === 'admin'
                 ? "switchPage('admin')"
@@ -1371,6 +1380,10 @@ function renderTasks() {
   // Stats sidebar (always on full dataset, before any filter)
   renderTasksStats(tasks);
 
+  // Nav count: always total pending, regardless of source filter
+  const totalPending = tasks.filter(t => !t.done).length;
+  document.getElementById('nav-tasks-count').textContent = totalPending;
+
   // Source filter (state-based)
   const srcFilter = state.tasksSourceFilter || [];
   if (srcFilter.length > 0) {
@@ -1385,7 +1398,6 @@ function renderTasks() {
 
   const total   = tasks.length;
   const pending = tasks.filter(t => !t.done).length;
-  document.getElementById('nav-tasks-count').textContent = pending;
   document.getElementById('tasks-count').textContent =
     `${pending} tâche${pending !== 1 ? 's' : ''} en cours${total !== pending ? ` · ${total - pending} terminée${total - pending !== 1 ? 's' : ''}` : ''}`;
 
@@ -6030,7 +6042,8 @@ updateInterestUI(3);
   const pendingTasks = state.contacts.reduce((n, c) => n + (c.tasks||[]).filter(t => !t.done).length, 0)
     + state.prototypes.reduce((n, p) => n + (p.tasks||[]).filter(t => !t.done).length, 0)
     + (state.standaloneTasks||[]).filter(t => !t.done).length
-    + (state.adminCards||[]).filter(c => !isAdminCardDone(c)).length;
+    + (state.adminCards||[]).filter(c => !isAdminCardDone(c)).length
+    + (state.festivals||[]).reduce((n, f) => n + (f.presences||[]).filter(p => !p.done).length + (f.tasks||[]).filter(t => !t.done).length, 0);
   document.getElementById('nav-tasks-count').textContent = pendingTasks;
   const agendaCount = state.contacts.reduce((n, c) => n + (c.exchanges||[]).length, 0);
   document.getElementById('nav-agenda-count').textContent = agendaCount;
