@@ -2661,3 +2661,33 @@ a:hover { color: var(--primary-700); }
   .actifs-header { flex-direction: column; align-items: flex-start; }
   .actif-table { font-size: .8rem; }
 }
+
+/* ── Festival Costs Table ─────────────────────────── */
+.fest-costs-table { min-width: 600px; }
+
+.fest-costs-name {
+  cursor: pointer;
+  color: var(--primary-600);
+  font-weight: 600;
+}
+.fest-costs-name:hover { text-decoration: underline; }
+
+.fest-costs-date {
+  font-size: .72rem;
+  color: var(--text-400);
+}
+
+.fest-costs-zero { color: var(--text-300); }
+
+.fest-costs-row-total {
+  font-weight: 600;
+  color: var(--text-800);
+}
+
+.fest-costs-grand-total td {
+  border-top: 2px solid var(--border);
+  background: var(--bg-100);
+  font-weight: 700;
+  color: var(--text-900);
+  padding: .6rem .75rem;
+}

@@ -5846,6 +5846,7 @@ function renderAdmin() {
       : sectionsHtml
     }
     ${renderActifsSection()}
+    ${renderFestivalCostsSection()}
   `;
 }
 
@@ -6016,6 +6017,81 @@ function renderActifsSection() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Ajouter un actif
         </button>
+      </div>
+      ${body}
+    </div>`;
+}
+
+function renderFestivalCostsSection() {
+  const COST_KEYS   = ['transport', 'parking', 'ticket', 'food', 'lodging'];
+  const COST_LABELS = {
+    transport: '🚗 Transport',
+    parking:   '🅿️ Parking',
+    ticket:    '🎟️ Billet/Stand',
+    food:      '🍔 Nourriture',
+    lodging:   '🛏️ Logement',
+  };
+
+  const festivals = (state.festivals || [])
+    .filter(f => festivalTotalCost(f) > 0)
+    .sort((a, b) => (a.dateStart || '').localeCompare(b.dateStart || ''));
+
+  const catTotals = {};
+  COST_KEYS.forEach(k => { catTotals[k] = 0; });
+  let grandTotal = 0;
+  festivals.forEach(f => {
+    const c = f.costs || {};
+    COST_KEYS.forEach(k => { catTotals[k] += (+c[k] || 0); });
+    grandTotal += festivalTotalCost(f);
+  });
+
+  const body = festivals.length === 0
+    ? `<div class="actif-empty">Aucun festival avec des coûts enregistrés.</div>`
+    : `<div style="overflow-x:auto">
+        <table class="actif-table fest-costs-table">
+          <thead>
+            <tr>
+              <th>Festival</th>
+              ${COST_KEYS.map(k => `<th class="actif-td-num">${COST_LABELS[k]}</th>`).join('')}
+              <th class="actif-td-num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${festivals.map(f => {
+              const c = f.costs || {};
+              const total = festivalTotalCost(f);
+              const fIcon = FEST_ICONS[f.category] || '🎪';
+              const dateLabel = f.dateStart
+                ? new Date(f.dateStart).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+                : '';
+              return `<tr>
+                <td>
+                  <span class="fest-costs-name" onclick="openFestivalDetail('${f.id}')">${fIcon} ${esc(f.name)}</span>
+                  ${dateLabel ? `<br><span class="fest-costs-date">${dateLabel}</span>` : ''}
+                </td>
+                ${COST_KEYS.map(k => `<td class="actif-td-num">${(+c[k] || 0) > 0 ? formatEur(+c[k]) : '<span class="fest-costs-zero">—</span>'}</td>`).join('')}
+                <td class="actif-td-num fest-costs-row-total">${formatEur(total)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="fest-costs-grand-total">
+              <td>💶 Grand total</td>
+              ${COST_KEYS.map(k => `<td class="actif-td-num">${catTotals[k] > 0 ? formatEur(catTotals[k]) : '<span class="fest-costs-zero">—</span>'}</td>`).join('')}
+              <td class="actif-td-num">${formatEur(grandTotal)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+
+  return `
+    <div class="actifs-section">
+      <div class="actifs-header">
+        <div class="actifs-title">
+          <span class="actifs-icon">🎪</span>
+          <h3>Coûts des Festivals</h3>
+          ${festivals.length ? `<span class="actifs-total">${festivals.length} festival${festivals.length > 1 ? 's' : ''} · Grand total&nbsp;: <strong>${formatEur(grandTotal)}</strong></span>` : ''}
+        </div>
       </div>
       ${body}
     </div>`;
