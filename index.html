@@ -449,6 +449,7 @@
 
     <div class="agenda-cat-filters mb-4">
       <span class="agenda-cat-filter-label">Afficher :</span>
+      <label class="agenda-cat-chip agenda-src-chip"><input type="checkbox" value="rdv"        onchange="onAgendaSourceFilter(this)" /> 📅 Rendez-vous</label>
       <label class="agenda-cat-chip agenda-src-chip"><input type="checkbox" value="contacts"  onchange="onAgendaSourceFilter(this)" /> 👤 Contacts</label>
       <label class="agenda-cat-chip agenda-src-chip"><input type="checkbox" value="jeux"      onchange="onAgendaSourceFilter(this)" /> 🎮 Jeux</label>
       <label class="agenda-cat-chip agenda-src-chip"><input type="checkbox" value="festivals" onchange="onAgendaSourceFilter(this)" /> 🎪 Festivals</label>
@@ -466,6 +467,9 @@
     <div class="toolbar mb-4">
       <p class="toolbar-count" id="agenda-count">0 échange</p>
       <div class="toolbar-right">
+        <button class="btn-primary btn-add-inline" onclick="openRdvModal()" title="Ajouter un rendez-vous">
+          + Rendez-vous
+        </button>
         <button class="btn-pdf-list" onclick="exportAgendaListPdf()" title="Exporter l'agenda en PDF">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           PDF
@@ -1451,6 +1455,62 @@
       </div>
     </div>
     <div id="eval-report-content" style="padding:1.25rem 1.5rem;overflow-y:auto;max-height:72vh"></div>
+  </div>
+</div>
+
+<!-- MODAL — RENDEZ-VOUS -->
+<div class="modal-overlay hidden" id="modal-rdv" onclick="if(event.target===this)closeModal('rdv')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2 id="rdv-modal-title">Nouveau rendez-vous</h2>
+      <button class="modal-close" onclick="closeModal('rdv')">✕</button>
+    </div>
+    <form class="modal-form" id="form-rdv" onsubmit="submitRdv(event)">
+      <input type="hidden" id="rdv-id" />
+      <div class="form-row">
+        <div class="form-group full">
+          <label>Nom du rendez-vous <span style="color:var(--primary-600)">*</span></label>
+          <input type="text" id="rdv-name" placeholder="Ex: Réunion Asmodée, Présentation prototype…" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date <span style="color:var(--primary-600)">*</span></label>
+          <input type="date" id="rdv-date" required />
+        </div>
+        <div class="form-group">
+          <label>Heure</label>
+          <input type="time" id="rdv-time" />
+        </div>
+        <div class="form-group">
+          <label>Lieu</label>
+          <input type="text" id="rdv-lieu" placeholder="Ex: Paris, Essen, Visio…" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full">
+          <label>Contact(s) concerné(s)</label>
+          <div id="rdv-contacts-list" style="display:flex;flex-wrap:wrap;gap:.4rem;padding:.5rem 0;max-height:140px;overflow-y:auto"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full">
+          <label>Jeu(x) concerné(s)</label>
+          <div id="rdv-games-list" style="display:flex;flex-wrap:wrap;gap:.4rem;padding:.5rem 0;max-height:140px;overflow-y:auto"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full">
+          <label>Note</label>
+          <textarea id="rdv-note" rows="3" placeholder="Informations complémentaires…"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="rdv-delete-btn" onclick="deleteRdv()" style="display:none;margin-right:auto;color:var(--danger,#dc2626)">Supprimer</button>
+        <button type="button" class="btn-cancel" onclick="closeModal('rdv')">Annuler</button>
+        <button type="submit" class="btn-save">Enregistrer</button>
+      </div>
+    </form>
   </div>
 </div>
 

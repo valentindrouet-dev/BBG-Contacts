@@ -1646,6 +1646,8 @@ a:hover { color: var(--primary-700); }
 }
 .agenda-entry:last-child { border-bottom: none; }
 .agenda-entry:hover { background: var(--bg); }
+.agenda-entry-future { background: #faf5ff; border-left: 3px solid #c4b5fd; }
+.agenda-entry-future:hover { background: #f3e8ff; }
 .agenda-date {
   font-size: .78rem; font-weight: 600; color: var(--text-500);
   min-width: 5.5rem; flex-shrink: 0;

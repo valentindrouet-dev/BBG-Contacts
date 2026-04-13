@@ -38,6 +38,7 @@ const state = {
   standaloneTasks:    [],
   adminCards:         [],
   actifs:             [],
+  appointments:       [],
   adminCatFilter:     '',
   compareMode:        false,
   selectedForCompare: [],
@@ -46,7 +47,7 @@ const state = {
   contactsFavoriteOnly: false,
   agendaSortAsc:      false,
   agendaTypeFilters:   [],   // [] = tous types
-  agendaSourceFilter: [],   // [] = tout, 'contacts', 'jeux'
+  agendaSourceFilter: [],   // [] = tout, 'contacts', 'jeux', 'rdv'
 };
 
 // ── STORAGE ────────────────────────────────────────
@@ -57,6 +58,7 @@ function saveState() {
   localStorage.setItem('bbg-standalone-tasks', JSON.stringify(state.standaloneTasks));
   localStorage.setItem('bbg-admin-cards',      JSON.stringify(state.adminCards));
   localStorage.setItem('bbg-actifs',           JSON.stringify(state.actifs));
+  localStorage.setItem('bbg-appointments',     JSON.stringify(state.appointments));
 }
 // ── Data migration ──────────────────────────────
 function migrateContact(c) {
@@ -126,9 +128,10 @@ function loadState() {
   try { p = localStorage.getItem('bbg-prototypes'); } catch(e) {}
   try { f = localStorage.getItem('bbg-festivals'); } catch(e) {}
   try { s = localStorage.getItem('bbg-standalone-tasks'); } catch(e) {}
-  let a, act;
-  try { a   = localStorage.getItem('bbg-admin-cards'); } catch(e) {}
-  try { act = localStorage.getItem('bbg-actifs');      } catch(e) {}
+  let a, act, appt;
+  try { a    = localStorage.getItem('bbg-admin-cards'); } catch(e) {}
+  try { act  = localStorage.getItem('bbg-actifs');      } catch(e) {}
+  try { appt = localStorage.getItem('bbg-appointments'); } catch(e) {}
 
   try {
     state.contacts = (c ? JSON.parse(c) : SEED_CONTACTS).map(migrateContact);
@@ -162,6 +165,11 @@ function loadState() {
     state.actifs = act ? JSON.parse(act) : [];
   } catch(e) {
     state.actifs = [];
+  }
+  try {
+    state.appointments = appt ? JSON.parse(appt) : [];
+  } catch(e) {
+    state.appointments = [];
   }
   // Only seed if truly empty (no existing localStorage data)
   if (!c) saveState();
@@ -3078,6 +3086,95 @@ function submitFestival(e) {
 })();
 
 // ═══════════════════════════════════════════════════
+// RENDEZ-VOUS (APPOINTMENTS)
+// ═══════════════════════════════════════════════════
+function openRdvModal(apptId = null) {
+  const modal = document.getElementById('modal-rdv');
+  if (!modal) return;
+
+  const appt = apptId ? state.appointments.find(a => a.id === apptId) : null;
+  const isEdit = !!appt;
+
+  document.getElementById('rdv-modal-title').textContent = isEdit ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous';
+  document.getElementById('rdv-id').value    = appt?.id    || '';
+  document.getElementById('rdv-name').value  = appt?.name  || '';
+  document.getElementById('rdv-date').value  = appt?.date  || today();
+  document.getElementById('rdv-time').value  = appt?.time  || '';
+  document.getElementById('rdv-lieu').value  = appt?.lieu  || '';
+  document.getElementById('rdv-note').value  = appt?.note  || '';
+
+  const deleteBtn = document.getElementById('rdv-delete-btn');
+  if (deleteBtn) deleteBtn.style.display = isEdit ? '' : 'none';
+
+  // Contacts checkboxes
+  const contactsEl = document.getElementById('rdv-contacts-list');
+  if (contactsEl) {
+    const sel = appt?.contactIds || [];
+    const sorted = [...state.contacts].sort((a, b) => (a.name||'').localeCompare(b.name||'', 'fr'));
+    contactsEl.innerHTML = sorted.map(c => `
+      <label style="display:flex;align-items:center;gap:.35rem;padding:.25rem .55rem;border-radius:999px;border:1px solid var(--border-input);background:var(--bg);cursor:pointer;font-size:.82rem;user-select:none">
+        <input type="checkbox" value="${esc(c.id)}" ${sel.includes(c.id) ? 'checked' : ''} style="accent-color:var(--primary-600);margin:0" />
+        <div class="list-avatar list-avatar-${c.category}" style="width:18px;height:18px;font-size:.55rem;flex-shrink:0">${initials(c.name)}</div>
+        ${esc(c.name)}
+      </label>
+    `).join('');
+  }
+
+  // Games checkboxes
+  const gamesEl = document.getElementById('rdv-games-list');
+  if (gamesEl) {
+    const sel = appt?.gameIds || [];
+    const sorted = [...state.prototypes].sort((a, b) => (a.title||'').localeCompare(b.title||'', 'fr'));
+    gamesEl.innerHTML = sorted.map(p => `
+      <label style="display:flex;align-items:center;gap:.35rem;padding:.25rem .55rem;border-radius:999px;border:1px solid var(--border-input);background:var(--bg);cursor:pointer;font-size:.82rem;user-select:none">
+        <input type="checkbox" value="${esc(p.id)}" ${sel.includes(p.id) ? 'checked' : ''} style="accent-color:var(--primary-600);margin:0" />
+        🎲 ${esc(p.title)}
+      </label>
+    `).join('');
+  }
+
+  openModal('rdv');
+  document.getElementById('rdv-name').focus();
+}
+
+function submitRdv(e) {
+  e.preventDefault();
+  const id   = document.getElementById('rdv-id').value;
+  const name = document.getElementById('rdv-name').value.trim();
+  const date = document.getElementById('rdv-date').value;
+  const time = document.getElementById('rdv-time').value;
+  const lieu = document.getElementById('rdv-lieu').value.trim();
+  const note = document.getElementById('rdv-note').value.trim();
+
+  const contactIds = [...document.querySelectorAll('#rdv-contacts-list input[type=checkbox]:checked')].map(cb => cb.value);
+  const gameIds    = [...document.querySelectorAll('#rdv-games-list input[type=checkbox]:checked')].map(cb => cb.value);
+
+  if (id) {
+    const appt = state.appointments.find(a => a.id === id);
+    if (appt) {
+      appt.name = name; appt.date = date; appt.time = time;
+      appt.lieu = lieu; appt.note = note;
+      appt.contactIds = contactIds; appt.gameIds = gameIds;
+    }
+  } else {
+    state.appointments.push({ id: uid(), name, date, time, lieu, note, contactIds, gameIds, createdAt: new Date().toISOString() });
+  }
+
+  saveState();
+  closeModal('rdv');
+  renderAgenda();
+}
+
+function deleteRdv() {
+  const id = document.getElementById('rdv-id').value;
+  if (!id) return;
+  state.appointments = state.appointments.filter(a => a.id !== id);
+  saveState();
+  closeModal('rdv');
+  renderAgenda();
+}
+
+// ═══════════════════════════════════════════════════
 // AGENDA
 // ═══════════════════════════════════════════════════
 function renderAgendaStats(entries) {
@@ -3089,6 +3186,7 @@ function renderAgendaStats(entries) {
   const contactEntries  = entries.filter(e => e._source === 'contact');
   const festivalEntries = entries.filter(e => e._source === 'festival');
   const jeuxEntries     = entries.filter(e => e._source === 'jeux');
+  const rdvEntries      = entries.filter(e => e._source === 'rdv');
 
   // Par type d'échange (contacts uniquement)
   const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
@@ -3104,6 +3202,7 @@ function renderAgendaStats(entries) {
   const thisMonth = `${thisYear}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const countYear  = entries.filter(e => (e.date||'').startsWith(thisYear)).length;
   const countMonth = entries.filter(e => (e.date||'').startsWith(thisMonth)).length;
+  const rdvUpcoming = rdvEntries.filter(e => e.date > new Date().toISOString().split('T')[0]).length;
 
   el.innerHTML = `
     <div class="fstat-block">
@@ -3112,6 +3211,13 @@ function renderAgendaStats(entries) {
       ${countMonth ? `<div class="fstat-sub">Ce mois · ${countMonth}</div>` : ''}
       ${countYear  ? `<div class="fstat-sub">${thisYear} · ${countYear}</div>` : ''}
     </div>
+
+    ${rdvEntries.length ? `
+    <div class="fstat-block">
+      <div class="fstat-title">Rendez-vous</div>
+      <div class="fstat-big">${rdvEntries.length}</div>
+      ${rdvUpcoming ? `<div class="fstat-sub" style="color:#6d28d9">À venir · ${rdvUpcoming}</div>` : ''}
+    </div>` : ''}
 
     <div class="fstat-block">
       <div class="fstat-title">Par source</div>
@@ -3276,14 +3382,31 @@ function renderAgenda() {
     }
   });
 
-  // Exclude future events (date strictly after today)
+  // Appointments (RDVs) — included regardless of date (past AND future)
+  (state.appointments || []).forEach(a => {
+    entries.push({
+      id:            a.id,
+      date:          a.date,
+      time:          a.time || '',
+      _source:       'rdv',
+      rdvId:         a.id,
+      rdvName:       a.name,
+      rdvLieu:       a.lieu  || '',
+      rdvNote:       a.note  || '',
+      rdvContactIds: a.contactIds || [],
+      rdvGameIds:    a.gameIds    || [],
+    });
+  });
+
+  // Exclude future events (date strictly after today) — RDV entries bypass this filter
   const todayStr = today();
-  const pastEntries = entries.filter(e => !e.date || e.date <= todayStr);
+  const pastEntries = entries.filter(e => e._source === 'rdv' || !e.date || e.date <= todayStr);
 
   document.getElementById('nav-agenda-count').textContent = pastEntries.length;
 
-  // Source filter (Contacts / Jeux / Festivals / Tâches)
+  // Source filter (Contacts / Jeux / Festivals / Tâches / RDV)
   const activeSrc = state.agendaSourceFilter || [];
+  const showRdv       = activeSrc.length === 0 || activeSrc.includes('rdv');
   const showContacts  = activeSrc.length === 0 || activeSrc.includes('contacts');
   const showJeux      = activeSrc.length === 0 || activeSrc.includes('jeux');
   const showFestivals = activeSrc.length === 0 || activeSrc.includes('festivals');
@@ -3294,6 +3417,7 @@ function renderAgenda() {
   // Type filter — applies to contact exchanges
   const activeTypes = state.agendaTypeFilters || [];
   let filtered = pastEntries.filter(e => {
+    if (e._source === 'rdv')     return showRdv;
     if (e._source === 'festival') return showFestivals;
     if (e._source === 'jeux')    return showJeux;
     if (e._source === 'evals')   return showEvals;
@@ -3320,10 +3444,11 @@ function renderAgenda() {
   }
   emptyEl.classList.add('hidden');
 
-  // Sort
+  // Sort (use date+time for RDV to get proper ordering within same day)
+  const sortKey = e => e.date + (e.time ? 'T' + e.time : '');
   filtered.sort((a, b) => state.agendaSortAsc
-    ? a.date.localeCompare(b.date)
-    : b.date.localeCompare(a.date)
+    ? sortKey(a).localeCompare(sortKey(b))
+    : sortKey(b).localeCompare(sortKey(a))
   );
 
   // Group by month
@@ -3368,7 +3493,26 @@ function renderAgenda() {
           lastWeekKey = wi.key;
         }
       }
-      if (e._source === 'evals') {
+      if (e._source === 'rdv') {
+        const isFuture = e.date > todayStr;
+        const timeStr  = e.time ? ` à ${e.time}` : '';
+        const lieuStr  = e.rdvLieu ? ` — ${esc(e.rdvLieu)}` : '';
+        const contacts = (e.rdvContactIds || []).map(cid => state.contacts.find(c => c.id === cid)).filter(Boolean);
+        const games    = (e.rdvGameIds    || []).map(gid => state.prototypes.find(p => p.id === gid)).filter(Boolean);
+        const contactsHtml = contacts.length ? contacts.map(c =>
+          `<div class="list-avatar list-avatar-${c.category}" style="width:20px;height:20px;font-size:.55rem;flex-shrink:0" title="${esc(c.name)}">${initials(c.name)}</div>`
+        ).join('') : '';
+        html += `<div class="agenda-entry${isFuture ? ' agenda-entry-future' : ''}" onclick="openRdvModal('${e.rdvId}')" style="cursor:pointer">
+          <span class="agenda-date">${dateStr}${timeStr}</span>
+          <span class="agenda-type-badge"><span class="badge" style="background:#ede9fe;border:1px solid #c4b5fd;color:#6d28d9;font-size:.7rem">📅 RDV</span></span>
+          <div class="agenda-contact-wrap" style="gap:.3rem">
+            ${contactsHtml}
+            <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">${esc(e.rdvName)}</span>
+          </div>
+          ${lieuStr || e.rdvNote ? `<span class="agenda-note">${lieuStr}${e.rdvNote ? (lieuStr ? ' · ' : '— ') + esc(e.rdvNote) : ''}</span>` : ''}
+          ${games.length ? `<span class="agenda-note" style="display:block">🎲 ${games.map(g => esc(g.title)).join(', ')}</span>` : ''}
+        </div>`;
+      } else if (e._source === 'evals') {
         html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
           <span class="agenda-date">${dateStr}</span>
           <span class="agenda-type-badge"><span class="badge" style="background:#fef9c3;border:1px solid #fde047;color:#854d0e;font-size:.7rem">⭐ Éval</span></span>
@@ -3579,7 +3723,7 @@ document.querySelectorAll('.modal-overlay').forEach(ov =>
 );
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['contact','prototype','festival','detail','confirm','compare','standalone-task'].forEach(t =>
+    ['contact','prototype','festival','detail','confirm','compare','standalone-task','rdv'].forEach(t =>
       document.getElementById('modal-' + t)?.classList.add('hidden')
     );
     document.body.style.overflow = '';
