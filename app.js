@@ -382,9 +382,11 @@ function renderDashboard() {
       return { ...counterTask, _from: 'prototype', _name: p.title, _id: p.id, _sessionCount: sc, _status: p.status, _emoji: p.emoji };
     })
     .sort((a,b) => {
-      const sa = TEST_STATUS_ORDER[a._status] ?? 99;
-      const sb = TEST_STATUS_ORDER[b._status] ?? 99;
-      return sa - sb;
+      const da = a.dueDate || '', db = b.dueDate || '';
+      if (!da && !db) return (a._name||'').localeCompare(b._name||'', 'fr');
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.localeCompare(db);
     });
 
   // Top protos (by interest, not sorti)
@@ -492,6 +494,14 @@ function renderDashboard() {
           const pct = Math.min(100, Math.round(cur / target * 100));
           const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
           const statusBadge = t._emoji ? `<span style="font-size:1.2rem;flex-shrink:0">${t._emoji}</span>` : '';
+          let daysBadge = '';
+          if (t.dueDate) {
+            const days = Math.ceil((new Date(t.dueDate) - new Date(today_str)) / 86400000);
+            const dayLabel = days < 0 ? `${Math.abs(days)}j de retard` : days === 0 ? "Aujourd'hui" : days === 1 ? 'demain' : `dans ${days}j`;
+            const dayColor = days < 0 ? '#dc2626' : days <= 7 ? '#ea580c' : days <= 30 ? '#ca8a04' : '#16a34a';
+            const dateLabel = new Date(t.dueDate).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
+            daysBadge = `<span class="dash-task-date">${dateLabel}</span><span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>`;
+          }
           return `
           <div class="dash-task-row" style="cursor:pointer" onclick="switchPage('prototypes');openDetail('prototype','${t._id}')">
             <div style="flex:1;display:flex;align-items:center;gap:.5rem;min-width:0">
@@ -502,6 +512,7 @@ function renderDashboard() {
                 <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s"></div>
               </div>
               <span style="font-size:.8rem;font-weight:600;color:${barColor};white-space:nowrap">${cur}/${target}</span>
+              ${daysBadge}
             </div>
           </div>`;
         }).join('')}
@@ -1550,9 +1561,11 @@ function taskCard(t) {
   if (t.subtype === 'test_counter' && t.targetCount) {
     const cur = t.currentCount || 0;
     const pct = Math.min(100, Math.round(cur / t.targetCount * 100));
-    taskTextHtml = `<span class="task-text">${esc(t.task)}</span>
+    taskTextHtml = `<span style="display:flex;align-items:center;gap:.4rem;min-width:0;overflow:hidden">
+      <span class="task-text" style="flex-shrink:0">${esc(t.task)}</span>
       <span class="test-counter-badge">${cur}/${t.targetCount}</span>
-      <span class="test-counter-bar-wrap"><span class="test-counter-bar-fill" style="width:${pct}%"></span></span>`;
+      <span class="test-counter-bar-wrap"><span class="test-counter-bar-fill" style="width:${pct}%"></span></span>
+    </span>`;
   }
   return `<div class="task-card${t.done ? ' done' : ''}">
     <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
