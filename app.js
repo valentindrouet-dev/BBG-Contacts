@@ -3096,69 +3096,55 @@ function openRdvModal(apptId = null) {
   const isEdit = !!appt;
 
   document.getElementById('rdv-modal-title').textContent = isEdit ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous';
-  document.getElementById('rdv-id').value    = appt?.id    || '';
-  document.getElementById('rdv-name').value  = appt?.name  || '';
-  document.getElementById('rdv-date').value  = appt?.date  || today();
-  document.getElementById('rdv-time').value  = appt?.time  || '';
-  document.getElementById('rdv-lieu').value  = appt?.lieu  || '';
-  document.getElementById('rdv-note').value  = appt?.note  || '';
+  document.getElementById('rdv-id').value   = appt?.id   || '';
+  document.getElementById('rdv-date').value = appt?.date || today();
+  document.getElementById('rdv-time').value = appt?.time || '';
+  document.getElementById('rdv-lieu').value = appt?.lieu || '';
+  document.getElementById('rdv-note').value = appt?.note || '';
 
   const deleteBtn = document.getElementById('rdv-delete-btn');
   if (deleteBtn) deleteBtn.style.display = isEdit ? '' : 'none';
 
-  // Contacts checkboxes
-  const contactsEl = document.getElementById('rdv-contacts-list');
-  if (contactsEl) {
-    const sel = appt?.contactIds || [];
+  // Contact select
+  const selContact = document.getElementById('rdv-contact');
+  if (selContact) {
+    const cur = appt?.contactId || '';
     const sorted = [...state.contacts].sort((a, b) => (a.name||'').localeCompare(b.name||'', 'fr'));
-    contactsEl.innerHTML = sorted.map(c => `
-      <label class="rdv-check-row">
-        <input type="checkbox" value="${esc(c.id)}" ${sel.includes(c.id) ? 'checked' : ''} />
-        <div class="list-avatar list-avatar-${c.category}" style="width:22px;height:22px;font-size:.6rem;flex-shrink:0">${initials(c.name)}</div>
-        <span>${esc(c.name)}</span>
-      </label>
-    `).join('');
+    selContact.innerHTML = `<option value="">— Aucun contact —</option>` +
+      sorted.map(c => `<option value="${esc(c.id)}" ${cur === c.id ? 'selected' : ''}>${esc(c.name)}${c.company ? ' – ' + esc(c.company) : ''}</option>`).join('');
   }
 
-  // Games checkboxes
-  const gamesEl = document.getElementById('rdv-games-list');
-  if (gamesEl) {
-    const sel = appt?.gameIds || [];
+  // Game select
+  const selGame = document.getElementById('rdv-game');
+  if (selGame) {
+    const cur = appt?.gameId || '';
     const sorted = [...state.prototypes].sort((a, b) => (a.title||'').localeCompare(b.title||'', 'fr'));
-    gamesEl.innerHTML = sorted.map(p => `
-      <label class="rdv-check-row">
-        <input type="checkbox" value="${esc(p.id)}" ${sel.includes(p.id) ? 'checked' : ''} />
-        <span style="font-size:.85rem">🎲</span>
-        <span>${esc(p.title)}</span>
-      </label>
-    `).join('');
+    selGame.innerHTML = `<option value="">— Aucun jeu —</option>` +
+      sorted.map(p => `<option value="${esc(p.id)}" ${cur === p.id ? 'selected' : ''}>🎲 ${esc(p.title)}</option>`).join('');
   }
 
   openModal('rdv');
-  document.getElementById('rdv-name').focus();
+  document.getElementById('rdv-date').focus();
 }
 
 function submitRdv(e) {
   e.preventDefault();
-  const id   = document.getElementById('rdv-id').value;
-  const name = document.getElementById('rdv-name').value.trim();
-  const date = document.getElementById('rdv-date').value;
-  const time = document.getElementById('rdv-time').value;
-  const lieu = document.getElementById('rdv-lieu').value.trim();
-  const note = document.getElementById('rdv-note').value.trim();
-
-  const contactIds = [...document.querySelectorAll('#rdv-contacts-list input[type=checkbox]:checked')].map(cb => cb.value);
-  const gameIds    = [...document.querySelectorAll('#rdv-games-list input[type=checkbox]:checked')].map(cb => cb.value);
+  const id        = document.getElementById('rdv-id').value;
+  const date      = document.getElementById('rdv-date').value;
+  const time      = document.getElementById('rdv-time').value;
+  const lieu      = document.getElementById('rdv-lieu').value.trim();
+  const note      = document.getElementById('rdv-note').value.trim();
+  const contactId = document.getElementById('rdv-contact').value;
+  const gameId    = document.getElementById('rdv-game').value;
 
   if (id) {
     const appt = state.appointments.find(a => a.id === id);
     if (appt) {
-      appt.name = name; appt.date = date; appt.time = time;
-      appt.lieu = lieu; appt.note = note;
-      appt.contactIds = contactIds; appt.gameIds = gameIds;
+      appt.date = date; appt.time = time; appt.lieu = lieu;
+      appt.note = note; appt.contactId = contactId; appt.gameId = gameId;
     }
   } else {
-    state.appointments.push({ id: uid(), name, date, time, lieu, note, contactIds, gameIds, createdAt: new Date().toISOString() });
+    state.appointments.push({ id: uid(), date, time, lieu, note, contactId, gameId, createdAt: new Date().toISOString() });
   }
 
   saveState();
@@ -3386,16 +3372,15 @@ function renderAgenda() {
   // Appointments (RDVs) — included regardless of date (past AND future)
   (state.appointments || []).forEach(a => {
     entries.push({
-      id:            a.id,
-      date:          a.date,
-      time:          a.time || '',
-      _source:       'rdv',
-      rdvId:         a.id,
-      rdvName:       a.name,
-      rdvLieu:       a.lieu  || '',
-      rdvNote:       a.note  || '',
-      rdvContactIds: a.contactIds || [],
-      rdvGameIds:    a.gameIds    || [],
+      id:         a.id,
+      date:       a.date,
+      time:       a.time || '',
+      _source:    'rdv',
+      rdvId:      a.id,
+      rdvLieu:    a.lieu || '',
+      rdvNote:    a.note || '',
+      rdvContactId: a.contactId || '',
+      rdvGameId:    a.gameId    || '',
     });
   });
 
@@ -3495,23 +3480,23 @@ function renderAgenda() {
         }
       }
       if (e._source === 'rdv') {
-        const isFuture = e.date > todayStr;
-        const timeStr  = e.time ? ` à ${e.time}` : '';
-        const lieuStr  = e.rdvLieu ? ` — ${esc(e.rdvLieu)}` : '';
-        const contacts = (e.rdvContactIds || []).map(cid => state.contacts.find(c => c.id === cid)).filter(Boolean);
-        const games    = (e.rdvGameIds    || []).map(gid => state.prototypes.find(p => p.id === gid)).filter(Boolean);
-        const contactsHtml = contacts.length ? contacts.map(c =>
-          `<div class="list-avatar list-avatar-${c.category}" style="width:20px;height:20px;font-size:.55rem;flex-shrink:0" title="${esc(c.name)}">${initials(c.name)}</div>`
-        ).join('') : '';
-        html += `<div class="agenda-entry${isFuture ? ' agenda-entry-future' : ''}" onclick="openRdvModal('${e.rdvId}')" style="cursor:pointer">
-          <span class="agenda-date">${dateStr}${timeStr}</span>
+        const isFuture  = e.date > todayStr;
+        const timeStr   = e.time ? ` à ${e.time}` : '';
+        const contact   = e.rdvContactId ? state.contacts.find(c => c.id === e.rdvContactId) : null;
+        const game      = e.rdvGameId    ? state.prototypes.find(p => p.id === e.rdvGameId)  : null;
+        const lieuStr   = e.rdvLieu ? ` — ${esc(e.rdvLieu)}` : '';
+        const avatarHtml = contact
+          ? `<div class="list-avatar list-avatar-${contact.category}" style="width:22px;height:22px;font-size:.6rem;flex-shrink:0">${initials(contact.name)}</div>`
+          : '';
+        const contactLabel = contact
+          ? `${esc(contact.name)}${contact.company ? ' <span style="color:var(--text-500);font-weight:400">— ' + esc(contact.company) + '</span>' : ''}`
+          : '<span style="color:var(--text-400);font-style:italic">Sans contact</span>';
+        const gameLabel = game ? `<span class="agenda-note" style="margin-left:.5rem">🎲 ${esc(game.title)}</span>` : '';
+        html += `<div class="agenda-entry${isFuture ? ' agenda-entry-future' : ''}" onclick="openRdvModal('${e.rdvId}')">
+          <span class="agenda-date">${dateStr}${timeStr ? '<br><span style="font-size:.72rem;font-weight:500">'+timeStr.trim()+'</span>' : ''}</span>
           <span class="agenda-type-badge"><span class="badge" style="background:#ede9fe;border:1px solid #c4b5fd;color:#6d28d9;font-size:.7rem">📅 RDV</span></span>
-          <div class="agenda-contact-wrap" style="gap:.3rem">
-            ${contactsHtml}
-            <span class="agenda-contact-name" style="color:var(--text-700);font-weight:600">${esc(e.rdvName)}</span>
-          </div>
+          <div class="agenda-contact-wrap">${avatarHtml}<span class="agenda-contact-name">${contactLabel}</span>${gameLabel}</div>
           ${lieuStr || e.rdvNote ? `<span class="agenda-note">${lieuStr}${e.rdvNote ? (lieuStr ? ' · ' : '— ') + esc(e.rdvNote) : ''}</span>` : ''}
-          ${games.length ? `<span class="agenda-note" style="display:block">🎲 ${games.map(g => esc(g.title)).join(', ')}</span>` : ''}
         </div>`;
       } else if (e._source === 'evals') {
         html += `<div class="agenda-entry" onclick="openDetail('prototype','${e.protoId}')">
