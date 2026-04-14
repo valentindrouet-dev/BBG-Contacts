@@ -3112,10 +3112,10 @@ function openRdvModal(apptId = null) {
     const sel = appt?.contactIds || [];
     const sorted = [...state.contacts].sort((a, b) => (a.name||'').localeCompare(b.name||'', 'fr'));
     contactsEl.innerHTML = sorted.map(c => `
-      <label style="display:flex;align-items:center;gap:.35rem;padding:.25rem .55rem;border-radius:999px;border:1px solid var(--border-input);background:var(--bg);cursor:pointer;font-size:.82rem;user-select:none">
-        <input type="checkbox" value="${esc(c.id)}" ${sel.includes(c.id) ? 'checked' : ''} style="accent-color:var(--primary-600);margin:0" />
-        <div class="list-avatar list-avatar-${c.category}" style="width:18px;height:18px;font-size:.55rem;flex-shrink:0">${initials(c.name)}</div>
-        ${esc(c.name)}
+      <label class="rdv-check-row">
+        <input type="checkbox" value="${esc(c.id)}" ${sel.includes(c.id) ? 'checked' : ''} />
+        <div class="list-avatar list-avatar-${c.category}" style="width:22px;height:22px;font-size:.6rem;flex-shrink:0">${initials(c.name)}</div>
+        <span>${esc(c.name)}</span>
       </label>
     `).join('');
   }
@@ -3126,9 +3126,10 @@ function openRdvModal(apptId = null) {
     const sel = appt?.gameIds || [];
     const sorted = [...state.prototypes].sort((a, b) => (a.title||'').localeCompare(b.title||'', 'fr'));
     gamesEl.innerHTML = sorted.map(p => `
-      <label style="display:flex;align-items:center;gap:.35rem;padding:.25rem .55rem;border-radius:999px;border:1px solid var(--border-input);background:var(--bg);cursor:pointer;font-size:.82rem;user-select:none">
-        <input type="checkbox" value="${esc(p.id)}" ${sel.includes(p.id) ? 'checked' : ''} style="accent-color:var(--primary-600);margin:0" />
-        🎲 ${esc(p.title)}
+      <label class="rdv-check-row">
+        <input type="checkbox" value="${esc(p.id)}" ${sel.includes(p.id) ? 'checked' : ''} />
+        <span style="font-size:.85rem">🎲</span>
+        <span>${esc(p.title)}</span>
       </label>
     `).join('');
   }
