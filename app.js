@@ -3118,7 +3118,9 @@ function openRdvModal(apptId = null) {
   const selGame = document.getElementById('rdv-game');
   if (selGame) {
     const cur = appt?.gameId || '';
-    const sorted = [...state.prototypes].sort((a, b) => (a.title||'').localeCompare(b.title||'', 'fr'));
+    const sorted = [...state.prototypes]
+      .filter(p => p.status !== 'non-retenu' && p.status !== 'abandonné')
+      .sort((a, b) => (a.title||'').localeCompare(b.title||'', 'fr'));
     selGame.innerHTML = `<option value="">— Aucun jeu —</option>` +
       sorted.map(p => `<option value="${esc(p.id)}" ${cur === p.id ? 'selected' : ''}>🎲 ${esc(p.title)}</option>`).join('');
   }
