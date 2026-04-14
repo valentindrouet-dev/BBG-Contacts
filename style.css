@@ -1651,7 +1651,7 @@ a:hover { color: var(--primary-700); }
 .agenda-entry-future:hover { background: #f3e8ff; }
 .agenda-date {
   font-size: .78rem; font-weight: 600; color: var(--text-500);
-  min-width: 5.5rem; flex-shrink: 0;
+  min-width: 9rem; flex-shrink: 0; white-space: nowrap;
 }
 .agenda-type-badge { flex-shrink: 0; }
 .agenda-contact-wrap { display: flex; align-items: center; gap: .45rem; min-width: 0; flex-shrink: 0; }
