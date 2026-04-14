@@ -1443,6 +1443,8 @@ function renderTasks() {
     tasks = tasks.filter(t => t.done);
   } else if (filter === 'urgent') {
     tasks = tasks.filter(t => !t.done && (t.urgency === 'critique' || t.urgency === 'urgent'));
+  } else if (filter === 'tests') {
+    tasks = tasks.filter(t => t.subtype === 'test_counter');
   } else {
     if (!showDone) tasks = tasks.filter(t => !t.done);
   }
