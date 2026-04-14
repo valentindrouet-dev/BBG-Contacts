@@ -3493,7 +3493,7 @@ function renderAgenda() {
           : '<span style="color:var(--text-400);font-style:italic">Sans contact</span>';
         const gameLabel = game ? `<span class="agenda-note" style="margin-left:.5rem">🎲 ${esc(game.title)}</span>` : '';
         html += `<div class="agenda-entry${isFuture ? ' agenda-entry-future' : ''}" onclick="openRdvModal('${e.rdvId}')">
-          <span class="agenda-date">${dateStr}${timeStr ? '<br><span style="font-size:.72rem;font-weight:500">'+timeStr.trim()+'</span>' : ''}</span>
+          <span class="agenda-date">${dateStr}${timeStr}</span>
           <span class="agenda-type-badge"><span class="badge" style="background:#ede9fe;border:1px solid #c4b5fd;color:#6d28d9;font-size:.7rem">📅 RDV</span></span>
           <div class="agenda-contact-wrap">${avatarHtml}<span class="agenda-contact-name">${contactLabel}</span>${gameLabel}</div>
           ${lieuStr || e.rdvNote ? `<span class="agenda-note">${lieuStr}${e.rdvNote ? (lieuStr ? ' · ' : '— ') + esc(e.rdvNote) : ''}</span>` : ''}
