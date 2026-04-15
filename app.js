@@ -590,7 +590,19 @@ function filteredContacts() {
     let cmp = 0;
     switch (state.contactsSort) {
       case 'name':        cmp = a.name.localeCompare(b.name, 'fr'); break;
-      case 'category':    cmp = a.category.localeCompare(b.category, 'fr') || a.name.localeCompare(b.name, 'fr'); break;
+      case 'category': {
+        cmp = a.category.localeCompare(b.category, 'fr');
+        if (cmp === 0) {
+          const da = (a.exchanges || []).map(e => e.date).filter(Boolean).sort().pop() || '';
+          const db = (b.exchanges || []).map(e => e.date).filter(Boolean).sort().pop() || '';
+          // most recent first; contacts with no exchange go last
+          if (da && db) cmp = db.localeCompare(da);
+          else if (da)  cmp = -1;
+          else if (db)  cmp = 1;
+          else          cmp = a.name.localeCompare(b.name, 'fr');
+        }
+        break;
+      }
       case 'company':     cmp = (a.company||'').localeCompare(b.company||'', 'fr'); break;
       case 'lastMeeting': cmp = (a.lastMeeting||'').localeCompare(b.lastMeeting||''); break;
       case 'urgency': {
