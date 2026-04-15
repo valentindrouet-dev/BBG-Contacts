@@ -5004,7 +5004,7 @@ function exportContactsListPdf() {
 
   const rows = list.map(c => {
     const ac = catColors[c.category] || '#6b7280';
-    const lastEx = [...(c.exchanges || [])].filter(e => e.date).sort((a, b) => b.date.localeCompare(a.date))[0];
+    const lastEx = [...(c.exchanges || [])].sort((a, b) => b.date.localeCompare(a.date))[0];
     const pendingTasks = (c.tasks || []).filter(t => !t.done).length;
     return `<tr>
       <td><strong>${esc(c.name)}</strong>${c.favorite ? ' ⭐' : ''}</td>
@@ -5260,57 +5260,54 @@ function importBackup(event) {
 
 function exportExcel(type) {
   if (typeof XLSX === 'undefined') { alert('La bibliothèque XLSX n\'est pas chargée.'); return; }
-  try {
-    const data = type === 'contacts' ? state.contacts : state.prototypes;
-    const ws   = XLSX.utils.json_to_sheet(data.map(item => {
-      if (type === 'contacts') {
-        const topT = getTopTask(item);
-        return {
-          Nom: item.name||'', Catégorie: item.category||'',
-          Favori: item.favorite ? 'oui' : 'non',
-          Email: item.email||'', Téléphone: item.phone||'',
-          Entreprise: item.company||'', 'Site web': item.website||'',
-          'A une photo': item.photo ? 'oui' : 'non',
-          'Tâche principale': topT ? topT.text : '',
-          'Urgence principale': topT ? topT.urgency : '',
-          'Nombre de tâches': (item.tasks||[]).length,
-          'Nombre d\'échanges': (item.exchanges||[]).length,
-          Notes: (item.notes||'').slice(0, 1000),
-          Réseaux: (item.socials||[]).map(s => `${s.type}: ${s.url}`).join(' | '),
-        };
-      } else {
-        const topT = getTopTask(item);
-        const contactNames = (item.contactLinks||[]).map(l => {
-          const c = state.contacts.find(x => x.id === l.contactId);
-          return c ? `${c.name}${l.role ? ' ('+l.role+')' : ''}` : '';
-        }).filter(Boolean).join(', ');
-        const totalCost = (item.costs||[]).reduce((s,c) => s + (c.price||0), 0);
-        return {
-          Titre: item.title||'', Statut: item.status||'',
-          Genre: item.genre||'', Joueurs: item.players||'',
-          Durée: item.duration||'', Âge: item.age||'',
-          Intérêt: item.interest||3,
-          'Tâche principale': topT ? topT.text : '',
-          'Urgence principale': topT ? topT.urgency : '',
-          'Nombre de tâches': (item.tasks||[]).length,
-          Description: (item.description||'').slice(0, 1000),
-          Notes: (item.notes||'').slice(0, 1000),
-          Tags: (item.tags||[]).join(', '),
-          Contacts: contactNames,
-          'Coût total (€)': totalCost.toFixed(2),
-          'A une photo': item.photo ? 'oui' : 'non',
-          'Sessions test': (item.testSessions||[]).length,
-        };
-      }
-    }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, type === 'contacts' ? 'Contacts' : 'Prototypes');
-    XLSX.writeFile(wb, `bbg-${type}-${today()}.xlsx`);
-  } catch(err) {
-    alert('Erreur lors de l\'export Excel : ' + err.message);
-    console.error('exportExcel error:', err);
-  }
-}
+  const data = type === 'contacts' ? state.contacts : state.prototypes;
+  const ws   = XLSX.utils.json_to_sheet(data.map(item => {
+    if (type === 'contacts') {
+      const topT = getTopTask(item);
+      return {
+        Nom: item.name, Catégorie: item.category,
+        Favori: item.favorite ? 'oui' : 'non',
+        Email: item.email||'', Téléphone: item.phone||'',
+        Entreprise: item.company||'', 'Site web': item.website||'',
+        Photo: item.photo||'',
+        'Tâche principale': topT ? topT.text : '',
+        'Urgence principale': topT ? topT.urgency : '',
+        'Nombre de tâches': (item.tasks||[]).length,
+        Notes: item.notes||'',
+        Échanges: JSON.stringify(item.exchanges||[]),
+        Réseaux: JSON.stringify(item.socials||[]),
+        Vidéos: JSON.stringify(item.videos||[]),
+      };
+    } else {
+      const topT = getTopTask(item);
+      const contactNames = (item.contactLinks||[]).map(l => {
+        const c = state.contacts.find(x => x.id === l.contactId);
+        return c ? `${c.name}${l.role ? ' ('+l.role+')' : ''}` : '';
+      }).filter(Boolean).join(', ');
+      const totalCost = (item.costs||[]).reduce((s,c) => s + (c.price||0), 0);
+      return {
+        Titre: item.title, Statut: item.status,
+        Genre: item.genre||'', Joueurs: item.players||'',
+        Durée: item.duration||'', Âge: item.age||'',
+        Intérêt: item.interest||3,
+        'Tâche principale': topT ? topT.text : '',
+        'Urgence principale': topT ? topT.urgency : '',
+        'Nombre de tâches': (item.tasks||[]).length,
+        Description: item.description||'',
+        Notes: item.notes||'',
+        Tags: (item.tags||[]).join(', '),
+        Contacts: contactNames,
+        'Coût total (€)': totalCost.toFixed(2),
+        Photo: item.photo||'',
+        Vidéos: JSON.stringify(item.videos||[]),
+        Coûts: JSON.stringify(item.costs||[]),
+        'Journal dev': JSON.stringify(item.devLog||[]),
+      };
+    }
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, type === 'contacts' ? 'Contacts' : 'Prototypes');
+  XLSX.writeFile(wb, `bbg-${type}-${today()}.xlsx`);
 }
 
 function importExcel(event, type) {
