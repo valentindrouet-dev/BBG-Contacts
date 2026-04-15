@@ -1687,10 +1687,16 @@ function setTaskDueDateInline(type, itemId, taskId, newDate) {
 function updateTestCounterTasks(p) {
   const sessionCount = (p.testSessions || []).filter(s => s.date || s.comments || s.rating).length;
   (p.tasks || []).forEach(t => {
-    if (t.subtype === 'test_counter' && t.targetCount && !t.done) {
+    if (t.subtype === 'test_counter' && t.targetCount) {
       if (sessionCount >= t.targetCount) {
-        t.done = true;
-        t.doneAt = new Date().toISOString();
+        if (!t.done) {
+          t.done = true;
+          t.doneAt = new Date().toISOString();
+        }
+      } else {
+        // Objectif augmenté ou sessions supprimées : la tâche repasse en "à faire"
+        t.done = false;
+        t.doneAt = undefined;
       }
     }
   });
