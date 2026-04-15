@@ -5217,11 +5217,15 @@ function toggleImportExport() {
 
 function exportBackup() {
   const data = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     contacts:        state.contacts,
     prototypes:      state.prototypes,
+    festivals:       state.festivals,
     standaloneTasks: state.standaloneTasks,
+    adminCards:      state.adminCards,
+    actifs:          state.actifs,
+    appointments:    state.appointments,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
@@ -5243,10 +5247,21 @@ function importBackup(event) {
         alert('Fichier invalide : contacts ou prototypes manquants.');
         return;
       }
-      if (!confirm(`Restaurer la sauvegarde du ${data.exportedAt ? new Date(data.exportedAt).toLocaleString('fr-FR') : 'date inconnue'} ?\n\n${data.contacts.length} contact(s), ${data.prototypes.length} prototype(s).\n\nATTENTION : les données actuelles seront remplacées.`)) return;
+      const festCount  = Array.isArray(data.festivals)  ? data.festivals.length  : 0;
+      const adminCount = Array.isArray(data.adminCards)  ? data.adminCards.length : 0;
+      const rdvCount   = Array.isArray(data.appointments)? data.appointments.length: 0;
+      if (!confirm(
+        `Restaurer la sauvegarde du ${data.exportedAt ? new Date(data.exportedAt).toLocaleString('fr-FR') : 'date inconnue'} ?\n\n` +
+        `${data.contacts.length} contact(s), ${data.prototypes.length} prototype(s), ${festCount} festival(s), ${adminCount} vignette(s) admin, ${rdvCount} rendez-vous.\n\n` +
+        `ATTENTION : les données actuelles seront remplacées.`
+      )) return;
       state.contacts        = data.contacts.map(migrateContact);
       state.prototypes      = data.prototypes.map(migratePrototype);
-      state.standaloneTasks = Array.isArray(data.standaloneTasks) ? data.standaloneTasks : [];
+      state.festivals       = Array.isArray(data.festivals)    ? data.festivals.map(migrateFestival)       : [];
+      state.standaloneTasks = Array.isArray(data.standaloneTasks) ? data.standaloneTasks                   : [];
+      state.adminCards      = Array.isArray(data.adminCards)   ? data.adminCards.map(migrateAdminCard)     : [];
+      state.actifs          = Array.isArray(data.actifs)       ? data.actifs                               : [];
+      state.appointments    = Array.isArray(data.appointments) ? data.appointments                         : [];
       saveState();
       switchPage(state.activePage);
       alert('Restauration effectuée avec succès !');
