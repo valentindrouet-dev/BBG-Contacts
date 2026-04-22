@@ -375,7 +375,8 @@ function renderDashboard() {
   // On prend tous les protos avec une tâche test_counter (done ou non) pour ne pas les perdre
   const TEST_STATUS_ORDER = { développement: 0, tester: 1, imprimer: 2 };
   const testCounterTasks = state.prototypes
-    .filter(p => (p.tasks||[]).some(t => t.subtype === 'test_counter'))
+    .filter(p => p.status !== 'abandonné' && p.status !== 'non-retenu')
+    .filter(p => (p.tasks||[]).some(t => t.subtype === 'test_counter' && !t.done))
     .map(p => {
       const sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
       const counterTask = (p.tasks||[]).find(t => t.subtype === 'test_counter');
@@ -1375,6 +1376,7 @@ function renderTasks() {
         task: t.text, urgency: t.urgency || 'normal', done: t.done || false, dueDate: t.dueDate, doneAt: t.doneAt,
         subtype: t.subtype, targetCount: t.targetCount,
         currentCount: t.subtype === 'test_counter' ? sessionCount : undefined,
+        protoStatus: p.status,
       });
     });
   });
@@ -1467,9 +1469,12 @@ function renderTasks() {
   } else if (filter === 'urgent') {
     tasks = tasks.filter(t => !t.done && (t.urgency === 'critique' || t.urgency === 'urgent'));
   } else if (filter === 'tests') {
-    tasks = tasks.filter(t => t.subtype === 'test_counter');
+    tasks = tasks.filter(t => t.subtype === 'test_counter' && !t.done
+      && t.protoStatus !== 'abandonné' && t.protoStatus !== 'non-retenu');
   } else {
     if (!showDone) tasks = tasks.filter(t => !t.done);
+    tasks = tasks.filter(t => !(t.subtype === 'test_counter'
+      && (t.protoStatus === 'abandonné' || t.protoStatus === 'non-retenu')));
   }
 
   if (tasks.length === 0) {
