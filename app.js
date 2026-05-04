@@ -4829,8 +4829,9 @@ ${c.notes ? `<div class="sec">Notes</div><div class="notes">${esc(c.notes)}</div
 }
 
 function generateContactCard(id) {
+  try {
   const c = state.contacts.find(x => x.id === id);
-  if (!c) return;
+  if (!c) { alert('Contact introuvable : ' + id); return; }
 
   const linkedProtos = state.prototypes.filter(p =>
     (p.contactLinks || []).some(l => l.contactId === c.id)
@@ -4913,6 +4914,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;display:flex;ali
 </body></html>`;
 
   _pdfOpenWindow(html);
+  } catch(e) { alert('Erreur Carte : ' + e.message); }
 }
 
 
