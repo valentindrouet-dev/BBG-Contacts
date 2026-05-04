@@ -834,7 +834,8 @@ function contactCard(c, zoom) {
   const hasUrgentTask = topTask && (urg === 'urgent' || urg === 'critique');
 
   const mediaContent = c.photo
-    ? `<img src="${esc(c.photo)}" class="card-photo" alt="" />`
+    ? `<img src="${esc(c.photo)}" class="card-photo" alt="" loading="lazy" onerror="this.onerror=null;this.style.display='none';this.parentElement.querySelector('.card-avatar-fallback').style.display=''" />
+       <div class="card-avatar card-avatar-${cat} card-avatar-fallback" style="display:none">${initials(c.name)}</div>`
     : `<div class="card-avatar card-avatar-${cat}">${initials(c.name)}</div>`;
 
   // Top-left: company logo if set, otherwise category letter badge
@@ -964,7 +965,8 @@ function buildContactsTable(list) {
         const urg = topTask ? (topTask.urgency || 'normal') : 'normal';
         const pendingCount = (c.tasks || []).filter(t => !t.done).length;
         const avatar = c.photo
-          ? `<img src="${esc(c.photo)}" class="list-photo" alt="" />`
+          ? `<img src="${esc(c.photo)}" class="list-photo" alt="" loading="lazy" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display=''" />
+             <div class="list-avatar list-avatar-${c.category}" style="display:none">${initials(c.name)}</div>`
           : `<div class="list-avatar list-avatar-${c.category}">${initials(c.name)}</div>`;
         const taskCell = topTask
           ? `<div class="td-task">
@@ -4269,7 +4271,8 @@ function openDetail(type, id) {
     const c = state.contacts.find(x => x.id === id);
     if (!c) return;
     const avatar = c.photo
-      ? `<img src="${esc(c.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" />`
+      ? `<img src="${esc(c.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" loading="lazy" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display=''" />
+         <div class="card-avatar card-avatar-${c.category}" style="position:static;transform:none;width:44px;height:44px;font-size:1rem;display:none">${initials(c.name)}</div>`
       : `<div class="card-avatar card-avatar-${c.category}" style="position:static;transform:none;width:44px;height:44px;font-size:1rem">${initials(c.name)}</div>`;
 
     const gamesHtml = (c.games || []).length > 0
@@ -4438,7 +4441,8 @@ function openDetail(type, id) {
         return `<div style="display:flex;align-items:center;gap:.5rem;cursor:pointer;margin-top:.3rem"
           onclick="closeModal('detail');openDetail('contact','${contact.id}')">
           ${contact.photo
-            ? `<img src="${esc(contact.photo)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0" />`
+            ? `<img src="${esc(contact.photo)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0" loading="lazy" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display=''" />
+               <div class="card-avatar card-avatar-${contact.category}" style="position:static;transform:none;width:28px;height:28px;font-size:.65rem;flex-shrink:0;display:none">${initials(contact.name)}</div>`
             : `<div class="card-avatar card-avatar-${contact.category}" style="position:static;transform:none;width:28px;height:28px;font-size:.65rem;flex-shrink:0">${initials(contact.name)}</div>`}
           <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(contact.name)}</span>
           ${l.role ? `<span style="font-size:.75rem;color:var(--text-500)">(${esc(l.role)})</span>` : ''}
@@ -4455,7 +4459,8 @@ function openDetail(type, id) {
       <div class="modal-header">
         <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
           ${p.photo
-            ? `<img src="${esc(p.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" />`
+            ? `<img src="${esc(p.photo)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" alt="" loading="lazy" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display=''" />
+               <span style="font-size:1.75rem;line-height:1;display:none">${icon}</span>`
             : `<span style="font-size:1.75rem;line-height:1">${icon}</span>`}
           <div style="min-width:0">
             <div style="font-size:1.05rem;font-weight:700;color:var(--text-800);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</div>
