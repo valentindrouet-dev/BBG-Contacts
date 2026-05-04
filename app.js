@@ -4842,219 +4842,79 @@ function generateContactCard(id) {
   };
   const ac = catColors[c.category] || '#6b7280';
 
-  function drawCard(photoImg) {
-    const W = 560;
-    const PADDING = 28;
-    const AVATAR_R = 36;
-    const HEADER_H = AVATAR_R * 2 + 16;
-    const SEP_MARGIN = 14;
-    const NOTES_LABEL_H = 22;
-    const NOTES_AREA_H = 200;
-    const GAME_H = 32;
-    const gameCount = Math.min(linkedProtos.length, 8);
-    const H = PADDING + HEADER_H
-      + SEP_MARGIN + 1 + SEP_MARGIN
-      + NOTES_LABEL_H + NOTES_AREA_H + SEP_MARGIN
-      + 1 + SEP_MARGIN
-      + NOTES_LABEL_H + 6
-      + (gameCount > 0 ? gameCount * GAME_H : 28)
-      + PADDING;
+  const words = (c.name || '').trim().split(/\s+/);
+  const lastName = (words.length > 1 ? words[words.length - 1] : words[0] || '').toUpperCase();
+  const firstName = words.length > 1 ? words.slice(0, -1).join(' ') : '';
+  const catDisplay = (c.category || '').charAt(0).toUpperCase() + (c.category || '').slice(1);
+  const initials = (c.name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
-    const canvas = document.createElement('canvas');
-    canvas.width = W * 2;
-    canvas.height = H * 2;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(2, 2);
+  const avatarHtml = c.photo
+    ? `<div class="avatar" style="background:url('${c.photo}') center/cover;border:2.5px solid ${ac}"></div>`
+    : `<div class="avatar" style="background:${ac};color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700">${initials}</div>`;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#d1d5db';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(1, 1, W - 2, H - 2);
+  const jeuRows = linkedProtos.length === 0
+    ? `<div style="color:#9ca3af;font-style:italic;font-size:.85rem;padding:6px 0">Aucun jeu lié</div>`
+    : linkedProtos.map(p => `
+        <div class="jeu-row">
+          <span class="jeu-icon">${PROTO_ICONS[p.status] || '🎮'}</span>
+          <span class="jeu-title">${esc(p.title)}</span>
+          <span class="jeu-status">${esc(STATUS_LABELS[p.status] || p.status)}</span>
+        </div>`).join('');
 
-    // ── Avatar ──────────────────────────────────────
-    const avatarCX = PADDING + AVATAR_R;
-    const avatarCY = PADDING + AVATAR_R;
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<title>Carte — ${esc(c.name)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;display:flex;align-items:center;justify-content:center;min-height:100vh}
+@media print{body{background:#fff;display:block}@page{size:A5 portrait;margin:8mm}.card{box-shadow:none;border:1px solid #ccc}}
+.card{background:#fff;width:340px;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.15);padding:20px 22px;display:flex;flex-direction:column;gap:0}
+.header{display:flex;align-items:center;gap:14px;padding-bottom:14px}
+.avatar{width:64px;height:64px;border-radius:50%;flex-shrink:0}
+.info{flex:1}
+.info .nom{font-size:1.1rem;font-weight:800;color:#111827;letter-spacing:.03em}
+.info .prenom{font-size:.95rem;color:#374151;margin-top:2px}
+.info .cat{font-size:.8rem;font-weight:600;color:${ac};margin-top:4px}
+.sep{border:none;border-top:1.5px solid #1a1a2e;margin:0}
+.section-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#374151;margin:10px 0 6px}
+.notes-area{display:flex;flex-direction:column;gap:0;padding-bottom:4px}
+.note-line{border-bottom:1px solid #e5e7eb;height:28px}
+.jeu-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9}
+.jeu-row:last-child{border-bottom:none}
+.jeu-icon{font-size:.95rem;flex-shrink:0}
+.jeu-title{flex:1;font-size:.85rem;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jeu-status{font-size:.72rem;color:#6b7280;white-space:nowrap;margin-left:4px}
+.print-btn{margin-top:18px;text-align:center}
+.print-btn button{padding:7px 22px;background:#1a1a2e;color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer}
+@media print{.print-btn{display:none}}
+</style></head>
+<body>
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+<div class="card">
+  <div class="header">
+    ${avatarHtml}
+    <div class="info">
+      <div class="nom">${esc(lastName)}</div>
+      <div class="prenom">${esc(firstName)}</div>
+      <div class="cat">${esc(catDisplay)}</div>
+    </div>
+  </div>
+  <hr class="sep">
+  <div class="section-label">Notes</div>
+  <div class="notes-area">
+    ${'<div class="note-line"></div>'.repeat(7)}
+  </div>
+  <hr class="sep" style="margin-top:8px">
+  <div class="section-label">Jeux</div>
+  ${jeuRows}
+</div>
+<div class="print-btn"><button onclick="window.print()">🖨️ Imprimer</button></div>
+</div>
+</body></html>`;
 
-    if (photoImg) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(photoImg, avatarCX - AVATAR_R, avatarCY - AVATAR_R, AVATAR_R * 2, AVATAR_R * 2);
-      ctx.restore();
-      ctx.beginPath();
-      ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
-      ctx.strokeStyle = ac;
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = ac;
-      ctx.beginPath();
-      ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
-      ctx.fill();
-      const initials = (c.name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(initials, avatarCX, avatarCY);
-    }
-
-    // ── Nom / Prénom / Catégorie ─────────────────────
-    const words = (c.name || '').trim().split(/\s+/);
-    const lastName = (words.length > 1 ? words[words.length - 1] : words[0] || '').toUpperCase();
-    const firstName = words.length > 1 ? words.slice(0, -1).join(' ') : '';
-    const textX = avatarCX + AVATAR_R + 16;
-    const textTopY = PADDING + 10;
-
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#111827';
-    ctx.font = 'bold 20px Arial, sans-serif';
-    ctx.fillText(lastName, textX, textTopY + 18);
-
-    ctx.fillStyle = '#374151';
-    ctx.font = '15px Arial, sans-serif';
-    ctx.fillText(firstName, textX, textTopY + 42);
-
-    ctx.fillStyle = ac;
-    ctx.font = '13px Arial, sans-serif';
-    const catDisplay = (c.category || '').charAt(0).toUpperCase() + (c.category || '').slice(1);
-    ctx.fillText(catDisplay, textX, textTopY + 65);
-
-    // ── Séparateur 1 ────────────────────────────────
-    let curY = PADDING + HEADER_H + SEP_MARGIN;
-    ctx.strokeStyle = '#1a1a2e';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(PADDING, curY);
-    ctx.lineTo(W - PADDING, curY);
-    ctx.stroke();
-    curY += SEP_MARGIN;
-
-    // ── Notes ───────────────────────────────────────
-    ctx.fillStyle = '#374151';
-    ctx.font = 'bold 12px Arial, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText('NOTES', PADDING, curY + 14);
-    curY += NOTES_LABEL_H;
-
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 0.8;
-    const lineSpacing = 28;
-    for (let ly = curY + 14; ly < curY + NOTES_AREA_H - 8; ly += lineSpacing) {
-      ctx.beginPath();
-      ctx.moveTo(PADDING, ly);
-      ctx.lineTo(W - PADDING, ly);
-      ctx.stroke();
-    }
-    curY += NOTES_AREA_H;
-
-    // ── Séparateur 2 ────────────────────────────────
-    curY += SEP_MARGIN;
-    ctx.strokeStyle = '#1a1a2e';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(PADDING, curY);
-    ctx.lineTo(W - PADDING, curY);
-    ctx.stroke();
-    curY += SEP_MARGIN;
-
-    // ── Jeux ────────────────────────────────────────
-    ctx.fillStyle = '#374151';
-    ctx.font = 'bold 12px Arial, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('JEUX', PADDING, curY + 14);
-    curY += NOTES_LABEL_H + 6;
-
-    if (linkedProtos.length === 0) {
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = 'italic 12px Arial, sans-serif';
-      ctx.fillText('Aucun jeu lié', PADDING + 4, curY + 14);
-    } else {
-      for (const p of linkedProtos.slice(0, 8)) {
-        const icon = PROTO_ICONS[p.status] || '🎮';
-        const statusLabel = STATUS_LABELS[p.status] || p.status;
-
-        ctx.font = '14px Arial, sans-serif';
-        ctx.fillStyle = '#374151';
-        ctx.textAlign = 'left';
-        ctx.fillText(icon, PADDING, curY + 14);
-
-        ctx.font = '13px Arial, sans-serif';
-        ctx.fillStyle = '#111827';
-        const maxTitleW = W - PADDING * 2 - 26 - 110;
-        let title = p.title || '';
-        while (ctx.measureText(title).width > maxTitleW && title.length > 1) title = title.slice(0, -1);
-        if (title !== p.title) title += '…';
-        ctx.fillText(title, PADDING + 26, curY + 14);
-
-        ctx.font = '11px Arial, sans-serif';
-        ctx.fillStyle = '#6b7280';
-        ctx.textAlign = 'right';
-        ctx.fillText(statusLabel, W - PADDING, curY + 14);
-
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth = 0.7;
-        ctx.beginPath();
-        ctx.moveTo(PADDING, curY + 22);
-        ctx.lineTo(W - PADDING, curY + 22);
-        ctx.stroke();
-
-        curY += GAME_H;
-      }
-    }
-
-    // ── Affichage dans une modale ────────────────────
-    const dataUrl = canvas.toDataURL('image/png');
-    const filename = `carte-${(c.name || 'contact').replace(/\s+/g, '-').toLowerCase()}.png`;
-
-    let overlay = document.getElementById('card-preview-overlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'card-preview-overlay';
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px';
-      overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
-      document.body.appendChild(overlay);
-    } else {
-      overlay.innerHTML = '';
-    }
-
-    const img = document.createElement('img');
-    img.src = dataUrl;
-    img.style.cssText = 'max-height:80vh;max-width:90vw;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.4)';
-    overlay.appendChild(img);
-
-    const btnRow = document.createElement('div');
-    btnRow.style.cssText = 'display:flex;gap:12px';
-
-    const dlLink = document.createElement('a');
-    dlLink.href = dataUrl;
-    dlLink.download = filename;
-    dlLink.textContent = '↓ Télécharger';
-    dlLink.style.cssText = 'padding:8px 20px;background:#3b82f6;color:#fff;border-radius:6px;font-weight:600;text-decoration:none;font-size:.9rem';
-    btnRow.appendChild(dlLink);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = 'Fermer';
-    closeBtn.style.cssText = 'padding:8px 20px;background:#6b7280;color:#fff;border-radius:6px;font-weight:600;border:none;cursor:pointer;font-size:.9rem';
-    closeBtn.onclick = () => overlay.remove();
-    btnRow.appendChild(closeBtn);
-
-    overlay.appendChild(btnRow);
-  }
-
-  if (c.photo) {
-    const img = new Image();
-    img.onload = () => drawCard(img);
-    img.onerror = () => drawCard(null);
-    img.src = c.photo;
-  } else {
-    drawCard(null);
-  }
+  _pdfOpenWindow(html);
 }
+
 
 function exportPrototypePdf(id) {
   const p = state.prototypes.find(x => x.id === id);
