@@ -5007,13 +5007,43 @@ function generateContactCard(id) {
       }
     }
 
-    // ── Téléchargement ──────────────────────────────
-    const a = document.createElement('a');
-    a.download = `carte-${(c.name || 'contact').replace(/\s+/g, '-').toLowerCase()}.png`;
-    a.href = canvas.toDataURL('image/png');
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // ── Affichage dans une modale ────────────────────
+    const dataUrl = canvas.toDataURL('image/png');
+    const filename = `carte-${(c.name || 'contact').replace(/\s+/g, '-').toLowerCase()}.png`;
+
+    let overlay = document.getElementById('card-preview-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'card-preview-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px';
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    } else {
+      overlay.innerHTML = '';
+    }
+
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.style.cssText = 'max-height:80vh;max-width:90vw;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.4)';
+    overlay.appendChild(img);
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:12px';
+
+    const dlLink = document.createElement('a');
+    dlLink.href = dataUrl;
+    dlLink.download = filename;
+    dlLink.textContent = '↓ Télécharger';
+    dlLink.style.cssText = 'padding:8px 20px;background:#3b82f6;color:#fff;border-radius:6px;font-weight:600;text-decoration:none;font-size:.9rem';
+    btnRow.appendChild(dlLink);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Fermer';
+    closeBtn.style.cssText = 'padding:8px 20px;background:#6b7280;color:#fff;border-radius:6px;font-weight:600;border:none;cursor:pointer;font-size:.9rem';
+    closeBtn.onclick = () => overlay.remove();
+    btnRow.appendChild(closeBtn);
+
+    overlay.appendChild(btnRow);
   }
 
   if (c.photo) {
