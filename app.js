@@ -211,11 +211,11 @@ const ICONS = {
 };
 
 const PROTO_ICONS = {
-  pnp: '⏳', imprimer: '🖨️', tester: '🧪', évalué: '✅',
+  pnp: '⏳', imprimer: '🖨️', tester: '🧪', 'test-à-venir': '📅', évalué: '✅',
   développement: '🔧', production: '🏭', standby: '💤', sorti: '🚀', abandonné: '❌', 'non-retenu': '🚫'
 };
 const STATUS_LABELS = {
-  pnp: 'En attente de Règles / PNP', imprimer: 'À Imprimer', tester: 'À tester', évalué: 'Évalué',
+  pnp: 'En attente de Règles / PNP', imprimer: 'À Imprimer', tester: 'À tester', 'test-à-venir': 'Test à Venir', évalué: 'Évalué',
   développement: 'En Développement', production: 'En Production', standby: 'Standby', sorti: 'Sorti', abandonné: 'Abandonné', 'non-retenu': 'Non Retenu'
 };
 
@@ -230,7 +230,7 @@ const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exception
 
 const SOCIAL_TYPES = ['LinkedIn', 'Facebook', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
 const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'developpement', 'autre'];
-const STATUS_ORDER = ['développement', 'tester', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné', 'non-retenu'];
+const STATUS_ORDER = ['développement', 'test-à-venir', 'tester', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné', 'non-retenu'];
 
 // ── Task helpers ───────────────────────────────────
 // Returns display text for a task, adding "X/N" progress for test_counter tasks.
@@ -4847,7 +4847,7 @@ function exportPrototypePdf(id) {
     : `<div class="avatar av-icon">${icon}</div>`;
 
   const statusColors = {
-    développement: '#4f46e5', tester: '#0891b2', évalué: '#16a34a', imprimer: '#d97706',
+    développement: '#4f46e5', 'test-à-venir': '#0e7490', tester: '#0891b2', évalué: '#16a34a', imprimer: '#d97706',
     pnp: '#6b7280', production: '#7c3aed', standby: '#9ca3af', sorti: '#f59e0b',
     abandonné: '#ef4444', 'non-retenu': '#ef4444'
   };
@@ -5051,7 +5051,7 @@ function exportContactsListPdf() {
 function exportPrototypesListPdf() {
   const list = state.prototypes.slice().sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fr'));
   const statusColors = {
-    développement: '#4f46e5', tester: '#0891b2', évalué: '#16a34a', imprimer: '#d97706',
+    développement: '#4f46e5', 'test-à-venir': '#0e7490', tester: '#0891b2', évalué: '#16a34a', imprimer: '#d97706',
     pnp: '#6b7280', production: '#7c3aed', standby: '#9ca3af', sorti: '#f59e0b',
     abandonné: '#ef4444', 'non-retenu': '#ef4444'
   };
