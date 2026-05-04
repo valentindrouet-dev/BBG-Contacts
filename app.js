@@ -4829,9 +4829,8 @@ ${c.notes ? `<div class="sec">Notes</div><div class="notes">${esc(c.notes)}</div
 }
 
 function generateContactCard(id) {
-  try {
   const c = state.contacts.find(x => x.id === id);
-  if (!c) { alert('Contact introuvable : ' + id); return; }
+  if (!c) return;
 
   const linkedProtos = state.prototypes.filter(p =>
     (p.contactLinks || []).some(l => l.contactId === c.id)
@@ -4862,35 +4861,46 @@ function generateContactCard(id) {
           <span class="jeu-status">${esc(STATUS_LABELS[p.status] || p.status)}</span>
         </div>`).join('');
 
+  const jeuRowsWithNotes = linkedProtos.length === 0
+    ? `<div style="color:#9ca3af;font-style:italic;font-size:.7rem;padding:4px 0">Aucun jeu lié</div>`
+    : linkedProtos.map(p => `
+        <div class="jeu-block">
+          <div class="jeu-row">
+            <span class="jeu-icon">${PROTO_ICONS[p.status] || '🎮'}</span>
+            <span class="jeu-title">${esc(p.title)}</span>
+            <span class="jeu-status">${esc(STATUS_LABELS[p.status] || p.status)}</span>
+          </div>
+          <div class="jeu-note-line"></div>
+          <div class="jeu-note-line"></div>
+        </div>`).join('');
+
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
 <title>Carte — ${esc(c.name)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;display:flex;align-items:center;justify-content:center;min-height:100vh}
-@media print{body{background:#fff;display:block}@page{size:A5 portrait;margin:8mm}.card{box-shadow:none;border:1px solid #ccc}}
-.card{background:#fff;width:340px;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.15);padding:20px 22px;display:flex;flex-direction:column;gap:0}
-.header{display:flex;align-items:center;gap:14px;padding-bottom:14px}
-.avatar{width:64px;height:64px;border-radius:50%;flex-shrink:0}
-.info{flex:1}
-.info .nom{font-size:1.1rem;font-weight:800;color:#111827;letter-spacing:.03em}
-.info .prenom{font-size:.95rem;color:#374151;margin-top:2px}
-.info .cat{font-size:.8rem;font-weight:600;color:${ac};margin-top:4px}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#e5e7eb;display:flex;align-items:center;justify-content:center;min-height:100vh}
+@media print{body{background:#fff;display:block}@page{size:63mm 88mm;margin:3mm}.card{box-shadow:none;border:none;width:100%;border-radius:0}.print-btn{display:none}}
+.card{background:#fff;width:260px;border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,.18);padding:14px 16px;display:flex;flex-direction:column;gap:0}
+.header{display:flex;align-items:center;gap:10px;padding-bottom:10px}
+.avatar{width:48px;height:48px;border-radius:50%;flex-shrink:0}
+.info .nom{font-size:.95rem;font-weight:800;color:#111827;letter-spacing:.02em}
+.info .prenom{font-size:.82rem;color:#374151;margin-top:1px}
+.info .cat{font-size:.7rem;font-weight:700;color:${ac};margin-top:3px}
 .sep{border:none;border-top:1.5px solid #1a1a2e;margin:0}
-.section-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#374151;margin:10px 0 6px}
-.notes-area{display:flex;flex-direction:column;gap:0;padding-bottom:4px}
-.note-line{border-bottom:1px solid #e5e7eb;height:28px}
-.jeu-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9}
-.jeu-row:last-child{border-bottom:none}
-.jeu-icon{font-size:.95rem;flex-shrink:0}
-.jeu-title{flex:1;font-size:.85rem;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.jeu-status{font-size:.72rem;color:#6b7280;white-space:nowrap;margin-left:4px}
-.print-btn{margin-top:18px;text-align:center}
-.print-btn button{padding:7px 22px;background:#1a1a2e;color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer}
-@media print{.print-btn{display:none}}
+.section-label{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#374151;margin:7px 0 4px}
+.note-line{border-bottom:1px solid #e5e7eb;height:22px}
+.jeu-block{margin-bottom:2px}
+.jeu-row{display:flex;align-items:center;gap:6px;padding:4px 0 2px}
+.jeu-icon{font-size:.8rem;flex-shrink:0}
+.jeu-title{flex:1;font-size:.75rem;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jeu-status{font-size:.6rem;color:#6b7280;white-space:nowrap;margin-left:2px}
+.jeu-note-line{border-bottom:1px solid #e5e7eb;height:16px}
+.print-btn{margin-top:14px;text-align:center}
+.print-btn button{padding:6px 18px;background:#1a1a2e;color:#fff;border:none;border-radius:5px;font-size:.8rem;font-weight:600;cursor:pointer}
 </style></head>
 <body>
-<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px">
 <div class="card">
   <div class="header">
     ${avatarHtml}
@@ -4902,19 +4912,16 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;display:flex;ali
   </div>
   <hr class="sep">
   <div class="section-label">Notes</div>
-  <div class="notes-area">
-    ${'<div class="note-line"></div>'.repeat(7)}
-  </div>
-  <hr class="sep" style="margin-top:8px">
+  <div>${'<div class="note-line"></div>'.repeat(3)}</div>
+  <hr class="sep" style="margin-top:6px">
   <div class="section-label">Jeux</div>
-  ${jeuRows}
+  ${jeuRowsWithNotes}
 </div>
 <div class="print-btn"><button onclick="window.print()">🖨️ Imprimer</button></div>
 </div>
 </body></html>`;
 
   _pdfOpenWindow(html);
-  } catch(e) { alert('Erreur Carte : ' + e.message); }
 }
 
 
