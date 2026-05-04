@@ -4834,7 +4834,7 @@ function generateContactCard(id) {
 
   const linkedProtos = state.prototypes.filter(p =>
     (p.contactLinks || []).some(l => l.contactId === c.id)
-  ).slice(0, 4);
+  ).slice(0, 3);
 
   const catColors = {
     auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309',
@@ -4852,11 +4852,6 @@ function generateContactCard(id) {
     ? `<img class="avatar" src="${c.photo}" alt="">`
     : `<div class="avatar av-init" style="background:${ac}">${initials}</div>`;
 
-  const contactInfo = [
-    c.phone ? `📞 ${esc(c.phone)}` : '',
-    c.email ? `✉ ${esc(c.email)}` : ''
-  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
-
   const jeuRows = linkedProtos.length === 0
     ? `<div class="no-game">Aucun jeu lié</div>`
     : linkedProtos.map(p => `
@@ -4866,6 +4861,7 @@ function generateContactCard(id) {
           <span class="jeu-title">${esc(p.title)}</span>
           <span class="jeu-status">${esc(STATUS_LABELS[p.status] || p.status)}</span>
         </div>
+        <div class="note-line"></div>
         <div class="note-line"></div>
       </div>`).join('');
 
@@ -4888,11 +4884,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
 .header{display:flex;align-items:center;gap:2mm;padding-bottom:2mm;flex-shrink:0}
 .avatar{width:11mm;height:11mm;border-radius:50%;object-fit:cover;flex-shrink:0;border:0.4mm solid ${ac}}
 .av-init{display:flex;align-items:center;justify-content:center;color:#fff;font-size:3.5mm;font-weight:800}
+.header-right{display:flex;gap:2mm;flex:1;min-width:0}
 .info{flex:1;min-width:0}
 .nom{font-size:3.5mm;font-weight:800;color:#111827;letter-spacing:.02em}
 .prenom{font-size:2.8mm;color:#374151;margin-top:.5mm}
 .cat{font-size:2.3mm;font-weight:700;color:${ac};margin-top:.5mm}
-.contact-info{font-size:2mm;color:#6b7280;margin-top:.7mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.contact-col{display:flex;flex-direction:column;justify-content:center;gap:1mm;flex-shrink:0;min-width:0}
+.contact-line{font-size:2mm;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:22mm}
 .sep{border:none;border-top:.4mm solid #1a1a2e;flex-shrink:0}
 .section-label{font-size:2mm;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin:1.5mm 0 1mm;flex-shrink:0}
 .note-line{border-bottom:.25mm solid #d1d5db;height:4.5mm;flex-shrink:0}
@@ -4907,15 +4905,21 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
 <div class="card">
   <div class="header">
     ${avatarHtml}
-    <div class="info">
-      <div class="nom">${esc(lastName)}</div>
-      <div class="prenom">${esc(firstName)}</div>
-      <div class="cat">${esc(catDisplay)}</div>
-      ${contactInfo ? `<div class="contact-info">${contactInfo}</div>` : ''}
+    <div class="header-right">
+      <div class="info">
+        <div class="nom">${esc(lastName)}</div>
+        <div class="prenom">${esc(firstName)}</div>
+        <div class="cat">${esc(catDisplay)}</div>
+      </div>
+      <div class="contact-col">
+        ${c.phone ? `<div class="contact-line">📞 ${esc(c.phone)}</div>` : ''}
+        ${c.email ? `<div class="contact-line">✉ ${esc(c.email)}</div>` : ''}
+      </div>
     </div>
   </div>
   <hr class="sep">
   <div class="section-label">Notes</div>
+  <div class="note-line"></div>
   <div class="note-line"></div>
   <div class="note-line"></div>
   <hr class="sep" style="margin-top:1.5mm">
