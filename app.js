@@ -4834,7 +4834,7 @@ function generateContactCard(id) {
 
   const linkedProtos = state.prototypes.filter(p =>
     (p.contactLinks || []).some(l => l.contactId === c.id)
-  );
+  ).slice(0, 4);
 
   const catColors = {
     auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309',
@@ -4849,58 +4849,61 @@ function generateContactCard(id) {
   const initials = (c.name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   const avatarHtml = c.photo
-    ? `<div class="avatar" style="background:url('${c.photo}') center/cover;border:2.5px solid ${ac}"></div>`
-    : `<div class="avatar" style="background:${ac};color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700">${initials}</div>`;
+    ? `<img class="avatar" src="${c.photo}" alt="">`
+    : `<div class="avatar av-init" style="background:${ac}">${initials}</div>`;
+
+  const contactInfo = [
+    c.phone ? `📞 ${esc(c.phone)}` : '',
+    c.email ? `✉ ${esc(c.email)}` : ''
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
 
   const jeuRows = linkedProtos.length === 0
-    ? `<div style="color:#9ca3af;font-style:italic;font-size:.85rem;padding:6px 0">Aucun jeu lié</div>`
+    ? `<div class="no-game">Aucun jeu lié</div>`
     : linkedProtos.map(p => `
+      <div class="jeu-block">
         <div class="jeu-row">
           <span class="jeu-icon">${PROTO_ICONS[p.status] || '🎮'}</span>
           <span class="jeu-title">${esc(p.title)}</span>
           <span class="jeu-status">${esc(STATUS_LABELS[p.status] || p.status)}</span>
-        </div>`).join('');
-
-  const jeuRowsWithNotes = linkedProtos.length === 0
-    ? `<div style="color:#9ca3af;font-style:italic;font-size:.7rem;padding:4px 0">Aucun jeu lié</div>`
-    : linkedProtos.map(p => `
-        <div class="jeu-block">
-          <div class="jeu-row">
-            <span class="jeu-icon">${PROTO_ICONS[p.status] || '🎮'}</span>
-            <span class="jeu-title">${esc(p.title)}</span>
-            <span class="jeu-status">${esc(STATUS_LABELS[p.status] || p.status)}</span>
-          </div>
-          <div class="jeu-note-line"></div>
-          <div class="jeu-note-line"></div>
-        </div>`).join('');
+        </div>
+        <div class="note-line"></div>
+      </div>`).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
 <title>Carte — ${esc(c.name)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,sans-serif;background:#e5e7eb;display:flex;align-items:center;justify-content:center;min-height:100vh}
-@media print{body{background:#fff;display:block}@page{size:63mm 88mm;margin:3mm}.card{box-shadow:none;border:none;width:100%;border-radius:0}.print-btn{display:none}}
-.card{background:#fff;width:260px;border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,.18);padding:14px 16px;display:flex;flex-direction:column;gap:0}
-.header{display:flex;align-items:center;gap:10px;padding-bottom:10px}
-.avatar{width:48px;height:48px;border-radius:50%;flex-shrink:0}
-.info .nom{font-size:.95rem;font-weight:800;color:#111827;letter-spacing:.02em}
-.info .prenom{font-size:.82rem;color:#374151;margin-top:1px}
-.info .cat{font-size:.7rem;font-weight:700;color:${ac};margin-top:3px}
-.sep{border:none;border-top:1.5px solid #1a1a2e;margin:0}
-.section-label{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#374151;margin:7px 0 4px}
-.note-line{border-bottom:1px solid #e5e7eb;height:22px}
-.jeu-block{margin-bottom:2px}
-.jeu-row{display:flex;align-items:center;gap:6px;padding:4px 0 2px}
-.jeu-icon{font-size:.8rem;flex-shrink:0}
-.jeu-title{flex:1;font-size:.75rem;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.jeu-status{font-size:.6rem;color:#6b7280;white-space:nowrap;margin-left:2px}
-.jeu-note-line{border-bottom:1px solid #e5e7eb;height:16px}
-.print-btn{margin-top:14px;text-align:center}
-.print-btn button{padding:6px 18px;background:#1a1a2e;color:#fff;border:none;border-radius:5px;font-size:.8rem;font-weight:600;cursor:pointer}
+html,body{width:63mm;height:88mm;overflow:hidden}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
+@page{size:63mm 88mm;margin:0}
+@media screen{
+  html,body{width:auto;height:auto;overflow:auto;background:#e5e7eb;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .card{zoom:2;box-shadow:0 6px 24px rgba(0,0,0,.2);border-radius:3mm}
+  .print-btn{font-size:13px;padding:7px 20px;background:#1a1a2e;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:600}
+}
+@media print{.print-btn{display:none}}
+.card{width:63mm;height:88mm;overflow:hidden;background:#fff;padding:3mm 3.5mm;display:flex;flex-direction:column}
+.header{display:flex;align-items:center;gap:2mm;padding-bottom:2mm;flex-shrink:0}
+.avatar{width:11mm;height:11mm;border-radius:50%;object-fit:cover;flex-shrink:0;border:0.4mm solid ${ac}}
+.av-init{display:flex;align-items:center;justify-content:center;color:#fff;font-size:3.5mm;font-weight:800}
+.info{flex:1;min-width:0}
+.nom{font-size:3.5mm;font-weight:800;color:#111827;letter-spacing:.02em}
+.prenom{font-size:2.8mm;color:#374151;margin-top:.5mm}
+.cat{font-size:2.3mm;font-weight:700;color:${ac};margin-top:.5mm}
+.contact-info{font-size:2mm;color:#6b7280;margin-top:.7mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sep{border:none;border-top:.4mm solid #1a1a2e;flex-shrink:0}
+.section-label{font-size:2mm;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin:1.5mm 0 1mm;flex-shrink:0}
+.note-line{border-bottom:.25mm solid #d1d5db;height:4.5mm;flex-shrink:0}
+.jeu-block{flex-shrink:0}
+.jeu-row{display:flex;align-items:center;gap:1.5mm;padding:1mm 0 .5mm}
+.jeu-icon{font-size:2.8mm;flex-shrink:0;line-height:1}
+.jeu-title{flex:1;font-size:2.5mm;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jeu-status{font-size:1.9mm;color:#6b7280;white-space:nowrap;flex-shrink:0}
+.no-game{font-size:2mm;color:#9ca3af;font-style:italic;padding:1mm 0}
 </style></head>
-<body>
-<div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+<body><div class="wrap">
 <div class="card">
   <div class="header">
     ${avatarHtml}
@@ -4908,18 +4911,19 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#e5e7eb;display:flex;ali
       <div class="nom">${esc(lastName)}</div>
       <div class="prenom">${esc(firstName)}</div>
       <div class="cat">${esc(catDisplay)}</div>
+      ${contactInfo ? `<div class="contact-info">${contactInfo}</div>` : ''}
     </div>
   </div>
   <hr class="sep">
   <div class="section-label">Notes</div>
-  <div>${'<div class="note-line"></div>'.repeat(3)}</div>
-  <hr class="sep" style="margin-top:6px">
+  <div class="note-line"></div>
+  <div class="note-line"></div>
+  <hr class="sep" style="margin-top:1.5mm">
   <div class="section-label">Jeux</div>
-  ${jeuRowsWithNotes}
+  ${jeuRows}
 </div>
-<div class="print-btn"><button onclick="window.print()">🖨️ Imprimer</button></div>
-</div>
-</body></html>`;
+<button class="print-btn" onclick="window.print()">🖨️ Imprimer</button>
+</div></body></html>`;
 
   _pdfOpenWindow(html);
 }
