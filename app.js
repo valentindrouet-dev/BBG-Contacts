@@ -4936,8 +4936,7 @@ function generateProtoCard(id) {
   const p = state.prototypes.find(x => x.id === id);
   if (!p) return;
 
-  const icon = PROTO_ICONS[p.status] || '🎮';
-  const statusLabel = STATUS_LABELS[p.status] || p.status;
+  const icon = p.emoji || PROTO_ICONS[p.status] || '🎮';
   const statusColors = {
     développement: '#4f46e5', 'test-à-venir': '#0e7490', tester: '#0891b2',
     évalué: '#16a34a', imprimer: '#d97706', pnp: '#6b7280',
@@ -4979,10 +4978,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
 .info{flex:1;min-width:0}
 .title{font-size:3.5mm;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .author{font-size:2.3mm;color:#6b7280;margin-top:.5mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.status{font-size:2.2mm;font-weight:700;color:${sc};margin-top:.5mm}
 .chips{display:flex;flex-wrap:wrap;gap:1mm;margin-bottom:1.5mm;flex-shrink:0}
 .chip{font-size:1.9mm;background:${sc}18;color:${sc};border:.3mm solid ${sc}40;border-radius:1mm;padding:.3mm 1.2mm;white-space:nowrap}
-.chip-genre{max-width:20mm;overflow:hidden;text-overflow:ellipsis}
+.chip-genre{max-width:34mm;overflow:hidden;text-overflow:ellipsis}
 .sep{border:none;border-top:.4mm solid #1a1a2e;flex-shrink:0}
 .section-label{font-size:2mm;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin:1.5mm 0 1mm;flex-shrink:0}
 .desc-text{font-size:2.2mm;color:#374151;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
@@ -4995,7 +4993,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
     <div class="info">
       <div class="title">${esc(p.title)}</div>
       ${authorNames ? `<div class="author">${authorNames}</div>` : ''}
-      <div class="status">${esc(statusLabel)}</div>
     </div>
   </div>
   <div class="chips">
