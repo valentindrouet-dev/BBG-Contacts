@@ -4470,6 +4470,7 @@ function openDetail(type, id) {
           <span class="badge badge-${p.status}" style="margin-left:auto;flex-shrink:0">${icon} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
         </div>
         <button class="btn-pdf-detail" onclick="exportPrototypePdf('${p.id}')" title="Exporter en PDF">📄 PDF</button>
+        <button class="btn-card-detail" onclick="generateProtoCard('${p.id}')" title="Générer une carte à imprimer">Carte</button>
         <button class="btn-edit-detail" onclick="closeModal('detail');editPrototype('${p.id}')" title="Modifier">${ICONS.pencil}</button>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
@@ -4931,6 +4932,87 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
   _pdfOpenWindow(html);
 }
 
+function generateProtoCard(id) {
+  const p = state.prototypes.find(x => x.id === id);
+  if (!p) return;
+
+  const icon = PROTO_ICONS[p.status] || '🎮';
+  const statusLabel = STATUS_LABELS[p.status] || p.status;
+  const statusColors = {
+    développement: '#4f46e5', 'test-à-venir': '#0e7490', tester: '#0891b2',
+    évalué: '#16a34a', imprimer: '#d97706', pnp: '#6b7280',
+    production: '#7c3aed', standby: '#9ca3af', sorti: '#f59e0b',
+    abandonné: '#ef4444', 'non-retenu': '#ef4444'
+  };
+  const sc = statusColors[p.status] || '#6b7280';
+
+  const coverHtml = p.photo
+    ? `<img class="cover" src="${p.photo}" alt="">`
+    : `<div class="cover cover-init" style="background:${sc}">${icon}</div>`;
+
+  const chips = [
+    p.genre    ? esc(p.genre)                : '',
+    p.players  ? `👥 ${esc(p.players)}`     : '',
+    p.duration ? `⏱ ${esc(p.duration)}`     : '',
+    p.age      ? `${esc(p.age)} ans+`        : '',
+  ].filter(Boolean);
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<title>Carte — ${esc(p.title)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:63mm;height:88mm;overflow:hidden}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
+@page{size:63mm 88mm;margin:0}
+@media screen{
+  html,body{width:auto;height:auto;overflow:auto;background:#e5e7eb;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .card{zoom:2;box-shadow:0 6px 24px rgba(0,0,0,.2);border-radius:3mm}
+  .print-btn{font-size:13px;padding:7px 20px;background:#1a1a2e;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:600}
+}
+@media print{.print-btn{display:none}}
+.card{width:63mm;height:88mm;overflow:hidden;background:#fff;padding:3mm 3.5mm;display:flex;flex-direction:column}
+.header{display:flex;align-items:center;gap:2mm;padding-bottom:2mm;flex-shrink:0}
+.cover{width:11mm;height:11mm;border-radius:2mm;object-fit:cover;flex-shrink:0;border:.4mm solid ${sc}}
+.cover-init{display:flex;align-items:center;justify-content:center;font-size:5mm}
+.info{flex:1;min-width:0}
+.title{font-size:3.5mm;font-weight:800;color:#111827;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status{display:inline-flex;align-items:center;gap:.8mm;font-size:2.2mm;font-weight:700;color:${sc};margin-top:.8mm}
+.chips{display:flex;flex-wrap:wrap;gap:1mm;margin-top:1.5mm}
+.chip{font-size:1.9mm;background:${sc}18;color:${sc};border:.3mm solid ${sc}40;border-radius:1mm;padding:.3mm 1.2mm;white-space:nowrap}
+.sep{border:none;border-top:.4mm solid #1a1a2e;flex-shrink:0}
+.section-label{font-size:2mm;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin:1.5mm 0 1mm;flex-shrink:0}
+.desc-text{font-size:2.2mm;color:#374151;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
+.note-line{border-bottom:.25mm solid #d1d5db;height:4.5mm;flex-shrink:0}
+</style></head>
+<body><div class="wrap">
+<div class="card">
+  <div class="header">
+    ${coverHtml}
+    <div class="info">
+      <div class="title">${esc(p.title)}</div>
+      <div class="status">${icon} ${esc(statusLabel)}</div>
+    </div>
+  </div>
+  ${chips.length ? `<div class="chips">${chips.map(ch => `<span class="chip">${ch}</span>`).join('')}</div>` : ''}
+  ${p.description ? `
+  <hr class="sep" style="margin-top:2mm">
+  <div class="section-label">Description</div>
+  <div class="desc-text">${esc(p.description)}</div>` : ''}
+  <hr class="sep" style="margin-top:2mm">
+  <div class="section-label">Notes</div>
+  <div class="note-line"></div>
+  <div class="note-line"></div>
+  <div class="note-line"></div>
+  <div class="note-line"></div>
+  <div class="note-line"></div>
+</div>
+<button class="print-btn" onclick="window.print()">🖨️ Imprimer</button>
+</div></body></html>`;
+
+  _pdfOpenWindow(html);
+}
 
 function exportPrototypePdf(id) {
   const p = state.prototypes.find(x => x.id === id);
