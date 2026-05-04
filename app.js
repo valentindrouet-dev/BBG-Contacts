@@ -4946,15 +4946,16 @@ function generateProtoCard(id) {
   };
   const sc = statusColors[p.status] || '#6b7280';
 
-  const coverHtml = p.photo
-    ? `<img class="cover" src="${p.photo}" alt="">`
-    : `<div class="cover cover-init" style="background:${sc}">${icon}</div>`;
+  const authorNames = (p.contactLinks || [])
+    .map(l => state.contacts.find(c => c.id === l.contactId))
+    .filter(Boolean)
+    .map(c => esc(c.name))
+    .join(', ');
 
   const chips = [
-    p.genre    ? esc(p.genre)                : '',
-    p.players  ? `👥 ${esc(p.players)}`     : '',
-    p.duration ? `⏱ ${esc(p.duration)}`     : '',
-    p.age      ? `${esc(p.age)} ans+`        : '',
+    p.players  ? `👥 ${esc(p.players)}`  : '',
+    p.duration ? `⏱ ${esc(p.duration)}`  : '',
+    p.age      ? `${esc(p.age)} ans+`     : '',
   ].filter(Boolean);
 
   const html = `<!DOCTYPE html>
@@ -4973,31 +4974,36 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
 }
 @media print{.print-btn{display:none}}
 .card{width:63mm;height:88mm;overflow:hidden;background:#fff;padding:3mm 3.5mm;display:flex;flex-direction:column}
-.header{display:flex;align-items:center;gap:2mm;padding-bottom:2mm;flex-shrink:0}
-.cover{width:11mm;height:11mm;border-radius:2mm;object-fit:cover;flex-shrink:0;border:.4mm solid ${sc}}
-.cover-init{display:flex;align-items:center;justify-content:center;font-size:5mm}
+.header{display:flex;align-items:center;gap:2mm;padding-bottom:1.5mm;flex-shrink:0}
+.icon-circle{width:11mm;height:11mm;border-radius:50%;background:${sc}18;border:.4mm solid ${sc}40;display:flex;align-items:center;justify-content:center;font-size:5.5mm;flex-shrink:0}
 .info{flex:1;min-width:0}
-.title{font-size:3.5mm;font-weight:800;color:#111827;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.status{display:inline-flex;align-items:center;gap:.8mm;font-size:2.2mm;font-weight:700;color:${sc};margin-top:.8mm}
-.chips{display:flex;flex-wrap:wrap;gap:1mm;margin-top:1.5mm}
+.title{font-size:3.5mm;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.author{font-size:2.3mm;color:#6b7280;margin-top:.5mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status{font-size:2.2mm;font-weight:700;color:${sc};margin-top:.5mm}
+.chips{display:flex;flex-wrap:wrap;gap:1mm;margin-bottom:1.5mm;flex-shrink:0}
 .chip{font-size:1.9mm;background:${sc}18;color:${sc};border:.3mm solid ${sc}40;border-radius:1mm;padding:.3mm 1.2mm;white-space:nowrap}
+.chip-genre{max-width:20mm;overflow:hidden;text-overflow:ellipsis}
 .sep{border:none;border-top:.4mm solid #1a1a2e;flex-shrink:0}
 .section-label{font-size:2mm;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin:1.5mm 0 1mm;flex-shrink:0}
-.desc-text{font-size:2.2mm;color:#374151;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
+.desc-text{font-size:2.2mm;color:#374151;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 .note-line{border-bottom:.25mm solid #d1d5db;height:4.5mm;flex-shrink:0}
 </style></head>
 <body><div class="wrap">
 <div class="card">
   <div class="header">
-    ${coverHtml}
+    <div class="icon-circle">${icon}</div>
     <div class="info">
       <div class="title">${esc(p.title)}</div>
-      <div class="status">${icon} ${esc(statusLabel)}</div>
+      ${authorNames ? `<div class="author">${authorNames}</div>` : ''}
+      <div class="status">${esc(statusLabel)}</div>
     </div>
   </div>
-  ${chips.length ? `<div class="chips">${chips.map(ch => `<span class="chip">${ch}</span>`).join('')}</div>` : ''}
+  <div class="chips">
+    ${p.genre ? `<span class="chip chip-genre">${esc(p.genre)}</span>` : ''}
+    ${chips.map(ch => `<span class="chip">${ch}</span>`).join('')}
+  </div>
   ${p.description ? `
-  <hr class="sep" style="margin-top:2mm">
+  <hr class="sep">
   <div class="section-label">Description</div>
   <div class="desc-text">${esc(p.description)}</div>` : ''}
   <hr class="sep" style="margin-top:2mm">
