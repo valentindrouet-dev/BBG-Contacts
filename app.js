@@ -1613,7 +1613,7 @@ function toggleTaskDone(type, itemId, taskId) {
       if (t) setTaskDone(t, !t.done);
     }
     saveState();
-    renderContactsIfNeeded();
+    renderContacts();
   } else if (type === 'festival') {
     const f = state.festivals.find(x => x.id === itemId);
     if (f) {
@@ -1747,7 +1747,7 @@ function saveQuickExchange(contactId) {
   c.exchanges = c.exchanges || [];
   c.exchanges.unshift(exchange);
   saveState();
-  renderContactsIfNeeded();
+  renderContacts();
   if (state.activePage === 'home') renderDashboard();
   if (state.activePage === 'agenda') renderAgenda();
   openDetail('contact', contactId);
@@ -1763,7 +1763,7 @@ function saveQuickTask(type, id) {
   if (type === 'contact') {
     const c = state.contacts.find(x => x.id === id);
     if (c) { c.tasks = c.tasks || []; c.tasks.unshift(task); }
-    renderContactsIfNeeded();
+    renderContacts();
   } else {
     const p = state.prototypes.find(x => x.id === id);
     if (p) { p.tasks = p.tasks || []; p.tasks.unshift(task); }
@@ -2257,7 +2257,7 @@ function toggleFavorite(id) {
   if (!c) return;
   c.favorite = !c.favorite;
   saveState();
-  renderContactsIfNeeded();
+  renderContacts();
 }
 
 function onFavoriteFilterChange() {
@@ -3734,26 +3734,12 @@ function openModal(type) {
   document.getElementById('modal-' + type).classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
-let _contactsNeedRender = false;
-
-function renderContactsIfNeeded() {
-  if (!document.getElementById('modal-detail').classList.contains('hidden')) {
-    _contactsNeedRender = true;
-    return;
-  }
-  renderContacts();
-}
-
 function closeModal(type) {
   document.getElementById('modal-' + type).classList.add('hidden');
   document.body.style.overflow = '';
   if (type === 'contact')   resetContactForm();
   if (type === 'prototype') resetPrototypeForm();
   if (type === 'festival')  resetFestivalForm();
-  if (type === 'detail' && _contactsNeedRender && state.activePage === 'contacts') {
-    _contactsNeedRender = false;
-    renderContacts();
-  }
 }
 
 document.querySelectorAll('.modal-overlay').forEach(ov =>
@@ -5432,11 +5418,8 @@ document.querySelectorAll('.nav-tab').forEach(btn =>
 
 
 // ── Contacts ──────────────────────────────────────
-let _searchDebounce = null;
 document.getElementById('contacts-search').addEventListener('input', e => {
-  state.contactsSearch = e.target.value;
-  clearTimeout(_searchDebounce);
-  _searchDebounce = setTimeout(() => renderContacts(), 250);
+  state.contactsSearch = e.target.value; renderContacts();
 });
 // Filter panel removed; cat/urgency inputs kept hidden for JS compat
 document.getElementById('contacts-cat-filter')?.addEventListener('change', e => {
