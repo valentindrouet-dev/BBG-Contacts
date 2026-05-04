@@ -4973,14 +4973,16 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
 }
 @media print{.print-btn{display:none}}
 .card{width:63mm;height:88mm;overflow:hidden;background:#fff;padding:3mm 3.5mm;display:flex;flex-direction:column}
-.header{display:flex;align-items:center;gap:2mm;padding-bottom:1.5mm;flex-shrink:0}
+.header{display:flex;align-items:flex-start;gap:2mm;padding-bottom:1.5mm;flex-shrink:0}
 .icon-circle{width:11mm;height:11mm;border-radius:50%;background:${sc}18;border:.4mm solid ${sc}40;display:flex;align-items:center;justify-content:center;font-size:5.5mm;flex-shrink:0}
 .info{flex:1;min-width:0}
 .title{font-size:3.5mm;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .author{font-size:2.3mm;color:#6b7280;margin-top:.5mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.specs{display:flex;flex-direction:column;align-items:flex-end;gap:.8mm;flex-shrink:0;padding-top:.3mm}
+.spec-val{font-size:2.2mm;font-weight:700;color:${sc};white-space:nowrap}
 .chips{display:flex;flex-wrap:wrap;gap:1mm;margin-bottom:1.5mm;flex-shrink:0}
-.chip{font-size:1.9mm;background:${sc}18;color:${sc};border:.3mm solid ${sc}40;border-radius:1mm;padding:.3mm 1.2mm;white-space:nowrap}
-.chip-genre{max-width:34mm;overflow:hidden;text-overflow:ellipsis}
+.chip{font-size:1.9mm;background:${sc}18;color:${sc};border:.3mm solid ${sc}40;border-radius:1mm;padding:.3mm 1.2mm}
+.chip-genre{max-width:50mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sep{border:none;border-top:.4mm solid #1a1a2e;flex-shrink:0}
 .section-label{font-size:2mm;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin:1.5mm 0 1mm;flex-shrink:0}
 .desc-text{font-size:2.2mm;color:#374151;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
@@ -4994,11 +4996,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
       <div class="title">${esc(p.title)}</div>
       ${authorNames ? `<div class="author">${authorNames}</div>` : ''}
     </div>
+    <div class="specs">
+      ${p.players  ? `<span class="spec-val">👥 ${esc(p.players)}</span>`  : ''}
+      ${p.duration ? `<span class="spec-val">⏱ ${esc(p.duration)}</span>` : ''}
+      ${p.age      ? `<span class="spec-val">${esc(p.age)}+</span>`        : ''}
+    </div>
   </div>
-  <div class="chips">
-    ${p.genre ? `<span class="chip chip-genre">${esc(p.genre)}</span>` : ''}
-    ${chips.map(ch => `<span class="chip">${ch}</span>`).join('')}
-  </div>
+  ${p.genre ? `<div class="chips"><span class="chip chip-genre">${esc(p.genre)}</span></div>` : ''}
   ${p.description ? `
   <hr class="sep">
   <div class="section-label">Description</div>
