@@ -4913,7 +4913,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff}
       </div>
       <div class="contact-col">
         ${c.phone ? `<div class="contact-line">📞 ${esc(c.phone)}</div>` : ''}
-        ${c.email ? `<div class="contact-line">✉ ${esc(c.email)}</div>` : ''}
       </div>
     </div>
   </div>
