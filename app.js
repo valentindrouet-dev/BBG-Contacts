@@ -4349,7 +4349,7 @@ function openDetail(type, id) {
           <span class="badge badge-${c.category}" style="margin-left:auto;flex-shrink:0">${esc(c.category)}</span>
         </div>
         <button class="btn-pdf-detail" onclick="exportContactPdf('${c.id}')" title="Exporter en PDF">📄 PDF</button>
-        <button class="btn-card-detail" onclick="generateContactCard('${c.id}')" title="Générer une carte à imprimer">🃏 Carte</button>
+        <button class="btn-card-detail" onclick="generateContactCard('${c.id}')" title="Générer une carte à imprimer">Carte</button>
         <button class="btn-edit-detail" onclick="closeModal('detail');editContact('${c.id}')" title="Modifier">${ICONS.pencil}</button>
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
@@ -4828,7 +4828,7 @@ ${c.notes ? `<div class="sec">Notes</div><div class="notes">${esc(c.notes)}</div
   _pdfOpenWindow(html);
 }
 
-async function generateContactCard(id) {
+function generateContactCard(id) {
   const c = state.contacts.find(x => x.id === id);
   if (!c) return;
 
@@ -4842,178 +4842,188 @@ async function generateContactCard(id) {
   };
   const ac = catColors[c.category] || '#6b7280';
 
-  const W = 560;
-  const PADDING = 28;
-  const AVATAR_R = 36;
-  const HEADER_H = AVATAR_R * 2 + 16;
-  const SEP_MARGIN = 14;
-  const NOTES_LABEL_H = 22;
-  const NOTES_AREA_H = 200;
-  const GAME_H = 32;
-  const gameCount = Math.min(linkedProtos.length, 8);
-  const H = PADDING + HEADER_H
-    + SEP_MARGIN + 1 + SEP_MARGIN
-    + NOTES_LABEL_H + NOTES_AREA_H + SEP_MARGIN
-    + 1 + SEP_MARGIN
-    + NOTES_LABEL_H + 6
-    + (gameCount > 0 ? gameCount * GAME_H : 28)
-    + PADDING;
+  function drawCard(photoImg) {
+    const W = 560;
+    const PADDING = 28;
+    const AVATAR_R = 36;
+    const HEADER_H = AVATAR_R * 2 + 16;
+    const SEP_MARGIN = 14;
+    const NOTES_LABEL_H = 22;
+    const NOTES_AREA_H = 200;
+    const GAME_H = 32;
+    const gameCount = Math.min(linkedProtos.length, 8);
+    const H = PADDING + HEADER_H
+      + SEP_MARGIN + 1 + SEP_MARGIN
+      + NOTES_LABEL_H + NOTES_AREA_H + SEP_MARGIN
+      + 1 + SEP_MARGIN
+      + NOTES_LABEL_H + 6
+      + (gameCount > 0 ? gameCount * GAME_H : 28)
+      + PADDING;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = W * 2;
-  canvas.height = H * 2;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = W * 2;
+    canvas.height = H * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = '#d1d5db';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(1, 1, W - 2, H - 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#d1d5db';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, 1, W - 2, H - 2);
 
-  // ── Avatar ────────────────────────────────────────
-  const avatarCX = PADDING + AVATAR_R;
-  const avatarCY = PADDING + AVATAR_R;
+    // ── Avatar ──────────────────────────────────────
+    const avatarCX = PADDING + AVATAR_R;
+    const avatarCY = PADDING + AVATAR_R;
+
+    if (photoImg) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(photoImg, avatarCX - AVATAR_R, avatarCY - AVATAR_R, AVATAR_R * 2, AVATAR_R * 2);
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
+      ctx.strokeStyle = ac;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = ac;
+      ctx.beginPath();
+      ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
+      ctx.fill();
+      const initials = (c.name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(initials, avatarCX, avatarCY);
+    }
+
+    // ── Nom / Prénom / Catégorie ─────────────────────
+    const words = (c.name || '').trim().split(/\s+/);
+    const lastName = (words.length > 1 ? words[words.length - 1] : words[0] || '').toUpperCase();
+    const firstName = words.length > 1 ? words.slice(0, -1).join(' ') : '';
+    const textX = avatarCX + AVATAR_R + 16;
+    const textTopY = PADDING + 10;
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 20px Arial, sans-serif';
+    ctx.fillText(lastName, textX, textTopY + 18);
+
+    ctx.fillStyle = '#374151';
+    ctx.font = '15px Arial, sans-serif';
+    ctx.fillText(firstName, textX, textTopY + 42);
+
+    ctx.fillStyle = ac;
+    ctx.font = '13px Arial, sans-serif';
+    const catDisplay = (c.category || '').charAt(0).toUpperCase() + (c.category || '').slice(1);
+    ctx.fillText(catDisplay, textX, textTopY + 65);
+
+    // ── Séparateur 1 ────────────────────────────────
+    let curY = PADDING + HEADER_H + SEP_MARGIN;
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PADDING, curY);
+    ctx.lineTo(W - PADDING, curY);
+    ctx.stroke();
+    curY += SEP_MARGIN;
+
+    // ── Notes ───────────────────────────────────────
+    ctx.fillStyle = '#374151';
+    ctx.font = 'bold 12px Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('NOTES', PADDING, curY + 14);
+    curY += NOTES_LABEL_H;
+
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 0.8;
+    const lineSpacing = 28;
+    for (let ly = curY + 14; ly < curY + NOTES_AREA_H - 8; ly += lineSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(PADDING, ly);
+      ctx.lineTo(W - PADDING, ly);
+      ctx.stroke();
+    }
+    curY += NOTES_AREA_H;
+
+    // ── Séparateur 2 ────────────────────────────────
+    curY += SEP_MARGIN;
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PADDING, curY);
+    ctx.lineTo(W - PADDING, curY);
+    ctx.stroke();
+    curY += SEP_MARGIN;
+
+    // ── Jeux ────────────────────────────────────────
+    ctx.fillStyle = '#374151';
+    ctx.font = 'bold 12px Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('JEUX', PADDING, curY + 14);
+    curY += NOTES_LABEL_H + 6;
+
+    if (linkedProtos.length === 0) {
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = 'italic 12px Arial, sans-serif';
+      ctx.fillText('Aucun jeu lié', PADDING + 4, curY + 14);
+    } else {
+      for (const p of linkedProtos.slice(0, 8)) {
+        const icon = PROTO_ICONS[p.status] || '🎮';
+        const statusLabel = STATUS_LABELS[p.status] || p.status;
+
+        ctx.font = '14px Arial, sans-serif';
+        ctx.fillStyle = '#374151';
+        ctx.textAlign = 'left';
+        ctx.fillText(icon, PADDING, curY + 14);
+
+        ctx.font = '13px Arial, sans-serif';
+        ctx.fillStyle = '#111827';
+        const maxTitleW = W - PADDING * 2 - 26 - 110;
+        let title = p.title || '';
+        while (ctx.measureText(title).width > maxTitleW && title.length > 1) title = title.slice(0, -1);
+        if (title !== p.title) title += '…';
+        ctx.fillText(title, PADDING + 26, curY + 14);
+
+        ctx.font = '11px Arial, sans-serif';
+        ctx.fillStyle = '#6b7280';
+        ctx.textAlign = 'right';
+        ctx.fillText(statusLabel, W - PADDING, curY + 14);
+
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(PADDING, curY + 22);
+        ctx.lineTo(W - PADDING, curY + 22);
+        ctx.stroke();
+
+        curY += GAME_H;
+      }
+    }
+
+    // ── Téléchargement ──────────────────────────────
+    const a = document.createElement('a');
+    a.download = `carte-${(c.name || 'contact').replace(/\s+/g, '-').toLowerCase()}.png`;
+    a.href = canvas.toDataURL('image/png');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 
   if (c.photo) {
     const img = new Image();
+    img.onload = () => drawCard(img);
+    img.onerror = () => drawCard(null);
     img.src = c.photo;
-    await new Promise(r => { img.onload = r; img.onerror = r; });
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(img, avatarCX - AVATAR_R, avatarCY - AVATAR_R, AVATAR_R * 2, AVATAR_R * 2);
-    ctx.restore();
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
-    ctx.strokeStyle = ac;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
   } else {
-    ctx.fillStyle = ac;
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
-    ctx.fill();
-    const initials = (c.name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 22px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(initials, avatarCX, avatarCY);
+    drawCard(null);
   }
-
-  // ── Nom / Prénom / Statut ─────────────────────────
-  const words = (c.name || '').trim().split(/\s+/);
-  const lastName = (words.length > 1 ? words[words.length - 1] : words[0] || '').toUpperCase();
-  const firstName = words.length > 1 ? words.slice(0, -1).join(' ') : '';
-  const textX = avatarCX + AVATAR_R + 16;
-  const textTopY = PADDING + 10;
-
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#111827';
-  ctx.font = 'bold 20px Arial, sans-serif';
-  ctx.fillText(lastName, textX, textTopY + 18);
-
-  ctx.fillStyle = '#374151';
-  ctx.font = '15px Arial, sans-serif';
-  ctx.fillText(firstName, textX, textTopY + 42);
-
-  ctx.fillStyle = ac;
-  ctx.font = '13px Arial, sans-serif';
-  const catDisplay = (c.category || '').charAt(0).toUpperCase() + (c.category || '').slice(1);
-  ctx.fillText(catDisplay, textX, textTopY + 65);
-
-  // ── Séparateur 1 ──────────────────────────────────
-  let curY = PADDING + HEADER_H + SEP_MARGIN;
-  ctx.strokeStyle = '#1a1a2e';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(PADDING, curY);
-  ctx.lineTo(W - PADDING, curY);
-  ctx.stroke();
-  curY += SEP_MARGIN;
-
-  // ── Notes ─────────────────────────────────────────
-  ctx.fillStyle = '#374151';
-  ctx.font = 'bold 12px Arial, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText('NOTES', PADDING, curY + 14);
-  curY += NOTES_LABEL_H;
-
-  ctx.strokeStyle = '#e5e7eb';
-  ctx.lineWidth = 0.8;
-  const lineSpacing = 28;
-  for (let ly = curY + 14; ly < curY + NOTES_AREA_H - 8; ly += lineSpacing) {
-    ctx.beginPath();
-    ctx.moveTo(PADDING, ly);
-    ctx.lineTo(W - PADDING, ly);
-    ctx.stroke();
-  }
-  curY += NOTES_AREA_H;
-
-  // ── Séparateur 2 ──────────────────────────────────
-  curY += SEP_MARGIN;
-  ctx.strokeStyle = '#1a1a2e';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(PADDING, curY);
-  ctx.lineTo(W - PADDING, curY);
-  ctx.stroke();
-  curY += SEP_MARGIN;
-
-  // ── Jeux ──────────────────────────────────────────
-  ctx.fillStyle = '#374151';
-  ctx.font = 'bold 12px Arial, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('JEUX', PADDING, curY + 14);
-  curY += NOTES_LABEL_H + 6;
-
-  if (linkedProtos.length === 0) {
-    ctx.fillStyle = '#9ca3af';
-    ctx.font = 'italic 12px Arial, sans-serif';
-    ctx.fillText('Aucun jeu lié', PADDING + 4, curY + 14);
-  } else {
-    for (const p of linkedProtos.slice(0, 8)) {
-      const icon = PROTO_ICONS[p.status] || '🎮';
-      const statusLabel = STATUS_LABELS[p.status] || p.status;
-
-      ctx.font = '14px Arial, sans-serif';
-      ctx.fillStyle = '#374151';
-      ctx.textAlign = 'left';
-      ctx.fillText(icon, PADDING, curY + 14);
-
-      ctx.font = '13px Arial, sans-serif';
-      ctx.fillStyle = '#111827';
-      const maxTitleW = W - PADDING * 2 - 26 - 110;
-      let title = p.title || '';
-      while (ctx.measureText(title).width > maxTitleW && title.length > 1) title = title.slice(0, -1);
-      if (title !== p.title) title += '…';
-      ctx.fillText(title, PADDING + 26, curY + 14);
-
-      ctx.font = '11px Arial, sans-serif';
-      ctx.fillStyle = '#6b7280';
-      ctx.textAlign = 'right';
-      ctx.fillText(statusLabel, W - PADDING, curY + 14);
-
-      ctx.strokeStyle = '#e5e7eb';
-      ctx.lineWidth = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(PADDING, curY + 22);
-      ctx.lineTo(W - PADDING, curY + 22);
-      ctx.stroke();
-
-      curY += GAME_H;
-    }
-  }
-
-  // ── Téléchargement ────────────────────────────────
-  const a = document.createElement('a');
-  a.download = `carte-${(c.name || 'contact').replace(/\s+/g, '-').toLowerCase()}.png`;
-  a.href = canvas.toDataURL('image/png');
-  a.click();
 }
 
 function exportPrototypePdf(id) {
