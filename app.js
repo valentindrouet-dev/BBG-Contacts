@@ -212,11 +212,13 @@ const ICONS = {
 
 const PROTO_ICONS = {
   pnp: '⏳', imprimer: '🖨️', tester: '🧪', 'test-à-venir': '📅', évalué: '✅',
-  développement: '🔧', production: '🏭', standby: '💤', sorti: '🚀', abandonné: '❌', 'non-retenu': '🚫'
+  développement: '🔧', shortlist: '⭐', production: '🏭', standby: '💤', sorti: '🚀',
+  'à-refuser': '👎', abandonné: '❌', 'non-retenu': '🚫'
 };
 const STATUS_LABELS = {
-  pnp: 'En attente de Règles / PNP', imprimer: 'À Imprimer', tester: 'À tester', 'test-à-venir': 'Test à Venir', évalué: 'Évalué',
-  développement: 'En Développement', production: 'En Production', standby: 'Standby', sorti: 'Sorti', abandonné: 'Abandonné', 'non-retenu': 'Non Retenu'
+  pnp: 'En attente de Règles / PNP', imprimer: 'À Imprimer', tester: 'À Tester', 'test-à-venir': 'Test à Venir', évalué: 'Évalué',
+  développement: 'En Développement', shortlist: 'Shortlist', production: 'En Production', standby: 'Standby', sorti: 'Sorti',
+  'à-refuser': 'À Refuser', abandonné: 'Abandonné', 'non-retenu': 'Non Retenu'
 };
 
 const URGENCY_EMOJI = { faible: '💤', normal: '📌', urgent: '⚠️', critique: '🚨' };
@@ -230,7 +232,7 @@ const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exception
 
 const SOCIAL_TYPES = ['LinkedIn', 'Facebook', 'Twitter/X', 'Instagram', 'BGG', 'Site web', 'Autre'];
 const EXCHANGE_TYPES = ['rencontre', 'email', 'appel', 'salon', 'message', 'developpement', 'autre'];
-const STATUS_ORDER = ['développement', 'test-à-venir', 'tester', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné', 'non-retenu'];
+const STATUS_ORDER = ['développement', 'shortlist', 'test-à-venir', 'tester', 'à-refuser', 'évalué', 'imprimer', 'pnp', 'production', 'standby', 'sorti', 'abandonné', 'non-retenu'];
 
 // ── Task helpers ───────────────────────────────────
 // Returns display text for a task, adding "X/N" progress for test_counter tasks.
@@ -375,7 +377,7 @@ function renderDashboard() {
   // On prend tous les protos avec une tâche test_counter (done ou non) pour ne pas les perdre
   const TEST_STATUS_ORDER = { développement: 0, tester: 1, imprimer: 2 };
   const testCounterTasks = state.prototypes
-    .filter(p => p.status !== 'abandonné' && p.status !== 'non-retenu')
+    .filter(p => p.status !== 'abandonné' && p.status !== 'non-retenu' && p.status !== 'à-refuser')
     .filter(p => (p.tasks||[]).some(t => t.subtype === 'test_counter' && !t.done))
     .map(p => {
       const sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
@@ -1472,11 +1474,11 @@ function renderTasks() {
     tasks = tasks.filter(t => !t.done && (t.urgency === 'critique' || t.urgency === 'urgent'));
   } else if (filter === 'tests') {
     tasks = tasks.filter(t => t.subtype === 'test_counter' && !t.done
-      && t.protoStatus !== 'abandonné' && t.protoStatus !== 'non-retenu');
+      && t.protoStatus !== 'abandonné' && t.protoStatus !== 'non-retenu' && t.protoStatus !== 'à-refuser');
   } else {
     if (!showDone) tasks = tasks.filter(t => !t.done);
     tasks = tasks.filter(t => !(t.subtype === 'test_counter'
-      && (t.protoStatus === 'abandonné' || t.protoStatus === 'non-retenu')));
+      && (t.protoStatus === 'abandonné' || t.protoStatus === 'non-retenu' || t.protoStatus === 'à-refuser')));
   }
 
   if (tasks.length === 0) {
@@ -3159,7 +3161,7 @@ function openRdvModal(apptId = null) {
   if (selGame) {
     const cur = appt?.gameId || '';
     const sorted = [...state.prototypes]
-      .filter(p => p.status !== 'non-retenu' && p.status !== 'abandonné')
+      .filter(p => p.status !== 'non-retenu' && p.status !== 'abandonné' && p.status !== 'à-refuser')
       .sort((a, b) => (a.title||'').localeCompare(b.title||'', 'fr'));
     selGame.innerHTML = `<option value="">— Aucun jeu —</option>` +
       sorted.map(p => `<option value="${esc(p.id)}" ${cur === p.id ? 'selected' : ''}>🎲 ${esc(p.title)}</option>`).join('');
@@ -4941,7 +4943,7 @@ function generateProtoCard(id) {
     développement: '#4f46e5', 'test-à-venir': '#0e7490', tester: '#0891b2',
     évalué: '#16a34a', imprimer: '#d97706', pnp: '#6b7280',
     production: '#7c3aed', standby: '#9ca3af', sorti: '#f59e0b',
-    abandonné: '#ef4444', 'non-retenu': '#ef4444'
+    shortlist: '#f59e0b', 'à-refuser': '#f97316', abandonné: '#ef4444', 'non-retenu': '#ef4444'
   };
   const sc = statusColors[p.status] || '#6b7280';
 
@@ -5048,7 +5050,7 @@ function exportPrototypePdf(id) {
   const statusColors = {
     développement: '#4f46e5', 'test-à-venir': '#0e7490', tester: '#0891b2', évalué: '#16a34a', imprimer: '#d97706',
     pnp: '#6b7280', production: '#7c3aed', standby: '#9ca3af', sorti: '#f59e0b',
-    abandonné: '#ef4444', 'non-retenu': '#ef4444'
+    shortlist: '#f59e0b', 'à-refuser': '#f97316', abandonné: '#ef4444', 'non-retenu': '#ef4444'
   };
   const stColor = statusColors[p.status] || '#6b7280';
 
@@ -5252,7 +5254,7 @@ function exportPrototypesListPdf() {
   const statusColors = {
     développement: '#4f46e5', 'test-à-venir': '#0e7490', tester: '#0891b2', évalué: '#16a34a', imprimer: '#d97706',
     pnp: '#6b7280', production: '#7c3aed', standby: '#9ca3af', sorti: '#f59e0b',
-    abandonné: '#ef4444', 'non-retenu': '#ef4444'
+    shortlist: '#f59e0b', 'à-refuser': '#f97316', abandonné: '#ef4444', 'non-retenu': '#ef4444'
   };
   const interestStars = n => n ? '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n)) : '—';
 

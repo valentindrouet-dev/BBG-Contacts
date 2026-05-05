@@ -96,7 +96,9 @@ a:hover { color: var(--primary-700); }
 .badge-proto         { background: #e0e7ff; color: #3730a3; }
 .badge-signé         { background: #f0fdf4; color: #15803d; }
 .badge-développement  { background: #dbeafe; color: #1e40af; }
+.badge-shortlist      { background: #fef3c7; color: #b45309; }
 .badge-test-à-venir  { background: #cffafe; color: #0e7490; }
+.badge-à-refuser      { background: #ffedd5; color: #c2410c; }
 .badge-production    { background: #ffedd5; color: #9a3412; }
 .badge-sorti         { background: #dcfce7; color: #166534; }
 .badge-évalué        { background: #d1fae5; color: #065f46; }
