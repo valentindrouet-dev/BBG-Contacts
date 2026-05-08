@@ -3353,10 +3353,10 @@ function renderAgenda() {
   const listEl  = document.getElementById('agenda-list');
   const emptyEl = document.getElementById('agenda-empty');
 
-  // Gather all exchanges
+  // Gather all exchanges (exclure ceux issus d'un RDV, déjà affichés via l'entrée RDV)
   const entries = [];
   state.contacts.forEach(c => {
-    (c.exchanges || []).forEach(e => {
+    (c.exchanges || []).filter(e => !e.fromRdv).forEach(e => {
       entries.push({
         ...e,
         _source: 'contact',
