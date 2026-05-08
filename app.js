@@ -2205,6 +2205,7 @@ function addExchangeRow(ex = {}) {
   ).join('');
   const eid = ex.id || uid();
   tr.dataset.exchId = eid;
+  if (ex.fromRdv) tr.dataset.fromRdv = ex.fromRdv;
   tr.innerHTML = `
     <td><input type="date" value="${esc(ex.date || today())}" /></td>
     <td><select>${typeOpts}</select></td>
@@ -2215,12 +2216,16 @@ function addExchangeRow(ex = {}) {
 function getExchangesFromForm() {
   const tbody = document.getElementById('contact-exchanges-body');
   if (!tbody) return [];
-  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
-    id:   tr.dataset.exchId || uid(),
-    date: tr.querySelector('input[type="date"]')?.value || '',
-    type: tr.querySelector('select')?.value || 'rencontre',
-    note: tr.querySelector('input[type="text"]')?.value.trim() || '',
-  })).filter(e => e.date);
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => {
+    const obj = {
+      id:   tr.dataset.exchId || uid(),
+      date: tr.querySelector('input[type="date"]')?.value || '',
+      type: tr.querySelector('select')?.value || 'rencontre',
+      note: tr.querySelector('input[type="text"]')?.value.trim() || '',
+    };
+    if (tr.dataset.fromRdv) obj.fromRdv = tr.dataset.fromRdv;
+    return obj;
+  }).filter(e => e.date);
 }
 function populateExchangesForm(exchanges = []) {
   const tbody = document.getElementById('contact-exchanges-body');
@@ -3281,12 +3286,8 @@ function _removeRdvExchange(rdvId, contactId) {
 
 // Migration one-shot : crée les échanges manquants pour les RDV existants
 function migrateRdvExchanges() {
-  try {
-    if (localStorage.getItem('bbg-rdv-migrated')) return;
-  } catch(e) { return; }
   (state.appointments || []).forEach(a => { if (a.contactId) _syncRdvExchange(a); });
   saveState();
-  try { localStorage.setItem('bbg-rdv-migrated', '1'); } catch(e) {}
 }
 
 // ═══════════════════════════════════════════════════
