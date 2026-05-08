@@ -3301,12 +3301,15 @@ function renderAgendaStats(entries) {
   const jeuxEntries     = entries.filter(e => e._source === 'jeux');
   const rdvEntries      = entries.filter(e => e._source === 'rdv');
 
-  // Par type d'échange (contacts uniquement)
+  // Par type d'échange (contacts + RDV comptés comme rencontres)
   const EXCH_EMOJI = { rencontre: '🤝', email: '📧', appel: '📞', salon: '🎪', message: '💬', autre: '📝' };
   const typeCounts = {};
   contactEntries.forEach(e => {
     const t = e.type || 'autre';
     typeCounts[t] = (typeCounts[t] || 0) + 1;
+  });
+  rdvEntries.forEach(() => {
+    typeCounts['rencontre'] = (typeCounts['rencontre'] || 0) + 1;
   });
 
   // Cette année / ce mois
@@ -3335,6 +3338,7 @@ function renderAgendaStats(entries) {
     <div class="fstat-block">
       <div class="fstat-title">Par source</div>
       ${contactEntries.length  ? `<div class="fstat-row"><span>👤 Contacts</span><span class="fstat-row-val">${contactEntries.length}</span></div>` : ''}
+      ${rdvEntries.length      ? `<div class="fstat-row"><span>📅 RDV</span><span class="fstat-row-val">${rdvEntries.length}</span></div>` : ''}
       ${jeuxEntries.length     ? `<div class="fstat-row"><span>🎲 Jeux</span><span class="fstat-row-val">${jeuxEntries.length}</span></div>` : ''}
       ${festivalEntries.length ? `<div class="fstat-row"><span>🎪 Festivals</span><span class="fstat-row-val">${festivalEntries.length}</span></div>` : ''}
     </div>
