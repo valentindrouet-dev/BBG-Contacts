@@ -401,6 +401,12 @@ function renderDashboard() {
   const EXCH_EMOJI = { rencontre:'🤝', email:'📧', appel:'📞', salon:'🎪', message:'💬', developpement:'🛠️', autre:'📝' };
   const totalExch = state.contacts.reduce((n,c) => n + (c.exchanges||[]).length, 0);
 
+  // Upcoming appointments
+  const upcomingRdv = (state.appointments || [])
+    .filter(a => a.date && a.date >= today_str)
+    .sort((a,b) => a.date.localeCompare(b.date) || (a.time||'').localeCompare(b.time||''))
+    .slice(0, 5);
+
   el.innerHTML = `
     <div class="dash-header">
       <div>
@@ -425,6 +431,10 @@ function renderDashboard() {
       <div class="dash-stat-card" onclick="switchPage('agenda')">
         <div class="dash-stat-num">${totalExch}</div>
         <div class="dash-stat-label">Échanges</div>
+      </div>
+      <div class="dash-stat-card" onclick="switchPage('agenda')">
+        <div class="dash-stat-num">${upcomingRdv.length}</div>
+        <div class="dash-stat-label">RDV à venir</div>
       </div>
     </div>
 
@@ -567,6 +577,37 @@ function renderDashboard() {
             <span class="dash-task-text">${esc(p.title)}</span>
             <span class="dash-task-date">${'⭐'.repeat(p.interest||3)}</span>
           </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="dash-cols">
+      <div class="dash-section" style="flex:1;min-width:0">
+        <div class="dash-section-title">📅 Prochains RDV</div>
+        ${upcomingRdv.length === 0
+          ? `<p style="color:var(--text-500);font-size:.875rem">Aucun rendez-vous à venir.</p>`
+          : upcomingRdv.map(a => {
+              const contact = a.contactId ? state.contacts.find(c => c.id === a.contactId) : null;
+              const game    = a.gameId    ? state.prototypes.find(p => p.id === a.gameId)  : null;
+              const days    = Math.ceil((new Date(a.date) - new Date(today_str)) / 86400000);
+              const dayLabel = days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `dans ${days} j`;
+              const dayColor = days === 0 ? '#7c3aed' : days <= 3 ? '#ea580c' : days <= 7 ? '#ca8a04' : '#16a34a';
+              const dateLabel = new Date(a.date).toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
+              return `<div class="dash-task-row" onclick="switchPage('agenda')">
+                <span style="font-size:1rem;flex-shrink:0">📅</span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem">
+                  <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+                    ${contact ? `<span class="dash-task-text agenda-contact-name badge-${contact.category}">${esc(contact.name)}</span>` : ''}
+                    ${game    ? `<span class="dash-task-source">${PROTO_ICONS[game.status]||'🎮'} ${esc(game.title)}</span>` : ''}
+                    ${a.lieu  ? `<span class="dash-task-source">📍 ${esc(a.lieu)}</span>` : ''}
+                  </div>
+                  ${a.note   ? `<span style="font-size:.75rem;color:var(--text-500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.note)}</span>` : ''}
+                </div>
+                <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
+                  <span class="dash-task-date">${dateLabel}${a.time ? ' ' + a.time : ''}</span>
+                  <span class="dash-days-badge" style="color:${dayColor};background:${dayColor}1a">${dayLabel}</span>
+                </div>
+              </div>`;
+            }).join('')}
       </div>
     </div>`;
 }
