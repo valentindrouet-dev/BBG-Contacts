@@ -173,6 +173,7 @@ function loadState() {
   }
   // Only seed if truly empty (no existing localStorage data)
   if (!c) saveState();
+  migrateRdvExchanges();
 }
 
 // ── UTILS ──────────────────────────────────────────
@@ -3225,11 +3226,16 @@ function submitRdv(e) {
   if (id) {
     const appt = state.appointments.find(a => a.id === id);
     if (appt) {
+      // Si le contact change, supprimer l'ancien échange lié
+      if (appt.contactId && appt.contactId !== contactId) _removeRdvExchange(id, appt.contactId);
       appt.date = date; appt.time = time; appt.lieu = lieu;
       appt.note = note; appt.contactId = contactId; appt.gameId = gameId;
+      if (contactId) _syncRdvExchange(appt);
     }
   } else {
-    state.appointments.push({ id: uid(), date, time, lieu, note, contactId, gameId, createdAt: new Date().toISOString() });
+    const newAppt = { id: uid(), date, time, lieu, note, contactId, gameId, createdAt: new Date().toISOString() };
+    state.appointments.push(newAppt);
+    if (contactId) _syncRdvExchange(newAppt);
   }
 
   saveState();
@@ -3240,14 +3246,49 @@ function submitRdv(e) {
 function deleteRdv() {
   const id = document.getElementById('rdv-id').value;
   if (!id) return;
+  const appt = state.appointments.find(a => a.id === id);
+  if (appt) _removeRdvExchange(id, appt.contactId);
   state.appointments = state.appointments.filter(a => a.id !== id);
   saveState();
   closeModal('rdv');
   renderAgenda();
 }
 
-// ═══════════════════════════════════════════════════
-// AGENDA
+// ── RDV → échange helper ───────────────────────────
+// Crée ou met à jour un échange "rencontre" dans la fiche contact
+// lié à ce RDV. Identifié par exchange.fromRdv = rdvId.
+function _syncRdvExchange(appt) {
+  if (!appt.contactId) return;
+  const contact = state.contacts.find(c => c.id === appt.contactId);
+  if (!contact) return;
+  if (!Array.isArray(contact.exchanges)) contact.exchanges = [];
+  const existing = contact.exchanges.find(e => e.fromRdv === appt.id);
+  const note = [appt.lieu ? `📍 ${appt.lieu}` : '', appt.note || ''].filter(Boolean).join(' — ');
+  if (existing) {
+    existing.date = appt.date;
+    existing.note = note;
+  } else {
+    contact.exchanges.push({ id: uid(), date: appt.date, type: 'rencontre', note, fromRdv: appt.id });
+  }
+}
+
+function _removeRdvExchange(rdvId, contactId) {
+  if (!contactId) return;
+  const contact = state.contacts.find(c => c.id === contactId);
+  if (!contact || !Array.isArray(contact.exchanges)) return;
+  contact.exchanges = contact.exchanges.filter(e => e.fromRdv !== rdvId);
+}
+
+// Migration one-shot : crée les échanges manquants pour les RDV existants
+function migrateRdvExchanges() {
+  try {
+    if (localStorage.getItem('bbg-rdv-migrated')) return;
+  } catch(e) { return; }
+  (state.appointments || []).forEach(a => { if (a.contactId) _syncRdvExchange(a); });
+  saveState();
+  try { localStorage.setItem('bbg-rdv-migrated', '1'); } catch(e) {}
+}
+
 // ═══════════════════════════════════════════════════
 function renderAgendaStats(entries) {
   const el = document.getElementById('agenda-stats-sidebar');
