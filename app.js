@@ -3871,6 +3871,28 @@ function _buildContactDoneTasks(cId) {
     </div>`).join('');
 }
 
+function _buildContactMoreExchanges(cId) {
+  const c = state.contacts.find(x => x.id === cId);
+  if (!c) return '';
+  const sorted = [...(c.exchanges||[])].sort((a,b) => b.date.localeCompare(a.date)).slice(15);
+  return sorted.map(e =>
+    `<div class="exchange-item"><span class="exchange-date">${e.date}</span><span class="exchange-type">${esc(e.type||'rencontre')}</span><span class="exchange-note">${esc(e.note||'')}</span></div>`
+  ).join('');
+}
+
+function _buildContactLinkedProtosMore(cId, from) {
+  const linked = state.prototypes.filter(p => (p.contactLinks||[]).some(l => l.contactId === cId)).slice(from);
+  return linked.map(p => {
+    const role = (p.contactLinks||[]).find(l => l.contactId === cId)?.role || '';
+    return `<div style="display:flex;align-items:center;gap:.5rem;cursor:pointer" onclick="closeModal('detail');openDetail('prototype','${p.id}')">
+      <span style="font-size:1rem">${PROTO_ICONS[p.status]||'🎮'}</span>
+      <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(p.title)}</span>
+      ${role ? `<span style="font-size:.75rem;color:var(--text-500)">(${esc(role)})</span>` : ''}
+      <span class="badge badge-${p.status}" style="margin-left:auto">${PROTO_ICONS[p.status]||'🎮'} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
+    </div>`;
+  }).join('');
+}
+
 document.querySelectorAll('.modal-overlay').forEach(ov =>
   ov.addEventListener('click', e => {
     if (e.target === ov) closeModal(ov.id.replace('modal-', ''));
@@ -4434,12 +4456,12 @@ function openDetail(type, id) {
       </div>
       ${exchSorted.length > 0 ? `<div class="exchange-list">
         ${exchVisible.map(exchRow).join('')}
-        ${exchHidden.length ? `<div id="exch-more-wrap" class="hidden">${exchHidden.map(exchRow).join('')}</div>
+        ${exchHidden.length ? `<div id="exch-more-wrap"></div>
         <button class="btn-show-done" style="margin-top:.3rem"
-          onclick="document.getElementById('exch-more-wrap').classList.remove('hidden');this.remove()">
+          onclick="var d=document.getElementById('exch-more-wrap');if(!d.dataset.loaded){d.innerHTML=_buildContactMoreExchanges('${c.id}');d.dataset.loaded='1';}this.remove()">
           Voir les ${exchHidden.length} échange${exchHidden.length > 1 ? 's' : ''} précédent${exchHidden.length > 1 ? 's' : ''}
         </button>` : ''}
-      </div>` : ''}`;  
+      </div>` : ''}`;
 
     // Socials
     const socialsDetailHtml = (c.socials||[]).length > 0
@@ -4534,22 +4556,31 @@ function openDetail(type, id) {
         ${c.notes ? `<div class="detail-section-title">Notes</div>
           <div class="detail-notes">${esc(c.notes)}</div>` : ''}
         ${(() => {
+          const PROTO_PAGE = 8;
           const linked = state.prototypes.filter(p =>
             (p.contactLinks || []).some(l => l.contactId === c.id)
           );
           if (!linked.length) return '';
-          return `<div class="detail-section-title">Prototypes liés</div>
+          const protoRow = p => {
+            const role = (p.contactLinks||[]).find(l=>l.contactId===c.id)?.role || '';
+            return `<div style="display:flex;align-items:center;gap:.5rem;cursor:pointer"
+              onclick="closeModal('detail');openDetail('prototype','${p.id}')">
+              <span style="font-size:1rem">${PROTO_ICONS[p.status]||'🎮'}</span>
+              <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(p.title)}</span>
+              ${role ? `<span style="font-size:.75rem;color:var(--text-500)">(${esc(role)})</span>` : ''}
+              <span class="badge badge-${p.status}" style="margin-left:auto">${PROTO_ICONS[p.status]||'🎮'} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
+            </div>`;
+          };
+          const visible = linked.slice(0, PROTO_PAGE);
+          const hiddenCount = linked.length - visible.length;
+          return `<div class="detail-section-title">Prototypes liés (${linked.length})</div>
             <div style="display:flex;flex-direction:column;gap:.35rem;margin-top:.25rem">
-              ${linked.map(p => {
-                const role = (p.contactLinks||[]).find(l=>l.contactId===c.id)?.role || '';
-                return `<div style="display:flex;align-items:center;gap:.5rem;cursor:pointer"
-                  onclick="closeModal('detail');openDetail('prototype','${p.id}')">
-                  <span style="font-size:1rem">${PROTO_ICONS[p.status]||'🎮'}</span>
-                  <span style="font-size:.875rem;font-weight:600;color:var(--primary-600)">${esc(p.title)}</span>
-                  ${role ? `<span style="font-size:.75rem;color:var(--text-500)">(${esc(role)})</span>` : ''}
-                  <span class="badge badge-${p.status}" style="margin-left:auto">${PROTO_ICONS[p.status]||'🎮'} ${esc(STATUS_LABELS[p.status]||p.status)}</span>
-                </div>`;
-              }).join('')}
+              ${visible.map(protoRow).join('')}
+              ${hiddenCount ? `<div id="protos-more-wrap"></div>
+              <button class="btn-show-done" style="margin-top:.25rem"
+                onclick="var d=document.getElementById('protos-more-wrap');if(!d.dataset.loaded){d.innerHTML=_buildContactLinkedProtosMore('${c.id}',${PROTO_PAGE});d.dataset.loaded='1';}this.remove()">
+                Voir les ${hiddenCount} prototype${hiddenCount>1?'s':''} suivant${hiddenCount>1?'s':''}
+              </button>` : ''}
             </div>`;
         })()}
         <div class="detail-actions">
