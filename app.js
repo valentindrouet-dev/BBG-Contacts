@@ -1672,7 +1672,8 @@ function toggleTaskDone(type, itemId, taskId) {
       if (t) setTaskDone(t, !t.done);
     }
     saveState();
-    renderContacts();
+    if (document.getElementById('modal-detail').classList.contains('hidden')) renderContacts();
+    else _contactsRenderPending = true;
   } else if (type === 'festival') {
     const f = state.festivals.find(x => x.id === itemId);
     if (f) {
@@ -3842,12 +3843,14 @@ function openModal(type) {
   document.getElementById('modal-' + type).classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
+let _contactsRenderPending = false;
 function closeModal(type) {
   document.getElementById('modal-' + type).classList.add('hidden');
   document.body.style.overflow = '';
   if (type === 'contact')   resetContactForm();
   if (type === 'prototype') resetPrototypeForm();
   if (type === 'festival')  resetFestivalForm();
+  if (type === 'detail' && _contactsRenderPending) { _contactsRenderPending = false; renderContacts(); }
 }
 
 document.querySelectorAll('.modal-overlay').forEach(ov =>
@@ -4397,6 +4400,10 @@ function openDetail(type, id) {
     const typeOpts = EXCHANGE_TYPES.map(t =>
       `<option value="${t}">${(EXCH_EMOJI_LOC[t]||'📝')} ${t.charAt(0).toUpperCase()+t.slice(1)}</option>`
     ).join('');
+    const EXCH_PAGE = 15;
+    const exchVisible = exchSorted.slice(0, EXCH_PAGE);
+    const exchHidden  = exchSorted.slice(EXCH_PAGE);
+    const exchRow = e => `<div class="exchange-item"><span class="exchange-date">${e.date}</span><span class="exchange-type">${esc(e.type||'rencontre')}</span><span class="exchange-note">${esc(e.note||'')}</span></div>`;
     const meetHtml = `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">Historique des échanges
         <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('qe-form');f.classList.toggle('hidden');f.querySelector('select').focus()">+ Échange</button>
       </div>
@@ -4407,13 +4414,14 @@ function openDetail(type, id) {
         <button onclick="saveQuickExchange('${c.id}')" class="btn-save" style="padding:.25rem .75rem;font-size:.8rem">Ajouter</button>
         <button onclick="document.getElementById('qe-form').classList.add('hidden')" class="btn-cancel" style="padding:.25rem .5rem;font-size:.8rem">✕</button>
       </div>
-      ${exchSorted.length > 0 ? `<div class="exchange-list">${exchSorted.map(e => `
-        <div class="exchange-item">
-          <span class="exchange-date">${e.date}</span>
-          <span class="exchange-type">${esc(e.type||'rencontre')}</span>
-          <span class="exchange-note">${esc(e.note||'')}</span>
-        </div>`).join('')}
-      </div>` : ''}`;
+      ${exchSorted.length > 0 ? `<div class="exchange-list">
+        ${exchVisible.map(exchRow).join('')}
+        ${exchHidden.length ? `<div id="exch-more-wrap" class="hidden">${exchHidden.map(exchRow).join('')}</div>
+        <button class="btn-show-done" style="margin-top:.3rem"
+          onclick="document.getElementById('exch-more-wrap').classList.remove('hidden');this.remove()">
+          Voir les ${exchHidden.length} échange${exchHidden.length > 1 ? 's' : ''} précédent${exchHidden.length > 1 ? 's' : ''}
+        </button>` : ''}
+      </div>` : ''}`;  
 
     // Socials
     const socialsDetailHtml = (c.socials||[]).length > 0
