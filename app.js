@@ -5943,15 +5943,30 @@ function renderStats() {
     });
   });
 
+  // ── Collect RDV (appointments) ──
+  const rdvList = [];
+  (state.appointments || []).forEach(a => {
+    if (!a.date) return;
+    const contact = a.contactId ? state.contacts.find(c => c.id === a.contactId) : null;
+    const game    = a.gameId    ? state.prototypes.find(p => p.id === a.gameId)  : null;
+    const label   = contact ? contact.name : (game ? game.title : 'RDV');
+    rdvList.push({ date: a.date, label, lieu: a.lieu || '', note: a.note || '' });
+  });
+
   // ── Group by YYYY-MM ──
   const months = {};
   const ensureMonth = key => {
-    if (!months[key]) months[key] = { echanges: [], testsJeux: [], tasks: [] };
+    if (!months[key]) months[key] = { echanges: [], rdv: [], testsJeux: [], tasks: [] };
   };
   echanges.forEach(e => {
     const key = e.date.slice(0, 7);
     ensureMonth(key);
     months[key].echanges.push(e);
+  });
+  rdvList.forEach(r => {
+    const key = r.date.slice(0, 7);
+    ensureMonth(key);
+    months[key].rdv.push(r);
   });
   testsJeux.forEach(e => {
     const key = e.date.slice(0, 7);
@@ -5978,17 +5993,16 @@ function renderStats() {
 
   // ── Global summary ──
   const totalEchanges = echanges.length;
-  const totalTests = testsJeux.length;
-  const totalTasks = completedTasks.length;
-  const activeMonths = allMonths.length;
+  const totalRdv      = rdvList.length;
+  const totalTests    = testsJeux.length;
+  const totalTasks    = completedTasks.length;
+  const activeMonths  = allMonths.length;
 
   // Find most active month (by combined activity)
+  const monthTotal = k => months[k].echanges.length + months[k].rdv.length + months[k].testsJeux.length + months[k].tasks.length;
   let busiest = allMonths[0];
   allMonths.forEach(k => {
-    if ((months[k].echanges.length + months[k].testsJeux.length + months[k].tasks.length) >
-        (months[busiest].echanges.length + months[busiest].testsJeux.length + months[busiest].tasks.length)) {
-      busiest = k;
-    }
+    if (monthTotal(k) > monthTotal(busiest)) busiest = k;
   });
   const busiestLabel = (() => {
     const [y, m] = busiest.split('-');
@@ -6001,6 +6015,10 @@ function renderStats() {
       <div class="stats-summary-item">
         <div class="stats-summary-num">${totalEchanges}</div>
         <div class="stats-summary-label">📅 échanges</div>
+      </div>
+      <div class="stats-summary-item stats-summary-item--rdv">
+        <div class="stats-summary-num">${totalRdv}</div>
+        <div class="stats-summary-label">🗓️ rendez-vous</div>
       </div>
       <div class="stats-summary-item stats-summary-item--tests">
         <div class="stats-summary-num">${totalTests}</div>
@@ -6044,6 +6062,12 @@ function renderStats() {
       testsByType[k] = (testsByType[k] || 0) + 1;
     });
 
+    // RDV breakdown by contact/label
+    const rdvByLabel = {};
+    m.rdv.forEach(r => {
+      rdvByLabel[r.label] = (rdvByLabel[r.label] || 0) + 1;
+    });
+
     // Task breakdown by source
     const tasksBySrc = {};
     m.tasks.forEach(t => {
@@ -6055,6 +6079,15 @@ function renderStats() {
       .map(([type, count]) =>
         `<div class="stats-month-row">
           <span>${EXCH_EMOJI[type] || '📝'} ${EXCH_TYPE_LABELS[type] || type.charAt(0).toUpperCase() + type.slice(1)}</span>
+          <span class="stats-month-val">${count}</span>
+        </div>`
+      ).join('');
+
+    const rdvRows = Object.entries(rdvByLabel)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) =>
+        `<div class="stats-month-row">
+          <span>🗓️ ${esc(label)}</span>
           <span class="stats-month-val">${count}</span>
         </div>`
       ).join('');
@@ -6083,14 +6116,20 @@ function renderStats() {
           <span class="stats-month-title">${monthLabel}</span>
           <div class="stats-month-totals">
             ${m.echanges.length ? `<span class="stats-month-chip">📅 ${m.echanges.length} échange${m.echanges.length > 1 ? 's' : ''}</span>` : ''}
+            ${m.rdv.length ? `<span class="stats-month-chip stats-chip-rdv">🗓️ ${m.rdv.length} RDV</span>` : ''}
             ${m.testsJeux.length ? `<span class="stats-month-chip stats-chip-test">🧪 ${m.testsJeux.length} test${m.testsJeux.length > 1 ? 's' : ''} de jeu${m.testsJeux.length > 1 ? 'x' : ''}</span>` : ''}
             ${m.tasks.length ? `<span class="stats-month-chip stats-chip-done">✅ ${m.tasks.length} tâche${m.tasks.length > 1 ? 's' : ''} terminée${m.tasks.length > 1 ? 's' : ''}</span>` : ''}
+            <span class="stats-month-chip stats-chip-total">Σ ${m.echanges.length + m.rdv.length + m.testsJeux.length + m.tasks.length}</span>
           </div>
         </div>
-        <div class="stats-month-body stats-month-body--3col">
+        <div class="stats-month-body stats-month-body--4col">
           <div class="stats-month-col">
             <div class="stats-col-title">📅 Échanges</div>
             ${exchRows || '<div class="stats-empty-col">—</div>'}
+          </div>
+          <div class="stats-month-col">
+            <div class="stats-col-title">🗓️ RDV</div>
+            ${rdvRows || '<div class="stats-empty-col">—</div>'}
           </div>
           <div class="stats-month-col">
             <div class="stats-col-title">🧪 Tests de jeux</div>
