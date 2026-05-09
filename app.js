@@ -5947,10 +5947,9 @@ function renderStats() {
   const rdvList = [];
   (state.appointments || []).forEach(a => {
     if (!a.date) return;
-    const contact = a.contactId ? state.contacts.find(c => c.id === a.contactId) : null;
-    const game    = a.gameId    ? state.prototypes.find(p => p.id === a.gameId)  : null;
-    const label   = contact ? contact.name : (game ? game.title : 'RDV');
-    rdvList.push({ date: a.date, label, lieu: a.lieu || '', note: a.note || '' });
+    const contact  = a.contactId ? state.contacts.find(c => c.id === a.contactId) : null;
+    const category = contact ? (contact.category || 'auteur') : (a.gameId ? 'prototype' : 'autre');
+    rdvList.push({ date: a.date, category });
   });
 
   // ── Group by YYYY-MM ──
@@ -6062,10 +6061,10 @@ function renderStats() {
       testsByType[k] = (testsByType[k] || 0) + 1;
     });
 
-    // RDV breakdown by contact/label
-    const rdvByLabel = {};
+    // RDV breakdown by contact category
+    const rdvByCat = {};
     m.rdv.forEach(r => {
-      rdvByLabel[r.label] = (rdvByLabel[r.label] || 0) + 1;
+      rdvByCat[r.category] = (rdvByCat[r.category] || 0) + 1;
     });
 
     // Task breakdown by source
@@ -6083,11 +6082,12 @@ function renderStats() {
         </div>`
       ).join('');
 
-    const rdvRows = Object.entries(rdvByLabel)
+    const RDV_CAT_LABELS = { ...CAT_LABELS, prototype: '🎮 Jeux', autre: 'Autres' };
+    const rdvRows = Object.entries(rdvByCat)
       .sort((a, b) => b[1] - a[1])
-      .map(([label, count]) =>
+      .map(([cat, count]) =>
         `<div class="stats-month-row">
-          <span>🗓️ ${esc(label)}</span>
+          <span>${esc(RDV_CAT_LABELS[cat] || cat)}</span>
           <span class="stats-month-val">${count}</span>
         </div>`
       ).join('');
