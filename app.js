@@ -1807,7 +1807,8 @@ function saveQuickExchange(contactId) {
   c.exchanges = c.exchanges || [];
   c.exchanges.unshift(exchange);
   saveState();
-  renderContacts();
+  _detailNavCache = null;  // exchange ajouté, invalider le cache nav
+  _contactsRenderPending = true;
   if (state.activePage === 'home') renderDashboard();
   if (state.activePage === 'agenda') renderAgenda();
   openDetail('contact', contactId);
@@ -1823,7 +1824,7 @@ function saveQuickTask(type, id) {
   if (type === 'contact') {
     const c = state.contacts.find(x => x.id === id);
     if (c) { c.tasks = c.tasks || []; c.tasks.unshift(task); }
-    renderContacts();
+    _contactsRenderPending = true;
   } else {
     const p = state.prototypes.find(x => x.id === id);
     if (p) { p.tasks = p.tasks || []; p.tasks.unshift(task); }
@@ -3844,13 +3845,30 @@ function openModal(type) {
   document.body.style.overflow = 'hidden';
 }
 let _contactsRenderPending = false;
+let _detailNavCache = null;  // filteredContacts() cached for modal navigation
 function closeModal(type) {
   document.getElementById('modal-' + type).classList.add('hidden');
   document.body.style.overflow = '';
   if (type === 'contact')   resetContactForm();
   if (type === 'prototype') resetPrototypeForm();
   if (type === 'festival')  resetFestivalForm();
-  if (type === 'detail' && _contactsRenderPending) { _contactsRenderPending = false; renderContacts(); }
+  if (type === 'detail') {
+    _detailNavCache = null;
+    if (_contactsRenderPending) { _contactsRenderPending = false; renderContacts(); }
+  }
+}
+
+function _buildContactDoneTasks(cId) {
+  const c = state.contacts.find(x => x.id === cId);
+  if (!c) return '';
+  return (c.tasks||[]).filter(t => t.done).map(t => `
+    <div class="detail-task-row">
+      <input type="checkbox" checked style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary-600)"
+        onchange="toggleTaskDone('contact','${cId}','${t.id}');openDetail('contact','${cId}')" />
+      <span class="badge badge-urgence-${t.urgency||'normal'}">${esc(t.urgency||'normal')}</span>
+      <span style="font-size:.875rem;color:var(--text-700);text-decoration:line-through;opacity:.5">${esc(t.text)}</span>
+      ${t.doneAt ? `<span class="task-done-at" title="Terminée le ${new Date(t.doneAt).toLocaleString('fr-FR')}">✓ ${new Date(t.doneAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>` : ''}
+    </div>`).join('');
 }
 
 document.querySelectorAll('.modal-overlay').forEach(ov =>
@@ -4449,7 +4467,8 @@ function openDetail(type, id) {
          }).join('')}</div>`
       : '';
 
-    const _cList = filteredContacts();
+    if (!_detailNavCache) _detailNavCache = filteredContacts();
+    const _cList = _detailNavCache;
     const _cIdx  = _cList.findIndex(x => x.id === id);
 
     el.innerHTML = `
@@ -4505,8 +4524,8 @@ function openDetail(type, id) {
               <button onclick="document.getElementById('qt-c').classList.add('hidden')" class="btn-cancel" style="padding:.25rem .5rem;font-size:.8rem">✕</button>
             </div>
             ${pending.map(row).join('')}
-            ${n ? `<button class="btn-show-done" onclick="var d=document.getElementById('done-c-${c.id}');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'${showLbl}':'Masquer les terminées'">${showLbl}</button>
-            <div id="done-c-${c.id}" class="hidden">${done.map(row).join('')}</div>` : ''}`;
+            ${n ? `<button class="btn-show-done" onclick="var d=document.getElementById('done-c-${c.id}');if(!d.dataset.loaded){d.innerHTML=_buildContactDoneTasks('${c.id}');d.dataset.loaded='1';}d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'${showLbl}':'Masquer les terminées'">${showLbl}</button>
+            <div id="done-c-${c.id}" class="hidden"></div>` : ''}`;
         })()}
         ${socialsDetailHtml}
         ${videosDetailHtml}
