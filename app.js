@@ -45,6 +45,7 @@ const state = {
   tasksFilter:        'all',
   tasksSourceFilter:  [],   // [] = tout, 'contacts', 'jeux'
   contactsFavoriteOnly: false,
+  contactsTiersShow:    false,
   agendaSortAsc:      false,
   agendaTypeFilters:   [],   // [] = tous types
   agendaSourceFilter: [],   // [] = tout, 'contacts', 'jeux', 'rdv'
@@ -77,6 +78,7 @@ function migrateContact(c) {
   if (!Array.isArray(c.socials))  c.socials  = [];
   if (!Array.isArray(c.videos))   c.videos   = [];
   if (typeof c.favorite === 'undefined') c.favorite = false;
+  if (typeof c.tiers    === 'undefined') c.tiers    = false;
   return c;
 }
 const STATUS_MIGRATE = { concept: 'tester', test: 'tester', proto: 'tester', signé: 'développement', finalisation: 'production', publié: 'sorti' };
@@ -631,6 +633,11 @@ function filteredContacts() {
     (c.email   || '').toLowerCase().includes(q)
   );
   if (state.contactsCat) list = list.filter(c => c.category === state.contactsCat);
+  if (state.contactsTiersShow) {
+    list = list.filter(c => c.tiers);
+  } else {
+    list = list.filter(c => !c.tiers);
+  }
   if (state.contactsFavoriteOnly) list = list.filter(c => c.favorite);
   if (state.contactsUrgency === 'none') {
     list = list.filter(c => !(c.tasks || []).some(t => !t.done));
@@ -750,6 +757,7 @@ function renderContactsStats() {
 
   const total    = all.length;
   const favorites= all.filter(c => c.favorite).length;
+  const tiersCount= all.filter(c => c.tiers).length;
   const withTasks= all.filter(c => (c.tasks||[]).some(t => !t.done)).length;
 
   // Par catégorie
@@ -767,6 +775,7 @@ function renderContactsStats() {
       <div class="fstat-title">Contacts</div>
       <div class="fstat-big">${total}</div>
       ${favorites ? `<div class="fstat-sub">⭐ ${favorites} favori${favorites > 1 ? 's' : ''}</div>` : ''}
+      ${tiersCount ? `<div class="fstat-sub" style="color:var(--text-400)">🗂 ${tiersCount} tiers</div>` : ''}
     </div>
 
     <div class="fstat-block">
@@ -914,6 +923,10 @@ function contactCard(c, zoom) {
   const favBtn = `<button class="card-fav-btn${c.favorite ? ' active' : ''}"
     onclick="event.stopPropagation();toggleFavorite('${c.id}')" title="${c.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${c.favorite ? '⭐' : '☆'}</button>`;
 
+  // Tiers button (visible uniquement en mode Tiers)
+  const tiersBtn = c.tiers ? `<button class="card-tiers-btn active"
+    onclick="event.stopPropagation();toggleTiers('${c.id}')" title="Retirer des Tiers">🗂</button>` : '';
+
   // Video badge
   const videoBadge = (c.videos||[]).length > 0
     ? `<span class="card-video-badge">🎬 ${c.videos.length}</span>` : '';
@@ -983,7 +996,7 @@ function contactCard(c, zoom) {
   return `<div class="card card-hover card-bg-${cat}"
     onclick="openDetail('contact','${c.id}')" title="${esc(c.name)}">
     <div class="card-media card-media-${cat}">
-      ${favBtn}${mediaContent}${badge}${urgEmoji}${allDoneEmoji}${videoBadge}${extLink}${editBtn}
+      ${tiersBtn}${favBtn}${mediaContent}${badge}${urgEmoji}${allDoneEmoji}${videoBadge}${extLink}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -1923,6 +1936,7 @@ function updateFilterCount(page) {
     if (state.contactsCat)          active++;
     if (state.contactsUrgency)      active++;
     if (state.contactsFavoriteOnly) active++;
+    if (state.contactsTiersShow)    active++;
   } else {
     if (state.prototypesStatus)   active++;
     if (state.prototypesInterest) active++;
@@ -2329,6 +2343,22 @@ function toggleFavorite(id) {
 function onFavoriteFilterChange() {
   const cb = document.getElementById('contacts-favorite-filter');
   state.contactsFavoriteOnly = cb ? cb.checked : false;
+  updateFilterCount('contacts');
+  renderContacts();
+}
+
+function toggleTiers(id) {
+  const c = state.contacts.find(x => x.id === id);
+  if (!c) return;
+  c.tiers = !c.tiers;
+  saveState();
+  if (document.getElementById('modal-detail').classList.contains('hidden')) renderContacts();
+  else _contactsRenderPending = true;
+}
+
+function onTiersFilterChange() {
+  const cb = document.getElementById('contacts-tiers-filter');
+  state.contactsTiersShow = cb ? cb.checked : false;
   updateFilterCount('contacts');
   renderContacts();
 }
@@ -3926,6 +3956,8 @@ function resetContactForm() {
   populateVideosForm('contact', []);
   const favEl = document.getElementById('contact-favorite');
   if (favEl) favEl.checked = false;
+  const tiersEl = document.getElementById('contact-tiers');
+  if (tiersEl) tiersEl.checked = false;
   document.getElementById('modal-contact-title').textContent = 'Nouveau contact';
 }
 
@@ -3950,6 +3982,8 @@ function editContact(id) {
   populateVideosForm('contact', c.videos || []);
   const favEl = document.getElementById('contact-favorite');
   if (favEl) favEl.checked = !!c.favorite;
+  const tiersEl2 = document.getElementById('contact-tiers');
+  if (tiersEl2) tiersEl2.checked = !!c.tiers;
   document.getElementById('modal-contact-title').textContent = 'Modifier le contact';
   openModal('contact');
 }
@@ -3973,6 +4007,7 @@ function submitContact(e) {
     videos:    getVideosFromForm('contact'),
     games:     getGamesFromForm(),
     favorite:  document.getElementById('contact-favorite')?.checked || false,
+    tiers:     document.getElementById('contact-tiers')?.checked    || false,
   };
   if (id) {
     const i = state.contacts.findIndex(x => x.id === id);
@@ -4503,6 +4538,7 @@ function openDetail(type, id) {
           </div>
           <span class="badge badge-${c.category}" style="margin-left:auto;flex-shrink:0">${esc(c.category)}</span>
         </div>
+        <button class="btn-tiers-detail${c.tiers ? ' active' : ''}" onclick="toggleTiers('${c.id}')" title="${c.tiers ? 'Retirer des Tiers' : 'Marquer comme Tiers'}" style="font-size:.8rem;padding:.25rem .6rem;border-radius:var(--rx);border:1px solid var(--border-input);background:${c.tiers ? '#f3f4f6' : 'var(--surface)'};color:${c.tiers ? '#6b7280' : 'var(--text-500)'};cursor:pointer">${c.tiers ? '🗂 Tiers ✓' : '🗂 Tiers'}</button>
         <button class="btn-pdf-detail" onclick="exportContactPdf('${c.id}')" title="Exporter en PDF">📄 PDF</button>
         <button class="btn-card-detail" onclick="generateContactCard('${c.id}')" title="Générer une carte à imprimer">Carte</button>
         <button class="btn-edit-detail" onclick="closeModal('detail');editContact('${c.id}')" title="Modifier">${ICONS.pencil}</button>
@@ -5792,11 +5828,13 @@ document.getElementById('contacts-urgency-filter')?.addEventListener('change', e
   state.contactsUrgency = e.target.value; renderContacts();
 });
 document.getElementById('contacts-filter-reset').addEventListener('click', () => {
-  state.contactsCat = ''; state.contactsUrgency = ''; state.contactsFavoriteOnly = false;
+  state.contactsCat = ''; state.contactsUrgency = ''; state.contactsFavoriteOnly = false; state.contactsTiersShow = false;
   document.getElementById('contacts-cat-filter').value = '';
   document.getElementById('contacts-urgency-filter').value = '';
   const favEl = document.getElementById('contacts-favorite-filter');
   if (favEl) favEl.checked = false;
+  const tiersFilterEl = document.getElementById('contacts-tiers-filter');
+  if (tiersFilterEl) tiersFilterEl.checked = false;
   updateFilterCount('contacts');
   renderContacts();
 });
