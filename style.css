@@ -1507,6 +1507,22 @@ a:hover { color: var(--primary-700); }
 .devlog-title-input { width: 100%; margin-bottom: .3rem; }
 .devlog-details-input { width: 100%; resize: vertical; font-size: .82rem; }
 
+.deliverable-row {
+  display: flex; align-items: flex-start; gap: .5rem;
+  padding: .5rem .65rem;
+  background: var(--bg); border: 1px solid var(--border);
+  border-left: 3px solid var(--primary-400);
+  border-radius: 0 var(--rx-lg) var(--rx-lg) 0;
+  margin-top: .35rem;
+}
+.deliverable-link {
+  font-size: .75rem; font-weight: 600;
+  color: var(--primary-600); text-decoration: none;
+  padding: .1rem .4rem; border: 1px solid var(--primary-300);
+  border-radius: var(--rx-lg); background: var(--primary-50, #eff6ff);
+}
+.deliverable-link:hover { background: var(--primary-100, #dbeafe); }
+
 /* ═══════════════════════════════════════════════════
    PHOTO GALLERY
 ═══════════════════════════════════════════════════ */

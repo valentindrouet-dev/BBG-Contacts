@@ -112,6 +112,7 @@ function migratePrototype(p) {
   if (!Array.isArray(p.videos))  p.videos  = [];
   if (!Array.isArray(p.costs))        p.costs        = [];
   if (!Array.isArray(p.testSessions)) p.testSessions = [];
+  if (!Array.isArray(p.deliverables)) p.deliverables = [];
   return p;
 }
 
@@ -1846,6 +1847,39 @@ function saveQuickTask(type, id) {
   saveState();
   if (state.activePage === 'home') renderDashboard();
   openDetail(type, id);
+}
+
+function saveDeliverable(protoId) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) return;
+  const name = document.getElementById('dlv-name')?.value.trim();
+  if (!name) { document.getElementById('dlv-name')?.focus(); return; }
+  const description = document.getElementById('dlv-desc')?.value.trim() || '';
+  const url = document.getElementById('dlv-url')?.value.trim() || '';
+  const dueDate = document.getElementById('dlv-due')?.value || '';
+  const deliverable = { id: uid(), name, description, url, dueDate, taskId: '' };
+  if (dueDate) {
+    const task = { id: uid(), text: '[Livrable] ' + name, urgency: 'normal', dueDate, done: false };
+    p.tasks = p.tasks || [];
+    p.tasks.unshift(task);
+    deliverable.taskId = task.id;
+  }
+  p.deliverables = p.deliverables || [];
+  p.deliverables.push(deliverable);
+  saveState();
+  renderPrototypes();
+  if (state.activePage === 'home') renderDashboard();
+  if (state.activePage === 'tasks') renderTasks();
+  openDetail('prototype', protoId);
+}
+
+function deleteDeliverable(protoId, delivId) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) return;
+  p.deliverables = (p.deliverables || []).filter(d => d.id !== delivId);
+  saveState();
+  renderPrototypes();
+  openDetail('prototype', protoId);
 }
 
 function deleteStandaloneTask(id) {
@@ -4739,6 +4773,50 @@ function openDetail(type, id) {
             ${pending.map(row).join('')}
             ${n ? `<button class="btn-show-done" onclick="var d=document.getElementById('done-p-${p.id}');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'${showLbl}':'Masquer les terminées'">${showLbl}</button>
             <div id="done-p-${p.id}" class="hidden">${done.map(row).join('')}</div>` : ''}`;
+        })()}
+        ${(() => {
+          const delivs = p.deliverables || [];
+          const rows = delivs.map(d => {
+            const linkedTask = (p.tasks || []).find(t => t.id === d.taskId);
+            const taskBadge = d.taskId
+              ? (linkedTask
+                  ? (linkedTask.done
+                      ? `<span style="color:#16a34a;font-size:.75rem">&#x2705; Tâche terminée</span>`
+                      : `<span style="color:#d97706;font-size:.75rem">&#x23F3; Tâche en cours</span>`)
+                  : '')
+              : '';
+            const dueFmt = d.dueDate
+              ? new Date(d.dueDate + 'T00:00:00').toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' })
+              : '';
+            return `<div class="deliverable-row">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.875rem;font-weight:600;color:var(--text-800)">${esc(d.name)}</div>
+                ${d.description ? `<div style="font-size:.8rem;color:var(--text-500);margin-top:.1rem">${esc(d.description)}</div>` : ''}
+                <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.3rem;align-items:center">
+                  ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer" class="deliverable-link">&#x2197; Ouvrir</a>` : ''}
+                  ${dueFmt ? `<span class="spec-chip" style="font-size:.75rem">&#x1F4C5; ${dueFmt}</span>` : ''}
+                  ${taskBadge}
+                </div>
+              </div>
+              <button onclick="deleteDeliverable('${p.id}','${d.id}')" class="btn-cancel" style="padding:.15rem .4rem;font-size:.75rem;flex-shrink:0" title="Supprimer ce livrable">&#x2715;</button>
+            </div>`;
+          }).join('');
+          return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">Livrables
+            <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('dlv-form-${p.id}');f.classList.toggle('hidden');f.querySelector('input').focus()">+ Livrable</button>
+          </div>
+          <div id="dlv-form-${p.id}" class="quick-task-form hidden" style="flex-direction:column;gap:.4rem">
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+              <input type="text" id="dlv-name" placeholder="Nom du livrable *" class="form-input" style="flex:1;min-width:140px" />
+              <input type="date" id="dlv-due" class="form-input" style="width:auto" />
+            </div>
+            <input type="text" id="dlv-desc" placeholder="Description (optionnel)" class="form-input" />
+            <input type="text" id="dlv-url" placeholder="Lien Google Docs / Drive / Sheet…" class="form-input" />
+            <div style="display:flex;gap:.4rem">
+              <button onclick="saveDeliverable('${p.id}')" class="btn-save" style="padding:.25rem .75rem;font-size:.8rem">Ajouter</button>
+              <button onclick="document.getElementById('dlv-form-${p.id}').classList.add('hidden')" class="btn-cancel" style="padding:.25rem .5rem;font-size:.8rem">&#x2715;</button>
+            </div>
+          </div>
+          ${delivs.length === 0 ? '<div style="font-size:.8rem;color:var(--text-400);padding:.25rem 0">Aucun livrable pour l\'instant.</div>' : rows}`;
         })()}
         ${contactLinksHtml}
         ${(p.tags||[]).length > 0 ? `<div class="detail-section-title">Tags mécaniques</div>
