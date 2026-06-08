@@ -4709,17 +4709,9 @@ function openDetail(type, id) {
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
       ${(() => {
-        const ev = getEval(p);
-        const done = ev.primary.some(c => (c.score||0) > 0) || ev.status !== '';
-        const testLabel = done
-          ? `<span style="color:#16a34a;font-size:.72rem">✅ (Fait)</span>`
-          : `<span style="color:#dc2626;font-size:.72rem">🔴 (À Faire)</span>`;
-        return `<div class="detail-tab-bar">
-          <button class="detail-tab${_detailTab==='fiche'?' active':''}" data-tab="fiche" onclick="switchDetailTab('fiche')">📋 Fiche</button>
-          <button class="detail-tab${_detailTab==='test'?' active':''}" data-tab="test" onclick="switchDetailTab('test')">🧪 Test Proto ${testLabel}</button>
-        </div>`;
+        return '';
       })()}
-      <div id="detail-panel-fiche"${_detailTab!=='fiche'?' class="hidden"':''}>
+      <div id="detail-panel-fiche">
       <div class="detail-inner">
         ${p.description ? `<div class="detail-section-title">Description</div>
           <div class="detail-notes">${esc(p.description)}</div>` : ''}
@@ -4955,9 +4947,7 @@ function openDetail(type, id) {
         </div>
       </div>
       </div>
-      <div id="detail-panel-test"${_detailTab!=='test'?' class="hidden"':''}>
-        ${buildEvalPanel(p)}
-      </div>`;
+      <div id="detail-panel-test" class="hidden"></div>`;
     document.getElementById('detail-nav-prev').disabled = _pIdx <= 0;
     document.getElementById('detail-nav-next').disabled = _pIdx >= _pList.length - 1;
   }
