@@ -52,14 +52,35 @@ const state = {
 };
 
 // ── STORAGE ────────────────────────────────────────
+let _saveErrorShown = false;
 function saveState() {
-  localStorage.setItem('bbg-contacts',         JSON.stringify(state.contacts));
-  localStorage.setItem('bbg-prototypes',       JSON.stringify(state.prototypes));
-  localStorage.setItem('bbg-festivals',        JSON.stringify(state.festivals));
-  localStorage.setItem('bbg-standalone-tasks', JSON.stringify(state.standaloneTasks));
-  localStorage.setItem('bbg-admin-cards',      JSON.stringify(state.adminCards));
-  localStorage.setItem('bbg-actifs',           JSON.stringify(state.actifs));
-  localStorage.setItem('bbg-appointments',     JSON.stringify(state.appointments));
+  try {
+    localStorage.setItem('bbg-contacts',         JSON.stringify(state.contacts));
+    localStorage.setItem('bbg-prototypes',       JSON.stringify(state.prototypes));
+    localStorage.setItem('bbg-festivals',        JSON.stringify(state.festivals));
+    localStorage.setItem('bbg-standalone-tasks', JSON.stringify(state.standaloneTasks));
+    localStorage.setItem('bbg-admin-cards',      JSON.stringify(state.adminCards));
+    localStorage.setItem('bbg-actifs',           JSON.stringify(state.actifs));
+    localStorage.setItem('bbg-appointments',     JSON.stringify(state.appointments));
+  } catch (e) {
+    _handleSaveError(e);
+  }
+}
+// Filet de sécurité : si l'enregistrement échoue (quota saturé p. ex.),
+// on prévient clairement et on déclenche une sauvegarde de secours .json
+// pour qu'AUCUNE donnée en mémoire ne soit perdue.
+function _handleSaveError(e) {
+  console.error('saveState error', e);
+  if (_saveErrorShown) return;
+  _saveErrorShown = true;
+  const quota = e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014 ||
+    (typeof e.name === 'string' && e.name.indexOf('Quota') !== -1));
+  const msg = quota
+    ? "⚠️ ESPACE DE STOCKAGE SATURÉ\n\nTa dernière modification n'a peut-être pas pu être enregistrée dans le navigateur.\n\nUne sauvegarde de secours (.json) va se télécharger : conserve-la précieusement, aucune donnée n'est perdue.\n\nPour libérer de l'espace : allège le poids des photos ou supprime des éléments devenus inutiles."
+    : "⚠️ Erreur lors de l'enregistrement.\n\nUne sauvegarde de secours (.json) va se télécharger. Conserve-la précieusement.";
+  try { exportBackup(); } catch (_) {}
+  try { alert(msg); } catch (_) {}
+  setTimeout(() => { _saveErrorShown = false; }, 1500);
 }
 // ── Data migration ──────────────────────────────
 function migrateContact(c) {
@@ -185,7 +206,7 @@ function initials(name) {
 }
 function esc(s) {
   return String(s ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 // For src/href attributes: skip esc() on data URIs (base64 only contains A-Za-z0-9+/= — no HTML-dangerous chars)
 function safeSrc(s) {
@@ -194,6 +215,68 @@ function safeSrc(s) {
   return esc(s);
 }
 function today() { return new Date().toISOString().split('T')[0]; }
+
+// ── Anti-rebond (debounce) ───────────────────────────
+// Évite de tout re-rendre à chaque frappe (recherche fluide).
+function debounce(fn, ms = 160) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+// ── Compression d'image à l'upload ───────────────────
+// Réduit une image (max maxDim px) et la ré-encode en JPEG.
+// SÉCURITÉ : en cas de moindre problème, renvoie l'image d'origine
+// telle quelle — jamais de perte ni de dégradation imposée.
+function compressImageDataUrl(dataUrl, maxDim = 1000, quality = 0.82) {
+  return new Promise(resolve => {
+    try {
+      if (!dataUrl || !String(dataUrl).startsWith('data:image')) { resolve(dataUrl); return; }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w0 = img.naturalWidth || img.width;
+          const h0 = img.naturalHeight || img.height;
+          if (!w0 || !h0) { resolve(dataUrl); return; }
+          const scale = Math.min(1, maxDim / Math.max(w0, h0));
+          // Déjà petite et légère → on garde l'original (pas de recompression inutile).
+          if (scale === 1 && dataUrl.length < 300000) { resolve(dataUrl); return; }
+          const w = Math.round(w0 * scale);
+          const h = Math.round(h0 * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const out = canvas.toDataURL('image/jpeg', quality);
+          // On ne garde le résultat que s'il est réellement plus léger.
+          resolve(out && out.length < dataUrl.length ? out : dataUrl);
+        } catch (e) { resolve(dataUrl); }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch (e) { resolve(dataUrl); }
+  });
+}
+
+// ── Mesure de l'espace localStorage utilisé ──────────
+const BBG_KEYS = ['bbg-contacts','bbg-prototypes','bbg-festivals','bbg-standalone-tasks','bbg-admin-cards','bbg-actifs','bbg-appointments'];
+function bbgStorageBytes() {
+  let total = 0;
+  BBG_KEYS.forEach(k => {
+    try { const v = localStorage.getItem(k) || ''; total += (k.length + v.length) * 2; } catch(e){}
+  });
+  return total;
+}
+function updateStorageGauge() {
+  const el = document.getElementById('ie-storage');
+  if (!el) return;
+  const mb = bbgStorageBytes() / (1024 * 1024);
+  const LIMIT = 5; // Mo — limite courante des navigateurs
+  const pct = Math.min(100, Math.round((mb / LIMIT) * 100));
+  const color = pct < 60 ? '#16a34a' : pct < 85 ? '#f59e0b' : '#dc2626';
+  el.innerHTML = `<div class="ie-storage-label">Stockage utilisé : <strong>${mb.toFixed(2)} / ${LIMIT} Mo</strong> (${pct}%)</div>
+    <div class="ie-storage-bar"><div class="ie-storage-fill" style="width:${pct}%;background:${color}"></div></div>
+    ${pct >= 85 ? `<div class="ie-storage-warn">⚠️ Espace presque plein — pense à alléger les photos ou à exporter une sauvegarde.</div>` : ''}`;
+}
 
 const URGENCY_ORDER = { critique: 0, urgent: 1, normal: 2, faible: 3, '': 4 };
 
@@ -900,7 +983,7 @@ function contactCard(c, zoom) {
   const hasUrgentTask = topTask && (urg === 'urgent' || urg === 'critique');
 
   const mediaContent = c.photo
-    ? `<img src="${safeSrc(c.photo)}" class="card-photo" alt="" loading="lazy" onerror="this.onerror=null;this.style.display='none';this.parentElement.querySelector('.card-avatar-fallback').style.display=''" />
+    ? `<img src="${safeSrc(c.photo)}" class="card-photo" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.style.display='none';this.parentElement.querySelector('.card-avatar-fallback').style.display=''" />
        <div class="card-avatar card-avatar-${cat} card-avatar-fallback" style="display:none">${initials(c.name)}</div>`
     : `<div class="card-avatar card-avatar-${cat}">${initials(c.name)}</div>`;
 
@@ -969,7 +1052,7 @@ function contactCard(c, zoom) {
     const subtitle = c.company || c.email || '';
     let extra = '';
     if (zoom >= 3) {
-      if (c.email) extra += `<p class="card-detail-row">${ICONS.mail} ${esc(c.email)}<button class="btn-copy-inline" onclick="event.stopPropagation();copyText('${esc(c.email)}',this)" title="Copier l'email">⎘</button></p>`;
+      if (c.email) extra += `<p class="card-detail-row">${ICONS.mail} ${esc(c.email)}<button class="btn-copy-inline" data-copy="${esc(c.email)}" onclick="event.stopPropagation();copyText(this.dataset.copy,this)" title="Copier l'email">⎘</button></p>`;
       if (c.phone) extra += `<p class="card-detail-row">${ICONS.phone} ${esc(c.phone)}</p>`;
     }
     if (zoom >= 4 && topTask) {
@@ -1262,7 +1345,7 @@ function prototypeCard(p, zoom) {
 
   const displayIcon = p.emoji || icon;
   const mediaContent = p.photo
-    ? `<img src="${safeSrc(p.photo)}" class="card-photo" alt="" />`
+    ? `<img src="${safeSrc(p.photo)}" class="card-photo" alt="" loading="lazy" decoding="async" />`
     : `<span class="card-game-icon">${displayIcon}</span>`;
 
   const urgEmoji = (topTask && (urg === 'urgent' || urg === 'critique'))
@@ -1960,9 +2043,10 @@ function uploadContactPhoto(event) {
   const file = event.target.files?.[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById('contact-photo-url').value = e.target.result;
-    _updatePhotoPreview('contact', e.target.result);
+  reader.onload = async e => {
+    const src = await compressImageDataUrl(e.target.result);
+    document.getElementById('contact-photo-url').value = src;
+    _updatePhotoPreview('contact', src);
   };
   reader.readAsDataURL(file);
 }
@@ -1993,9 +2077,10 @@ function uploadProtoPhoto(event) {
   const file = event.target.files?.[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById('proto-photo-url').value = e.target.result;
-    _updatePhotoPreview('proto', e.target.result);
+  reader.onload = async e => {
+    const src = await compressImageDataUrl(e.target.result);
+    document.getElementById('proto-photo-url').value = src;
+    _updatePhotoPreview('proto', src);
   };
   reader.readAsDataURL(file);
 }
@@ -4547,7 +4632,7 @@ function openDetail(type, id) {
       <div class="detail-inner">
         <div class="detail-section-title">Coordonnées</div>
         <div class="detail-kv-grid">
-          ${c.email  ? `<div class="detail-kv"><label>Email</label><span style="display:flex;align-items:center;gap:.4rem">${esc(c.email)}<button class="btn-copy-inline" onclick="copyText('${esc(c.email)}',this)" title="Copier l'email">⎘</button></span></div>` : ''}
+          ${c.email  ? `<div class="detail-kv"><label>Email</label><span style="display:flex;align-items:center;gap:.4rem">${esc(c.email)}<button class="btn-copy-inline" data-copy="${esc(c.email)}" onclick="copyText(this.dataset.copy,this)" title="Copier l'email">⎘</button></span></div>` : ''}
           ${c.phone  ? `<div class="detail-kv"><label>Téléphone</label><span>${esc(c.phone)}</span></div>` : ''}
           ${c.website? `<div class="detail-kv"><label>Site web</label>
             <a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website.replace(/^https?:\/\//,''))}</a></div>` : ''}
@@ -5629,6 +5714,7 @@ function exportTasksListPdf() {
 function toggleImportExport() {
   const panel = document.getElementById('import-export-panel');
   panel.style.display = panel.style.display === 'none' ? '' : 'none';
+  if (panel.style.display !== 'none') updateStorageGauge();
 }
 
 function exportBackup() {
@@ -5817,8 +5903,9 @@ document.querySelectorAll('.nav-tab').forEach(btn =>
 
 
 // ── Contacts ──────────────────────────────────────
+const _renderContactsDebounced = debounce(() => renderContacts(), 160);
 document.getElementById('contacts-search').addEventListener('input', e => {
-  state.contactsSearch = e.target.value; renderContacts();
+  state.contactsSearch = e.target.value; _renderContactsDebounced();
 });
 // Filter panel removed; cat/urgency inputs kept hidden for JS compat
 document.getElementById('contacts-cat-filter')?.addEventListener('change', e => {
@@ -5876,8 +5963,9 @@ document.getElementById('contacts-view-kanban').addEventListener('click', () => 
 });
 
 // ── Prototypes ────────────────────────────────────
+const _renderPrototypesDebounced = debounce(() => renderPrototypes(), 160);
 document.getElementById('prototypes-search').addEventListener('input', e => {
-  state.prototypesSearch = e.target.value; renderPrototypes();
+  state.prototypesSearch = e.target.value; _renderPrototypesDebounced();
 });
 document.getElementById('prototypes-filter-toggle').addEventListener('click', () =>
   toggleFilterPanel('prototypes')

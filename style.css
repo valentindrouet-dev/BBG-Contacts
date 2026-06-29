@@ -1845,6 +1845,11 @@ a:hover { color: var(--primary-700); }
    BACKUP BUTTON
 ═══════════════════════════════════════════════════ */
 .ie-separator { height: 1px; background: var(--border); margin: .5rem 0; }
+.ie-storage { display: flex; flex-direction: column; gap: .3rem; margin: .15rem 0 .35rem; }
+.ie-storage-label { font-size: .72rem; color: var(--text-600); }
+.ie-storage-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.ie-storage-fill { height: 100%; border-radius: 3px; transition: width .25s ease; }
+.ie-storage-warn { font-size: .7rem; color: #dc2626; }
 .btn-ie-backup { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 .btn-ie-backup:hover { background: #dbeafe; }
 
