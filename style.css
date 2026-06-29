@@ -143,7 +143,9 @@ a:hover { color: var(--primary-700); }
 }
 .logo:hover { opacity: 0.8; }
 .logo-icon  { font-size: 1.1rem; }
+.logo-textwrap { display: flex; flex-direction: column; line-height: 1.05; }
 .logo-text  { font-size: .9rem; font-weight: 700; color: #ffffff; }
+.logo-version { font-size: .58rem; font-weight: 500; color: rgba(255,255,255,.6); letter-spacing: .02em; margin-top: 1px; }
 
 /* Nav tabs (on dark header) */
 .nav-tabs { display: flex; gap: 0.15rem; flex: 1; overflow: hidden; }
@@ -660,8 +662,7 @@ a:hover { color: var(--primary-700); }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15,23,42,0.45);
-  backdrop-filter: blur(3px);
+  background: rgba(15,23,42,0.55);
   z-index: 200;
   display: flex;
   align-items: center;
@@ -1711,8 +1712,7 @@ a:hover { color: var(--primary-700); }
   width: 38px; height: 38px;
   border-radius: 50%;
   border: 1px solid rgba(255,255,255,.35);
-  background: rgba(255,255,255,.18);
-  backdrop-filter: blur(4px);
+  background: rgba(255,255,255,.22);
   color: #fff;
   font-size: 1.1rem;
   line-height: 1;
