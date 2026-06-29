@@ -62,6 +62,7 @@ function saveState() {
     localStorage.setItem('bbg-admin-cards',      JSON.stringify(state.adminCards));
     localStorage.setItem('bbg-actifs',           JSON.stringify(state.actifs));
     localStorage.setItem('bbg-appointments',     JSON.stringify(state.appointments));
+    if (typeof scheduleAutoBackup === 'function') scheduleAutoBackup();
   } catch (e) {
     _handleSaveError(e);
   }
@@ -5714,7 +5715,7 @@ function exportTasksListPdf() {
 function toggleImportExport() {
   const panel = document.getElementById('import-export-panel');
   panel.style.display = panel.style.display === 'none' ? '' : 'none';
-  if (panel.style.display !== 'none') updateStorageGauge();
+  if (panel.style.display !== 'none') { updateStorageGauge(); updateBackupUI(); }
 }
 
 function exportBackup() {
@@ -6866,10 +6867,200 @@ function deleteActif(id) {
 }
 
 // ═══════════════════════════════════════════════════
+// SAUVEGARDE AUTO — dossier local (File System Access API)
+// Écrit une sauvegarde .json dans un dossier choisi (ex. dossier
+// Google Drive synchronisé sur le PC). On ne fait qu'ÉCRIRE des
+// sauvegardes : aucune donnée n'est lue ni supprimée. Entièrement
+// additif et protégé — n'altère jamais le reste de l'app.
+// ═══════════════════════════════════════════════════
+const FS_SUPPORTED = (typeof window !== 'undefined' && 'showDirectoryPicker' in window);
+let _dirHandle = null;
+let _pendingHandle = null;
+let _autoBackupDebounceTimer = null;
+let _lastAutoBackup = 0;
+const AUTO_BACKUP_MIN_INTERVAL = 3 * 60 * 1000; // 3 min mini entre deux écritures auto
+
+// — mini IndexedDB pour mémoriser le dossier entre les sessions —
+function _idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('bbg-fs', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function _idbSet(key, val) {
+  return _idbOpen().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+function _idbGet(key) {
+  return _idbOpen().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readonly');
+    const r = tx.objectStore('handles').get(key);
+    r.onsuccess = () => resolve(r.result || null);
+    r.onerror = () => reject(r.error);
+  }));
+}
+function _idbDel(key) {
+  return _idbOpen().then(db => new Promise(resolve => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+  }));
+}
+
+function _backupPayload() {
+  return JSON.stringify({
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    contacts:        state.contacts,
+    prototypes:      state.prototypes,
+    festivals:       state.festivals,
+    standaloneTasks: state.standaloneTasks,
+    adminCards:      state.adminCards,
+    actifs:          state.actifs,
+    appointments:    state.appointments,
+  }, null, 2);
+}
+
+async function _verifyPermission(handle, write) {
+  if (!handle) return false;
+  const opts = { mode: write ? 'readwrite' : 'read' };
+  try {
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    if ((await handle.requestPermission(opts)) === 'granted') return true;
+  } catch (e) {}
+  return false;
+}
+
+async function _writeFile(dir, name, contents) {
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();
+  await w.write(contents);
+  await w.close();
+}
+
+async function chooseBackupFolder() {
+  if (!FS_SUPPORTED) { alert("Cette fonction nécessite Google Chrome ou Microsoft Edge sur ordinateur."); return; }
+  try {
+    const handle = await window.showDirectoryPicker({ id: 'bbg-backup', mode: 'readwrite' });
+    if (!(await _verifyPermission(handle, true))) { alert("Autorisation d'écriture refusée sur ce dossier."); return; }
+    _dirHandle = handle; _pendingHandle = null;
+    try { await _idbSet('backupDir', handle); } catch (e) {}
+    updateBackupUI();
+    const ok = await runAutoBackup(true);
+    alert(ok
+      ? `✅ Sauvegarde automatique activée dans le dossier « ${handle.name} ».`
+      : `Dossier « ${handle.name} » sélectionné, mais la première écriture a échoué. Réessaie « Sauvegarder maintenant ».`);
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // annulé par l'utilisateur
+    console.error('chooseBackupFolder', e);
+  }
+}
+
+async function disableBackupFolder() {
+  _dirHandle = null; _pendingHandle = null;
+  try { await _idbDel('backupDir'); } catch (e) {}
+  updateBackupUI();
+}
+
+async function runAutoBackup(force) {
+  if (!_dirHandle) return false;
+  if (!force && (Date.now() - _lastAutoBackup) < AUTO_BACKUP_MIN_INTERVAL) return false;
+  if (!(await _verifyPermission(_dirHandle, true))) { _pendingHandle = _dirHandle; _dirHandle = null; updateBackupUI(); return false; }
+  try {
+    const payload = _backupPayload();
+    await _writeFile(_dirHandle, 'BBG-sauvegarde-auto.json', payload);   // toujours à jour
+    await _writeFile(_dirHandle, `BBG-sauvegarde-${today()}.json`, payload); // 1 instantané par jour
+    _lastAutoBackup = Date.now();
+    try { localStorage.setItem('bbg-last-backup', new Date().toISOString()); } catch (e) {}
+    updateBackupUI();
+    return true;
+  } catch (e) {
+    console.error('runAutoBackup', e);
+    return false;
+  }
+}
+
+// Appelé après chaque enregistrement (throttlé, jamais bloquant).
+function scheduleAutoBackup() {
+  if (!_dirHandle) return;
+  clearTimeout(_autoBackupDebounceTimer);
+  _autoBackupDebounceTimer = setTimeout(() => { runAutoBackup(false); }, 5000);
+}
+
+async function backupNow() {
+  if (!_dirHandle) { chooseBackupFolder(); return; }
+  const btn = document.getElementById('ie-backup-now');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  const ok = await runAutoBackup(true);
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Sauvegarder maintenant'; }
+  if (!ok) alert("La sauvegarde n'a pas pu être écrite. Vérifie l'autorisation du dossier.");
+}
+
+async function initBackupFolder() {
+  if (!FS_SUPPORTED) { updateBackupUI(); return; }
+  try {
+    const handle = await _idbGet('backupDir');
+    if (!handle) { updateBackupUI(); return; }
+    // Sans geste utilisateur on ne peut que VÉRIFIER l'autorisation (pas la redemander).
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') { _dirHandle = handle; _pendingHandle = null; }
+    else { _pendingHandle = handle; }
+    updateBackupUI();
+  } catch (e) { console.error('initBackupFolder', e); updateBackupUI(); }
+}
+
+async function reauthorizeBackupFolder() {
+  const h = _pendingHandle || (await _idbGet('backupDir').catch(() => null));
+  if (!h) { chooseBackupFolder(); return; }
+  if (await _verifyPermission(h, true)) {
+    _dirHandle = h; _pendingHandle = null;
+    updateBackupUI();
+    runAutoBackup(true);
+  }
+}
+
+function updateBackupUI() {
+  const el = document.getElementById('ie-autobackup');
+  if (!el) return;
+  if (!FS_SUPPORTED) {
+    el.innerHTML = `<div class="ie-ab-title">☁️ Sauvegarde automatique (dossier)</div>
+      <div class="ie-ab-note">Disponible sur Google Chrome ou Microsoft Edge (ordinateur).</div>`;
+    return;
+  }
+  let last = null;
+  try { last = localStorage.getItem('bbg-last-backup'); } catch (e) {}
+  const lastTxt = last ? `Dernière sauvegarde : ${new Date(last).toLocaleString('fr-FR')}` : 'Aucune sauvegarde encore.';
+  if (_dirHandle) {
+    el.innerHTML = `<div class="ie-ab-title">☁️ Sauvegarde automatique <span class="ie-ab-on">● activée</span></div>
+      <div class="ie-ab-note">Dossier : <strong>${esc(_dirHandle.name)}</strong> — ${lastTxt}</div>
+      <div class="ie-ab-btns">
+        <button class="btn-ie" id="ie-backup-now" onclick="backupNow()">💾 Sauvegarder maintenant</button>
+        <button class="btn-ie" onclick="disableBackupFolder()">Désactiver</button>
+      </div>`;
+  } else if (_pendingHandle) {
+    el.innerHTML = `<div class="ie-ab-title">☁️ Sauvegarde automatique <span class="ie-ab-off">○ en pause</span></div>
+      <div class="ie-ab-note">Autorisation à renouveler pour le dossier « ${esc(_pendingHandle.name)} ».</div>
+      <div class="ie-ab-btns"><button class="btn-ie" onclick="reauthorizeBackupFolder()">🔓 Réautoriser le dossier</button></div>`;
+  } else {
+    el.innerHTML = `<div class="ie-ab-title">☁️ Sauvegarde automatique (dossier)</div>
+      <div class="ie-ab-note">Choisis un dossier (ex. ton dossier Google Drive synchronisé) : une sauvegarde y sera écrite à chaque modification.</div>
+      <div class="ie-ab-btns"><button class="btn-ie btn-ie-backup" onclick="chooseBackupFolder()">📁 Choisir un dossier</button></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
 loadState();
 updateInterestUI(3);
+initBackupFolder();
 // Update all nav counts immediately so they show correct numbers before tab switch
 (function updateAllNavCounts() {
   document.getElementById('nav-contacts-count').textContent = state.contacts.length;
