@@ -1858,6 +1858,8 @@ a:hover { color: var(--primary-700); }
 .ie-ab-btns { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .15rem; }
 .btn-ie-backup { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 .btn-ie-backup:hover { background: #dbeafe; }
+.btn-ie-pdf { background: #1d4ed8; color: #fff; border-color: #1d4ed8; font-weight: 600; }
+.btn-ie-pdf:hover { background: #1e40af; }
 
 /* ═══════════════════════════════════════════════════
    DASHBOARD

@@ -5739,6 +5739,398 @@ function exportBackup() {
   URL.revokeObjectURL(url);
 }
 
+// ═══════════════════════════════════════════════════
+// EXPORT PDF — Rapport complet (imprimable / "Enregistrer en PDF")
+// Construit un document HTML autonome (synthèse + tableaux
+// récapitulatifs + fiches détaillées de toutes les données) et
+// l'ouvre dans un nouvel onglet prêt à imprimer. LECTURE SEULE :
+// n'altère ni ne supprime aucune donnée.
+// ═══════════════════════════════════════════════════
+function exportPDF() {
+  try {
+    const html = buildReportHTML();
+    const w = window.open('', '_blank');
+    if (!w) {
+      // Popup bloqué : on retombe sur un téléchargement du rapport HTML.
+      const blob = new Blob([html], { type: 'text/html' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `BBG-rapport-${today()}.html`; a.click();
+      URL.revokeObjectURL(url);
+      alert("La fenêtre d'impression a été bloquée par le navigateur.\nUn fichier HTML du rapport a été téléchargé : ouvre-le puis fais Ctrl+P → « Enregistrer au format PDF ».");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  } catch (e) {
+    console.error('exportPDF', e);
+    alert("Erreur lors de la génération du rapport : " + e.message);
+  }
+}
+
+function buildReportHTML() {
+  const S = state;
+  const now = new Date();
+  const genDate = now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // ── helpers de formatage ──
+  const fmtD = d => {
+    if (!d) return '—';
+    const dt = new Date(String(d).length <= 10 ? d + 'T00:00:00' : d);
+    return isNaN(dt) ? esc(String(d)) : dt.toLocaleDateString('fr-FR');
+  };
+  const yn  = b => b ? 'Oui' : 'Non';
+  const urg = u => `${URGENCY_EMOJI[u] || ''} ${({faible:'Faible',normal:'Normal',urgent:'Urgent',critique:'Critique'}[u]) || u || 'Normal'}`.trim();
+  const contactName = id => { const c = S.contacts.find(x => x.id === id); return c ? esc(c.name) : '—'; };
+  const protoTitle  = id => { const p = S.prototypes.find(x => x.id === id); return p ? esc(p.title) : '—'; };
+  const relLabel = { actif:'Actif', inactif:'Inactif', 'en-pause':'En pause', prospect:'Prospect' };
+  const money = v => { const n = parseFloat(v); return isNaN(n) ? '—' : n.toLocaleString('fr-FR', {style:'currency', currency:'EUR'}); };
+  const nz = s => (s == null || s === '') ? '—' : esc(String(s));
+
+  // table(headers[], rows[[...]], opts) → HTML ; rows cells are already-escaped HTML
+  const table = (headers, rows, cls = '') => rows.length
+    ? `<table class="rpt ${cls}"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+       <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+    : `<p class="empty">Aucune donnée.</p>`;
+
+  const contacts   = S.contacts || [];
+  const prototypes = S.prototypes || [];
+  const festivals  = S.festivals || [];
+  const stTasks    = S.standaloneTasks || [];
+  const admin      = S.adminCards || [];
+  const actifs     = S.actifs || [];
+  const appts      = S.appointments || [];
+
+  // ══════════════ 1. SYNTHÈSE ══════════════
+  const pendingContactTasks = contacts.reduce((n,c) => n + (c.tasks||[]).filter(t => !t.done).length, 0);
+  const pendingProtoTasks   = prototypes.reduce((n,p) => n + (p.tasks||[]).filter(t => !t.done).length, 0);
+  const pendingStTasks      = stTasks.filter(t => !t.done).length;
+  const pendingAdmin        = admin.filter(c => !isAdminCardDone(c)).length;
+  const pendingFestTasks    = festivals.reduce((n,f) => n + (f.presences||[]).filter(p => !p.done).length + (f.tasks||[]).filter(t => !t.done).length, 0);
+  const totalPending = pendingContactTasks + pendingProtoTasks + pendingStTasks + pendingAdmin + pendingFestTasks;
+  const todayStr = today();
+  const upcomingRdv = appts.filter(a => (a.date || '') >= todayStr).length;
+  const actifsValue = actifs.reduce((s,a) => s + (parseFloat(a.prixTTC)||0) * (parseFloat(a.quantite)||1), 0);
+  const festCostTotal = festivals.reduce((s,f) => s + (typeof festivalTotalCost === 'function' ? festivalTotalCost(f) : 0), 0);
+
+  const kpi = (label, val, sub='') => `<div class="kpi"><div class="kpi-val">${val}</div><div class="kpi-lbl">${label}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}</div>`;
+  const synthese = `
+    <div class="kpi-grid">
+      ${kpi('Contacts', contacts.length)}
+      ${kpi('Prototypes', prototypes.length)}
+      ${kpi('Festivals', festivals.length)}
+      ${kpi('Tâches en cours', totalPending)}
+      ${kpi('Rendez-vous', appts.length, `${upcomingRdv} à venir`)}
+      ${kpi('Vignettes admin', admin.length, `${pendingAdmin} en cours`)}
+      ${kpi('Actifs', actifs.length, money(actifsValue))}
+      ${kpi('Coûts festivals', money(festCostTotal))}
+    </div>`;
+
+  // répartitions
+  const countBy = (arr, keyFn) => arr.reduce((m,x) => { const k = keyFn(x); m[k] = (m[k]||0)+1; return m; }, {});
+  const contactsByCat = countBy(contacts, c => c.category || 'autre');
+  const protosByStatus = countBy(prototypes, p => p.status || 'autre');
+  const distRow = (obj, labelFn) => Object.entries(obj).sort((a,b)=>b[1]-a[1])
+    .map(([k,v]) => `<span class="pill">${labelFn(k)} : <strong>${v}</strong></span>`).join('');
+  const repartitions = `
+    <div class="dist-block">
+      <div class="dist-title">Contacts par catégorie</div>
+      <div class="pills">${distRow(contactsByCat, k => esc(CAT_LABELS[k] || k)) || '<span class="empty">—</span>'}</div>
+    </div>
+    <div class="dist-block">
+      <div class="dist-title">Prototypes par statut</div>
+      <div class="pills">${distRow(protosByStatus, k => esc(STATUS_LABELS[k] || k)) || '<span class="empty">—</span>'}</div>
+    </div>`;
+
+  // ══════════════ 2. TABLEAUX RÉCAPITULATIFS ══════════════
+  const contactsTable = table(
+    ['Nom','Catégorie','Entreprise','Email','Téléphone','Relation','Tâches','Échanges'],
+    contacts.slice().sort((a,b) => (a.name||'').localeCompare(b.name||'')).map(c => [
+      `<strong>${nz(c.name)}</strong>${c.favorite ? ' ⭐' : ''}`,
+      esc(CAT_LABELS[c.category] || c.category || '—'),
+      nz(c.company), nz(c.email), nz(c.phone),
+      esc(relLabel[c.relationStatus] || c.relationStatus || '—'),
+      String((c.tasks||[]).filter(t=>!t.done).length),
+      String((c.exchanges||[]).length),
+    ]));
+
+  const protosTable = table(
+    ['Titre','Statut','Genre','Joueurs','Durée','Âge','Intérêt','Tâches','Coût'],
+    prototypes.slice().sort((a,b) => (a.title||'').localeCompare(b.title||'')).map(p => [
+      `<strong>${nz(p.title)}</strong>`,
+      esc(STATUS_LABELS[p.status] || p.status || '—'),
+      nz(p.genre), nz(p.players), nz(p.duration), nz(p.age),
+      `${p.interest||3}/5`,
+      String((p.tasks||[]).filter(t=>!t.done).length),
+      money((p.costs||[]).reduce((s,c)=>s+(c.price||0),0)),
+    ]));
+
+  const festTable = table(
+    ['Nom','Catégorie','Ville','Dates','Participe','Protos','Coût total'],
+    festivals.slice().sort((a,b) => (a.dateStart||'').localeCompare(b.dateStart||'')).map(f => [
+      `<strong>${nz(f.name)}</strong>`,
+      esc(FEST_LABELS[f.category] || f.category || '—'),
+      nz(f.city),
+      `${fmtD(f.dateStart)}${f.dateEnd ? ' → ' + fmtD(f.dateEnd) : ''}`,
+      yn(f.participating), yn(f.protos),
+      money(typeof festivalTotalCost === 'function' ? festivalTotalCost(f) : 0),
+    ]));
+
+  // Toutes les tâches en cours (contacts + protos + libres + festivals)
+  const allTasks = [];
+  contacts.forEach(c => (c.tasks||[]).filter(t=>!t.done).forEach(t => allTasks.push([t, 'Contact · ' + (c.name||'')])));
+  prototypes.forEach(p => (p.tasks||[]).filter(t=>!t.done).forEach(t => allTasks.push([t, 'Prototype · ' + (p.title||'')])));
+  stTasks.filter(t=>!t.done).forEach(t => allTasks.push([t, 'Tâche libre']));
+  festivals.forEach(f => (f.tasks||[]).filter(t=>!t.done).forEach(t => allTasks.push([t, 'Festival · ' + (f.name||'')])));
+  const urgRank = { critique:0, urgent:1, normal:2, faible:3 };
+  allTasks.sort((a,b) => (urgRank[a[0].urgency]??2) - (urgRank[b[0].urgency]??2) || (a[0].dueDate||'zzz').localeCompare(b[0].dueDate||'zzz'));
+  const tasksTable = table(
+    ['Tâche','Rattachée à','Urgence','Échéance'],
+    allTasks.map(([t, src]) => [ nz(taskLabel ? taskLabel(t) : t.text), esc(src), urg(t.urgency), fmtD(t.dueDate) ]));
+
+  // Admin
+  const adminTable = table(
+    ['Titre','Catégorie','Statut','Urgence','Échéance','Récurrence'],
+    admin.slice().map(c => [
+      nz(c.title),
+      esc(adminCatInfo(c.category).label),
+      isAdminCardDone(c) ? '✅ Fait' : (c.status === 'doing' ? 'En cours' : 'À faire'),
+      urg(c.urgency),
+      c.recurrence === 'monthly' ? `le ${c.dayOfMonth || '?'} du mois` : fmtD(c.dueDate),
+      c.recurrence === 'monthly' ? '🔄 Mensuel' : '—',
+    ]));
+
+  // Actifs (groupés par catégorie)
+  let actifsHTML = '';
+  ACTIF_CATEGORIES.forEach(cat => {
+    const items = actifs.filter(a => (a.categorie || 'immobilisations') === cat.value);
+    if (!items.length) return;
+    const sub = items.reduce((s,a) => s + (parseFloat(a.prixTTC)||0)*(parseFloat(a.quantite)||1), 0);
+    actifsHTML += `<div class="subhead">${esc(cat.label)} — <span class="muted">${money(sub)}</span></div>` + table(
+      ['Nom','Qté','Prix HT','Prix TTC','Total TTC','Emplacement','Note'],
+      items.map(a => [
+        nz(a.nom), String(a.quantite ?? 1), money(a.prixHT), money(a.prixTTC),
+        money((parseFloat(a.prixTTC)||0)*(parseFloat(a.quantite)||1)), nz(a.emplacement), nz(a.note),
+      ]));
+  });
+  if (!actifsHTML) actifsHTML = `<p class="empty">Aucun actif.</p>`;
+
+  // Agenda / RDV
+  const rdvTable = table(
+    ['Date','Heure','Lieu','Contact','Jeu','Note'],
+    appts.slice().sort((a,b) => (a.date||'').localeCompare(b.date||'') || (a.time||'').localeCompare(b.time||'')).map(a => [
+      fmtD(a.date), nz(a.time), nz(a.lieu),
+      a.contactId ? contactName(a.contactId) : '—',
+      a.gameId ? protoTitle(a.gameId) : '—',
+      nz(a.note),
+    ]));
+
+  // ══════════════ 3. FICHES DÉTAILLÉES ══════════════
+  const field = (label, val) => `<div class="fld"><span class="fld-l">${label}</span><span class="fld-v">${val}</span></div>`;
+
+  // — Contacts —
+  const contactCards = contacts.slice().sort((a,b) => (a.name||'').localeCompare(b.name||'')).map(c => {
+    const socials = (c.socials||[]).map(s => `${esc(s.type)} : ${esc(s.url)}`).join('<br>') || '—';
+    const games = (c.games||[]).map(g => `${esc(g.title)}${g.statut ? ' ('+esc(g.statut)+')' : ''}${g.notes ? ' — '+esc(g.notes) : ''}`).join('<br>') || '—';
+    const exch = table(['Date','Type','Note'],
+      (c.exchanges||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(e => [fmtD(e.date), nz(e.type), nz(e.note)]));
+    const tsk = table(['Tâche','Urgence','Échéance','Statut','Note'],
+      (c.tasks||[]).map(t => [nz(t.text), urg(t.urgency), fmtD(t.dueDate), t.done?'✅ Fait':'À faire', nz(t.note)]));
+    return `<div class="card">
+      <div class="card-h">${nz(c.name)}${c.favorite ? ' ⭐' : ''} <span class="card-tag">${esc(CAT_LABELS[c.category] || c.category || '')}</span></div>
+      <div class="grid2">
+        ${field('Entreprise', nz(c.company))}
+        ${field('Relation', esc(relLabel[c.relationStatus] || c.relationStatus || '—'))}
+        ${field('Email', nz(c.email))}
+        ${field('Téléphone', nz(c.phone))}
+        ${field('Site web', c.website ? esc(c.website) : '—')}
+        ${field('Ajouté le', fmtD(c.createdAt))}
+      </div>
+      ${c.notes ? `<div class="notes"><span class="fld-l">Notes</span><div>${esc(c.notes).replace(/\n/g,'<br>')}</div></div>` : ''}
+      <div class="sub"><div class="sub-t">Réseaux & liens</div><div class="sub-body">${socials}</div></div>
+      <div class="sub"><div class="sub-t">Jeux liés</div><div class="sub-body">${games}</div></div>
+      ${(c.exchanges||[]).length ? `<div class="sub"><div class="sub-t">Échanges (${(c.exchanges||[]).length})</div>${exch}</div>` : ''}
+      ${(c.tasks||[]).length ? `<div class="sub"><div class="sub-t">Tâches (${(c.tasks||[]).length})</div>${tsk}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // — Prototypes —
+  const protoCards = prototypes.slice().sort((a,b) => (a.title||'').localeCompare(b.title||'')).map(p => {
+    const links = (p.contactLinks||[]).map(l => `${contactName(l.contactId)}${l.role ? ' ('+esc(l.role)+')' : ''}`).join(', ') || '—';
+    const devlog = table(['Date','Entrée'],
+      (p.devLog||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(d => [fmtD(d.date), nz(d.note)]));
+    const tsk = table(['Tâche','Urgence','Échéance','Statut','Note'],
+      (p.tasks||[]).map(t => [nz(t.text), urg(t.urgency), fmtD(t.dueDate), t.done?'✅ Fait':'À faire', nz(t.note)]));
+    const costs = table(['Poste','Montant'], (p.costs||[]).map(c => [nz(c.description), money(c.price)]));
+    const totalCost = (p.costs||[]).reduce((s,c)=>s+(c.price||0),0);
+    const sessions = table(['Date','Version','Joueurs','Note','Commentaires'],
+      (p.testSessions||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(s => [
+        fmtD(s.date), nz(s.version), s.players != null ? String(s.players) : '—',
+        s.rating ? '⭐'.repeat(s.rating) : '—', nz(s.comments)]));
+    return `<div class="card">
+      <div class="card-h">${nz(p.title)} <span class="card-tag">${esc(STATUS_LABELS[p.status] || p.status || '')}</span></div>
+      <div class="grid2">
+        ${field('Genre', nz(p.genre))}
+        ${field('Joueurs', nz(p.players))}
+        ${field('Durée', nz(p.duration))}
+        ${field('Âge', nz(p.age))}
+        ${field('Intérêt', `${p.interest||3}/5 — ${esc(INTEREST_LABELS[p.interest||3]||'')}`)}
+        ${field('Ajouté le', fmtD(p.createdAt))}
+      </div>
+      ${p.description ? `<div class="notes"><span class="fld-l">Description</span><div>${esc(p.description).replace(/\n/g,'<br>')}</div></div>` : ''}
+      ${(p.tags||[]).length ? `<div class="sub"><div class="sub-t">Tags</div><div class="sub-body">${(p.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join(' ')}</div></div>` : ''}
+      <div class="sub"><div class="sub-t">Contacts liés</div><div class="sub-body">${links}</div></div>
+      ${p.notes ? `<div class="notes"><span class="fld-l">Notes</span><div>${esc(p.notes).replace(/\n/g,'<br>')}</div></div>` : ''}
+      ${(p.devLog||[]).length ? `<div class="sub"><div class="sub-t">Journal de développement (${(p.devLog||[]).length})</div>${devlog}</div>` : ''}
+      ${(p.tasks||[]).length ? `<div class="sub"><div class="sub-t">Tâches (${(p.tasks||[]).length})</div>${tsk}</div>` : ''}
+      ${(p.costs||[]).length ? `<div class="sub"><div class="sub-t">Coûts — total ${money(totalCost)}</div>${costs}</div>` : ''}
+      ${(p.testSessions||[]).length ? `<div class="sub"><div class="sub-t">Sessions de test (${(p.testSessions||[]).length})</div>${sessions}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // — Festivals —
+  const festCards = festivals.slice().sort((a,b) => (a.dateStart||'').localeCompare(b.dateStart||'')).map(f => {
+    const links = (f.contactLinks||[]).map(l => `${contactName(l.contactId)}${l.role ? ' ('+esc(l.role)+')' : ''}`).join(', ') || '—';
+    const games = (f.gameLinks||[]).map(l => `${protoTitle(l.protoId)}${l.note ? ' — '+esc(l.note) : ''}`).join('<br>') || '—';
+    const COSTL = { transport:'Transport', parking:'Parking', ticket:'Billet/Stand', food:'Nourriture', lodging:'Logement' };
+    const costRows = Object.entries(COSTL).filter(([k]) => (f.costs||{})[k]).map(([k,l]) => [esc(l), money(f.costs[k])]);
+    const costs = costRows.length ? table(['Poste','Montant'], costRows) : '';
+    const pres = table(['Jour(s)','Note','Statut'],
+      (f.presences||[]).slice().sort((a,b)=>(a.dateStart||'').localeCompare(b.dateStart||'')).map(p => [
+        `${fmtD(p.dateStart)}${p.dateEnd ? ' → '+fmtD(p.dateEnd) : ''}`, nz(p.note), p.done?'✅ Fait':'Prévu']));
+    const tsk = table(['Tâche','Urgence','Échéance','Statut'],
+      (f.tasks||[]).map(t => [nz(t.text), urg(t.urgency), fmtD(t.dueDate), t.done?'✅ Fait':'À faire']));
+    return `<div class="card">
+      <div class="card-h">${nz(f.name)} <span class="card-tag">${esc(FEST_LABELS[f.category] || f.category || '')}</span></div>
+      <div class="grid2">
+        ${field('Ville', nz(f.city))}
+        ${field('Adresse', nz(f.address))}
+        ${field('Distance', nz(f.distance))}
+        ${field('Dates', `${fmtD(f.dateStart)}${f.dateEnd ? ' → '+fmtD(f.dateEnd) : ''}`)}
+        ${field('Participation', yn(f.participating))}
+        ${field('Prototypes présentés', yn(f.protos))}
+        ${field('Coût total', money(typeof festivalTotalCost === 'function' ? festivalTotalCost(f) : 0))}
+        ${field('Ajouté le', fmtD(f.createdAt))}
+      </div>
+      ${f.notes ? `<div class="notes"><span class="fld-l">Notes</span><div>${esc(f.notes).replace(/\n/g,'<br>')}</div></div>` : ''}
+      <div class="sub"><div class="sub-t">Contacts liés</div><div class="sub-body">${links}</div></div>
+      <div class="sub"><div class="sub-t">Jeux présentés</div><div class="sub-body">${games}</div></div>
+      ${costs ? `<div class="sub"><div class="sub-t">Détail des coûts</div>${costs}</div>` : ''}
+      ${(f.presences||[]).length ? `<div class="sub"><div class="sub-t">Présences (${(f.presences||[]).length})</div>${pres}</div>` : ''}
+      ${(f.tasks||[]).length ? `<div class="sub"><div class="sub-t">Tâches (${(f.tasks||[]).length})</div>${tsk}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // ══════════════ ASSEMBLAGE ══════════════
+  const section = (num, title, body, first=false) =>
+    `<section class="sec${first ? ' first' : ''}"><h2><span class="sec-n">${num}</span>${title}</h2>${body}</section>`;
+
+  const detailBlock = (title, cards) => cards
+    ? `<div class="detail-group"><h3 class="dg-title">${title}</h3>${cards}</div>`
+    : '';
+
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<title>BBG Contacts — Rapport complet — ${genDate}</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; font-size: 11px; line-height: 1.45; background: #fff; }
+  .wrap { max-width: 190mm; margin: 0 auto; padding: 8mm 6mm; }
+  .toolbar { position: sticky; top: 0; background: #1d4ed8; color: #fff; padding: 10px 16px; display: flex; gap: 12px; align-items: center; justify-content: space-between; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  .toolbar span { font-weight: 600; font-size: 13px; }
+  .toolbar button { background: #fff; color: #1d4ed8; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 700; font-size: 13px; cursor: pointer; }
+  /* Cover */
+  .cover { border-bottom: 3px solid #1d4ed8; padding-bottom: 12px; margin-bottom: 4px; }
+  .cover h1 { font-size: 24px; margin: 0 0 4px; color: #1d4ed8; letter-spacing: -.01em; }
+  .cover .meta { color: #64748b; font-size: 12px; }
+  /* Sections */
+  .sec { break-before: page; padding-top: 6px; }
+  .sec.first { break-before: auto; }
+  h2 { font-size: 16px; color: #1d4ed8; border-bottom: 2px solid #dbeafe; padding-bottom: 5px; margin: 18px 0 12px; display: flex; align-items: center; gap: 8px; }
+  .sec-n { background: #1d4ed8; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+  h3.dg-title { font-size: 13px; color: #1d4ed8; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+  .subhead { font-weight: 700; margin: 12px 0 4px; color: #334155; }
+  .muted, .muted * { color: #64748b; font-weight: 500; }
+  /* KPI */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 14px; }
+  .kpi { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; background: #f8fafc; }
+  .kpi-val { font-size: 20px; font-weight: 800; color: #1d4ed8; }
+  .kpi-lbl { font-size: 10px; color: #475569; margin-top: 2px; }
+  .kpi-sub { font-size: 9px; color: #94a3b8; margin-top: 1px; }
+  .dist-block { margin: 8px 0; }
+  .dist-title { font-weight: 700; font-size: 11px; margin-bottom: 4px; color: #334155; }
+  .pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pill { background: #eff6ff; border: 1px solid #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 2px 8px; font-size: 10px; }
+  /* Tables */
+  table.rpt { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 10px; }
+  table.rpt th { background: #1d4ed8; color: #fff; text-align: left; padding: 5px 6px; font-weight: 600; font-size: 9.5px; }
+  table.rpt td { border: 1px solid #e2e8f0; padding: 4px 6px; vertical-align: top; }
+  table.rpt tbody tr:nth-child(even) { background: #f8fafc; }
+  table.rpt tr { break-inside: avoid; }
+  .empty { color: #94a3b8; font-style: italic; font-size: 10px; margin: 4px 0; }
+  /* Detail cards */
+  .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin: 0 0 10px; break-inside: avoid; }
+  .card-h { font-size: 14px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 7px; }
+  .card-tag { font-size: 10px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 6px; padding: 1px 7px; margin-left: 6px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 18px; }
+  .fld { display: flex; gap: 6px; font-size: 10.5px; padding: 1px 0; }
+  .fld-l { color: #64748b; font-weight: 600; min-width: 92px; flex-shrink: 0; }
+  .fld-v { color: #1e293b; word-break: break-word; }
+  .notes { margin: 7px 0; font-size: 10.5px; }
+  .notes .fld-l { display: block; margin-bottom: 2px; }
+  .sub { margin: 7px 0 0; }
+  .sub-t { font-weight: 700; font-size: 10.5px; color: #334155; margin-bottom: 3px; }
+  .sub-body { font-size: 10.5px; }
+  @media print {
+    .no-print { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    body { font-size: 10.5px; }
+    a { color: #1e293b; text-decoration: none; }
+  }
+  @page { size: A4; margin: 12mm; }
+</style></head>
+<body>
+<div class="toolbar no-print">
+  <span>📄 Rapport BBG Contacts — prêt à imprimer</span>
+  <button onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+</div>
+<div class="wrap">
+  <div class="cover">
+    <h1>BBG Contacts — Rapport complet</h1>
+    <div class="meta">Généré le ${genDate} · ${contacts.length} contacts · ${prototypes.length} prototypes · ${festivals.length} festivals · ${appts.length} rendez-vous</div>
+  </div>
+
+  ${section('1', 'Synthèse', synthese + repartitions, true)}
+
+  ${section('2', 'Tableaux récapitulatifs', `
+    <h3 class="dg-title">Contacts (${contacts.length})</h3>${contactsTable}
+    <h3 class="dg-title">Prototypes (${prototypes.length})</h3>${protosTable}
+    <h3 class="dg-title">Festivals (${festivals.length})</h3>${festTable}
+    <h3 class="dg-title">Tâches en cours (${allTasks.length})</h3>${tasksTable}
+    <h3 class="dg-title">Administratif (${admin.length})</h3>${adminTable}
+    <h3 class="dg-title">Actifs & inventaire (${actifs.length})</h3>${actifsHTML}
+    <h3 class="dg-title">Agenda — Rendez-vous (${appts.length})</h3>${rdvTable}
+  `)}
+
+  ${section('3', 'Fiches détaillées', `
+    ${detailBlock(`Contacts (${contacts.length})`, contactCards)}
+    ${detailBlock(`Prototypes (${prototypes.length})`, protoCards)}
+    ${detailBlock(`Festivals (${festivals.length})`, festCards)}
+  `)}
+
+  <div style="margin-top:24px;text-align:center;color:#94a3b8;font-size:9px;border-top:1px solid #e2e8f0;padding-top:8px">
+    BBG Contacts · Rapport généré le ${genDate} · Document confidentiel
+  </div>
+</div>
+<script>
+  window.addEventListener('load', function () {
+    setTimeout(function () { try { window.focus(); window.print(); } catch (e) {} }, 350);
+  });
+</script>
+</body></html>`;
+}
+
 function importBackup(event) {
   const file = event.target.files?.[0];
   if (!file) return;

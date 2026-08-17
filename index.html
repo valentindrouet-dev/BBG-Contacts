@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BBG Contacts</title>
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=9" />
 </head>
 <body>
 
@@ -18,7 +18,7 @@
       <span class="logo-icon">🎲</span>
       <span class="logo-textwrap">
         <span class="logo-text">BBG <strong>Contacts</strong></span>
-        <span class="logo-version">v3.1.03</span>
+        <span class="logo-version">v3.1.04</span>
       </span>
     </div>
 
@@ -115,6 +115,11 @@
       <label class="btn-ie btn-ie-backup">↑ Restaurer
         <input type="file" accept=".json" class="ie-file-input" onchange="importBackup(event)" />
       </label>
+    </div>
+    <div class="ie-separator"></div>
+    <div class="ie-group">
+      <span class="ie-label" style="font-weight:600;color:var(--primary-700)">📄 Rapport complet</span>
+      <button class="btn-ie btn-ie-pdf" onclick="exportPDF()">🖨️ Exporter en PDF</button>
     </div>
     <div class="ie-separator"></div>
     <div class="ie-autobackup" id="ie-autobackup"></div>
@@ -1529,6 +1534,6 @@
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="data.js"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
