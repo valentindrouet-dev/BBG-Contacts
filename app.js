@@ -318,7 +318,7 @@ const URGENCY_EMOJI = { faible: '💤', normal: '📌', urgent: '⚠️', critiq
 
 const CAT_LABELS = {
   auteur: 'Auteurs', illustrateur: 'Illustrateurs', editeur: 'Éditeurs',
-  distributeur: 'Distributeurs', fabricant: 'Fabricants'
+  distributeur: 'Distributeurs', fabricant: 'Fabricants', medias: 'Médias'
 };
 
 const INTEREST_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort', 'Exceptionnel'];
@@ -845,7 +845,7 @@ function renderContactsStats() {
   const withTasks= all.filter(c => (c.tasks||[]).some(t => !t.done)).length;
 
   // Par catégorie
-  const catIcons = { auteur:'✍️', illustrateur:'🎨', editeur:'📚', distributeur:'🚚', fabricant:'🏭' };
+  const catIcons = { auteur:'✍️', illustrateur:'🎨', editeur:'📚', distributeur:'🚚', fabricant:'🏭', medias:'📰' };
 
   // Par statut
   const statusIcons = { actif:'✅', inactif:'💤', prospect:'🔍' };
@@ -1640,7 +1640,7 @@ function renderTasks() {
   }
   emptyEl.classList.add('hidden');
 
-  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'prototype', 'festival', 'standalone', 'admin'];
+  const CAT_TASK_ORDER = ['editeur', 'distributeur', 'auteur', 'fabricant', 'illustrateur', 'medias', 'prototype', 'festival', 'standalone', 'admin'];
   const CAT_TASK_LABELS = { ...CAT_LABELS, prototype: 'Prototypes', festival: 'Festivals', standalone: 'Tâches libres', admin: 'Admin' };
 
   // Sort
@@ -5005,7 +5005,7 @@ function exportContactPdf(id) {
   const allExchanges = [...(c.exchanges || [])].sort((a, b) => b.date.localeCompare(a.date));
   const linkedProtos = state.prototypes.filter(p => (p.contactLinks || []).some(l => l.contactId === c.id));
 
-  const catColors = { auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309', distributeur: '#16a34a', fabricant: '#dc2626' };
+  const catColors = { auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309', distributeur: '#16a34a', fabricant: '#dc2626', medias: '#c026d3' };
   const ac = catColors[c.category] || '#6b7280';
   const avatarHtml = c.photo
     ? `<div class="avatar" style="background-image:url('${c.photo}');background-size:cover;background-position:center"></div>`
@@ -5125,7 +5125,7 @@ function generateContactCard(id) {
 
   const catColors = {
     auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309',
-    distributeur: '#16a34a', fabricant: '#dc2626'
+    distributeur: '#16a34a', fabricant: '#dc2626', medias: '#c026d3'
   };
   const ac = catColors[c.category] || '#6b7280';
 
@@ -5502,7 +5502,7 @@ tr:nth-child(even) td{background:#fafafa}
 function exportContactsListPdf() {
   const list = state.contacts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
   const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—';
-  const catColors = { auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309', distributeur: '#16a34a', fabricant: '#dc2626' };
+  const catColors = { auteur: '#4f46e5', illustrateur: '#0891b2', editeur: '#b45309', distributeur: '#16a34a', fabricant: '#dc2626', medias: '#c026d3' };
 
   const rows = list.map(c => {
     const ac = catColors[c.category] || '#6b7280';
