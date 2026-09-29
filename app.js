@@ -740,7 +740,9 @@ function filteredContacts() {
     switch (state.contactsSort) {
       case 'name':        cmp = a.name.localeCompare(b.name, 'fr'); break;
       case 'category': {
-        cmp = a.category.localeCompare(b.category, 'fr');
+        // « Administratif » toujours en fin de liste ; les autres restent alphabétiques
+        cmp = ((a.category === 'administratif') - (b.category === 'administratif'))
+           || a.category.localeCompare(b.category, 'fr');
         if (cmp === 0) {
           const da = lastExchDate[a.id] || '';
           const db = lastExchDate[b.id] || '';
