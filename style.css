@@ -93,6 +93,7 @@ a:hover { color: var(--primary-700); }
 .badge-distributeur { background: #ccfbf1; color: #115e59; }
 .badge-fabricant    { background: #ffedd5; color: #9a3412; }
 .badge-medias       { background: #fae8ff; color: #86198f; }
+.badge-assos        { background: #fef9c3; color: #854d0e; }
 .badge-administratif { background: #e2e8f0; color: #334155; }
 /* Prototype statuses */
 .badge-proto         { background: #e0e7ff; color: #3730a3; }
@@ -433,6 +434,7 @@ a:hover { color: var(--primary-700); }
 .card-media-distributeur { background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); }
 .card-media-fabricant    { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); }
 .card-media-medias       { background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%); }
+.card-media-assos        { background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); }
 .card-media-administratif { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
 /* Status gradients (prototype) */
 .card-media-proto         { background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); }
@@ -468,6 +470,7 @@ a:hover { color: var(--primary-700); }
 .card-avatar-distributeur { color: #115e59; }
 .card-avatar-fabricant    { color: #9a3412; }
 .card-avatar-medias       { color: #86198f; }
+.card-avatar-assos        { color: #854d0e; }
 .card-avatar-administratif { color: #334155; }
 
 /* Game icon (prototype) */
@@ -597,6 +600,7 @@ a:hover { color: var(--primary-700); }
 .card-bg-distributeur { background: #f0fdfa; }
 .card-bg-fabricant    { background: #fff7ed; }
 .card-bg-medias       { background: #fdf4ff; }
+.card-bg-assos        { background: #fefce8; }
 .card-bg-administratif { background: #f8fafc; }
 
 /* ─── Urgency border on card (visible at all zoom levels) ─── */
@@ -1042,6 +1046,7 @@ a:hover { color: var(--primary-700); }
 .list-avatar-distributeur { background: #ccfbf1; color: #115e59; }
 .list-avatar-fabricant    { background: #ffedd5; color: #9a3412; }
 .list-avatar-medias       { background: #fae8ff; color: #86198f; }
+.list-avatar-assos        { background: #fef9c3; color: #854d0e; }
 .list-avatar-administratif { background: #e2e8f0; color: #334155; }
 .list-proto-icon          { font-size: 1.25rem; }
 .list-row-btn {
@@ -1690,6 +1695,7 @@ a:hover { color: var(--primary-700); }
 .agenda-contact-name.badge-illustrateur { color: #6b21a8; }
 .agenda-contact-name.badge-fabricant    { color: #9a3412; }
 .agenda-contact-name.badge-medias       { color: #86198f; }
+.agenda-contact-name.badge-assos        { color: #854d0e; }
 .agenda-contact-name.badge-administratif { color: #334155; }
 .agenda-note { font-size: .8rem; color: var(--text-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 
