@@ -1899,7 +1899,8 @@ function saveQuickTestSession(protoId) {
 
 // ═══════════════════════════════════════════════════
 // IMPORT DE PARTIES (sessions de test) depuis un CSV
-// Format BBG App : Jeu;Date;Durée (min);Joueurs;Lieu;Notes;Scores
+// Format BBG App : Jeu;Version;Date;Durée (min);Joueurs;Lieu;Note (étoiles);Retours;Score 1…
+// (ancien format accepté : Jeu;Date;Durée (min);Joueurs;Lieu;Notes;Scores)
 // Seuls les champs d'une session sont repris : date, version, joueurs,
 // étoiles, notes (Durée / Lieu / Scores sont ignorés). Version et étoiles,
 // absentes du fichier, se choisissent dans l'aperçu.
@@ -1984,10 +1985,14 @@ function _prepareTestSessionsImport(text, protoId) {
   const C = {
     game: col(/^(jeu|game|nom)/), date: col(/date/), dur: col(/dur/), players: col(/joueur|player/),
     lieu: col(/lieu|location|endroit/), scores: col(/score/), version: col(/^version/), stars,
-    notes: headers.findIndex((h, i) => i !== stars && /note|comment/.test(h)),
+    // Notes : colonne « Retours » en priorité, sinon « Notes » / « Commentaires » (jamais la colonne des étoiles)
+    notes: (() => {
+      const r = headers.findIndex((h, i) => i !== stars && /retour/.test(h));
+      return r >= 0 ? r : headers.findIndex((h, i) => i !== stars && /note|comment|remarque/.test(h));
+    })(),
   };
   if (C.date < 0) {
-    alert("Format non reconnu : colonne « Date » introuvable.\nColonnes attendues : Jeu;Date;Durée (min);Joueurs;Lieu;Notes;Scores");
+    alert("Format non reconnu : colonne « Date » introuvable.\nColonnes attendues : Jeu;Version;Date;Durée (min);Joueurs;Lieu;Note (étoiles);Retours");
     return;
   }
   const already = new Set((p.testSessions || []).map(s => s.importKey).filter(Boolean));
@@ -2057,7 +2062,7 @@ function _renderTestSessionsImport() {
       ${warnGame}
       <div style="font-size:.85rem;color:var(--text-600);margin-bottom:.6rem">
         ${items.length} partie${items.length > 1 ? 's' : ''} dans le fichier${nDup ? ` · ${nDup} déjà importée${nDup > 1 ? 's' : ''} (ignorée${nDup > 1 ? 's' : ''})` : ''}.
-        Décoche celles que tu ne veux pas ajouter, et ajoute les étoiles si tu veux.
+        Décoche celles que tu ne veux pas ajouter, et ajuste les étoiles si besoin.
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;font-size:.85rem">
         <label for="ts-import-version">Version (optionnel, pour toutes ces parties) :</label>
