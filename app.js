@@ -1897,6 +1897,237 @@ function saveQuickTestSession(protoId) {
   openDetail('prototype', protoId);
 }
 
+// ═══════════════════════════════════════════════════
+// IMPORT DE PARTIES (sessions de test) depuis un CSV
+// Format BBG App : Jeu;Date;Durée (min);Joueurs;Lieu;Notes;Scores
+// Seuls les champs d'une session sont repris : date, version, joueurs,
+// étoiles, notes (Durée / Lieu / Scores sont ignorés). Version et étoiles,
+// absentes du fichier, se choisissent dans l'aperçu.
+// Additif uniquement : n'altère jamais les sessions existantes.
+// Les parties déjà importées (même ligne) sont ignorées.
+// ═══════════════════════════════════════════════════
+let _tsImport = null;
+
+function _tsNorm(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function _tsHash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function _parseCsv(text) {
+  text = String(text || '').replace(/^﻿/, '');
+  const first = text.split(/\r?\n/)[0] || '';
+  const delim = first.split(';').length >= first.split(',').length ? ';' : ',';
+  const rows = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+      else field += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(field); field = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); rows.push(row); row = []; field = '';
+    } else field += ch;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(c => String(c).trim() !== ''));
+}
+
+// « 08 nov. 2026 », « 8 novembre 2026 », « 08/11/2026 », « 2026-11-08 » → « 2026-11-08 »
+function _parseFlexDate(s) {
+  const MONTHS = { janv:1, jan:1, janvier:1, fevr:2, fev:2, fevrier:2, mars:3, mar:3, avr:4, avril:4, mai:5, juin:6,
+    juil:7, juillet:7, aout:8, sept:9, sep:9, septembre:9, oct:10, octobre:10, nov:11, novembre:11, dec:12, decembre:12 };
+  const iso = (y, m, d) => {
+    y = +y; m = +m; d = +d;
+    if (y < 100) y += 2000;
+    if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return '';
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  };
+  const t = _tsNorm(s);
+  if (!t) return '';
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return iso(m[1], m[2], m[3]);
+  m = t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
+  if (m) return iso(m[3], m[2], m[1]);
+  m = t.match(/^(\d{1,2})(?:er)?\s+([a-z]+)\.?\s+(\d{4})/);
+  if (m && MONTHS[m[2]]) return iso(m[3], MONTHS[m[2]], m[1]);
+  return '';
+}
+
+function importTestSessionsFile(event, protoId) {
+  const input = event.target;
+  const file = input.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    input.value = '';
+    try { _prepareTestSessionsImport(ev.target.result, protoId); }
+    catch (e) { console.error('importTestSessions', e); alert("Impossible de lire ce fichier : " + e.message); }
+  };
+  reader.readAsText(file);
+}
+
+function _prepareTestSessionsImport(text, protoId) {
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) return;
+  const rows = _parseCsv(text);
+  if (rows.length < 2) { alert("Aucune partie trouvée dans ce fichier."); return; }
+  const headers = rows[0].map(_tsNorm);
+  const col = re => headers.findIndex(h => re.test(h));
+  const stars = col(/etoile|star|rating/);
+  const C = {
+    game: col(/^(jeu|game|nom)/), date: col(/date/), dur: col(/dur/), players: col(/joueur|player/),
+    lieu: col(/lieu|location|endroit/), scores: col(/score/), version: col(/^version/), stars,
+    notes: headers.findIndex((h, i) => i !== stars && /note|comment/.test(h)),
+  };
+  if (C.date < 0) {
+    alert("Format non reconnu : colonne « Date » introuvable.\nColonnes attendues : Jeu;Date;Durée (min);Joueurs;Lieu;Notes;Scores");
+    return;
+  }
+  const already = new Set((p.testSessions || []).map(s => s.importKey).filter(Boolean));
+  const title = _tsNorm(p.title);
+  const seen = {};
+  const items = rows.slice(1).map(r => {
+    const get = i => (i >= 0 ? String(r[i] ?? '').trim() : '');
+    const game = get(C.game), rawDate = get(C.date), dur = get(C.dur), lieu = get(C.lieu);
+    const notes = get(C.notes), scores = get(C.scores), playersRaw = get(C.players);
+    const version = get(C.version);
+    const rating = Math.min(5, Math.max(0, parseInt(get(C.stars)) || 0));
+    const date = _parseFlexDate(rawDate);
+    const players = parseInt(playersRaw) || null;
+    const base = [_tsNorm(game), date || _tsNorm(rawDate), players, _tsNorm(dur), _tsNorm(lieu), _tsNorm(notes), _tsNorm(scores)].join('|');
+    seen[base] = (seen[base] || 0) + 1;
+    const importKey = 'csv:' + _tsHash(base + '#' + seen[base]);
+    const g = _tsNorm(game);
+    const gameMatch = !g || g === title || (g.length >= 3 && title.length >= 3 && (g.includes(title) || title.includes(g)));
+    return {
+      game, rawDate, date, players, gameMatch, dup: already.has(importKey),
+      session: { date, version, players, rating, comments: notes, importKey },
+    };
+  });
+  const anyMatch = items.some(it => it.gameMatch && it.game);
+  items.forEach(it => { it.checked = !it.dup && !!it.date && (it.gameMatch || !anyMatch); });
+  _tsImport = { protoId, items, anyMatch };
+  _renderTestSessionsImport();
+}
+
+function _renderTestSessionsImport() {
+  const { protoId, items, anyMatch } = _tsImport;
+  const p = state.prototypes.find(x => x.id === protoId);
+  document.getElementById('ts-import-overlay')?.remove();
+  const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+  const nNew = items.filter(it => !it.dup).length, nDup = items.length - nNew;
+  const warnGame = !anyMatch && items.some(it => it.game)
+    ? `<div style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:.5rem .7rem;font-size:.8rem;margin-bottom:.6rem">
+         ⚠️ Aucun nom de jeu du fichier ne correspond à « ${esc(p.title)} ». Vérifie que c'est le bon fichier.</div>` : '';
+  const rows = items.map((it, i) => {
+    const status = it.dup ? '<span style="color:var(--text-400)">déjà importée</span>'
+      : !it.date ? '<span style="color:#dc2626">date illisible</span>'
+      : !it.gameMatch ? `<span style="color:#b45309">autre jeu</span>` : '';
+    return `<tr style="${it.dup ? 'opacity:.5' : ''}">
+      <td style="padding:.3rem .4rem"><input type="checkbox" data-i="${i}" ${it.checked ? 'checked' : ''} ${it.dup ? 'disabled' : ''}
+        onchange="_tsImport.items[${i}].checked=this.checked;_tsImportCount()" /></td>
+      <td style="padding:.3rem .4rem;white-space:nowrap">${it.date ? fmt(it.date) : esc(it.rawDate || '—')}</td>
+      <td style="padding:.3rem .4rem">${esc(it.game || '—')}</td>
+      <td style="padding:.3rem .4rem;text-align:center">${it.players != null ? it.players + '👤' : '—'}</td>
+      <td style="padding:.3rem .4rem">${it.dup ? (it.session.rating ? '⭐'.repeat(it.session.rating) : '—')
+        : `<select class="form-select" style="width:auto;font-size:.78rem;padding:.15rem .3rem" onchange="_tsImport.items[${i}].session.rating=+this.value">
+            ${[0,1,2,3,4,5].map(n => `<option value="${n}" ${it.session.rating === n ? 'selected' : ''}>${n ? '⭐'.repeat(n) : '—'}</option>`).join('')}
+          </select>`}</td>
+      <td style="padding:.3rem .4rem">${esc(it.session.comments || '')}</td>
+      <td style="padding:.3rem .4rem;font-size:.75rem;white-space:nowrap">${status}</td>
+    </tr>`;
+  }).join('');
+  const ov = document.createElement('div');
+  ov.id = 'ts-import-overlay';
+  ov.className = 'modal-overlay';
+  ov.style.zIndex = '400';
+  ov.innerHTML = `<div class="modal modal-wide" style="max-width:820px">
+    <div class="modal-header">
+      <h2>📥 Importer des parties — ${esc(p.title)}</h2>
+      <button class="modal-close" onclick="_tsImportClose()">✕</button>
+    </div>
+    <div style="padding:1rem 1.5rem">
+      ${warnGame}
+      <div style="font-size:.85rem;color:var(--text-600);margin-bottom:.6rem">
+        ${items.length} partie${items.length > 1 ? 's' : ''} dans le fichier${nDup ? ` · ${nDup} déjà importée${nDup > 1 ? 's' : ''} (ignorée${nDup > 1 ? 's' : ''})` : ''}.
+        Décoche celles que tu ne veux pas ajouter, et ajoute les étoiles si tu veux.
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;font-size:.85rem">
+        <label for="ts-import-version">Version (optionnel, pour toutes ces parties) :</label>
+        <input type="text" id="ts-import-version" class="form-input" placeholder="ex : v2" style="width:7rem" />
+      </div>
+      <div style="max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:8px">
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead><tr style="color:var(--text-500);background:var(--bg, #f8fafc);position:sticky;top:0">
+            <th style="padding:.3rem .4rem"><input type="checkbox" title="Tout cocher / décocher" onchange="_tsImportToggleAll(this.checked)" /></th>
+            <th style="text-align:left;padding:.3rem .4rem">Date</th>
+            <th style="text-align:left;padding:.3rem .4rem">Jeu</th>
+            <th style="padding:.3rem .4rem">Joueurs</th>
+            <th style="text-align:left;padding:.3rem .4rem">Étoiles</th>
+            <th style="text-align:left;padding:.3rem .4rem">Notes</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">
+        <button class="btn-cancel" onclick="_tsImportClose()">Annuler</button>
+        <button class="btn-save" id="ts-import-confirm" onclick="_tsImportConfirm()">Ajouter</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  _tsImportCount();
+}
+
+function _tsImportCount() {
+  const n = _tsImport.items.filter(it => it.checked && !it.dup).length;
+  const btn = document.getElementById('ts-import-confirm');
+  if (btn) { btn.textContent = `Ajouter ${n} partie${n > 1 ? 's' : ''}`; btn.disabled = n === 0; }
+}
+
+function _tsImportToggleAll(on) {
+  _tsImport.items.forEach((it, i) => {
+    if (it.dup) return;
+    it.checked = on;
+    const cb = document.querySelector(`#ts-import-overlay input[data-i="${i}"]`);
+    if (cb) cb.checked = on;
+  });
+  _tsImportCount();
+}
+
+function _tsImportClose() {
+  document.getElementById('ts-import-overlay')?.remove();
+  _tsImport = null;
+}
+
+function _tsImportConfirm() {
+  if (!_tsImport) return;
+  const { protoId, items } = _tsImport;
+  const p = state.prototypes.find(x => x.id === protoId);
+  if (!p) { _tsImportClose(); return; }
+  const version = document.getElementById('ts-import-version')?.value.trim() || '';
+  const toAdd = items.filter(it => it.checked && !it.dup)
+    .map(it => ({ id: uid(), ...it.session, version: it.session.version || version }));
+  if (!toAdd.length) return;
+  p.testSessions = p.testSessions || [];
+  p.testSessions.unshift(...toAdd);
+  updateTestCounterTasks(p);
+  saveState();
+  _tsImportClose();
+  renderPrototypes();
+  if (state.activePage === 'agenda') renderAgenda();
+  openDetail('prototype', protoId);
+  alert(`✅ ${toAdd.length} partie${toAdd.length > 1 ? 's' : ''} ajoutée${toAdd.length > 1 ? 's' : ''} à « ${p.title} ».`);
+}
+
 function saveQuickExchange(contactId) {
   const date    = document.getElementById('qe-date')?.value || today();
   const type    = document.getElementById('qe-type')?.value || 'rencontre';
@@ -4928,7 +5159,12 @@ function openDetail(type, id) {
           }).join('');
           return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
               <span style="display:flex;align-items:center;gap:.6rem">Sessions de test ${avgStars}</span>
-              <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('qts-form');f.classList.toggle('hidden');f.querySelector('input[type=date]').focus()">+ Session</button>
+              <span style="display:flex;gap:.35rem">
+                <label class="btn-quick-task-toggle" style="cursor:pointer" title="Importer des parties depuis un fichier CSV (BBG App…)">📥 Importer
+                  <input type="file" accept=".csv,text/csv,text/plain" style="display:none" onchange="importTestSessionsFile(event,'${p.id}')" />
+                </label>
+                <button class="btn-quick-task-toggle" onclick="var f=document.getElementById('qts-form');f.classList.toggle('hidden');f.querySelector('input[type=date]').focus()">+ Session</button>
+              </span>
             </div>
             <div id="qts-form" class="quick-task-form hidden">
               <input type="date" id="qts-date" class="form-input" value="${today()}" style="width:auto" />
