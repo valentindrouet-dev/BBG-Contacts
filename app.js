@@ -1883,9 +1883,11 @@ function saveQuickTestSession(protoId) {
   const date     = document.getElementById('qts-date')?.value || today();
   const version  = document.getElementById('qts-version')?.value.trim() || '';
   const players  = parseInt(document.getElementById('qts-players')?.value) || null;
+  const duration = parseInt(document.getElementById('qts-duration')?.value) || 0;
   const rating   = parseInt(document.getElementById('qts-rating')?.value) || 0;
   const comments = document.getElementById('qts-comments')?.value.trim() || '';
   const session  = { id: uid(), date, version, players, rating, comments };
+  if (duration > 0) session.duration = duration;
   const p = state.prototypes.find(x => x.id === protoId);
   if (!p) return;
   p.testSessions = p.testSessions || [];
@@ -1902,7 +1904,7 @@ function saveQuickTestSession(protoId) {
 // Format BBG App : Jeu;Version;Date;Durée (min);Joueurs;Lieu;Note (étoiles);Retours;Score 1…
 // (ancien format accepté : Jeu;Date;Durée (min);Joueurs;Lieu;Notes;Scores)
 // Seuls les champs d'une session sont repris : date, version, joueurs,
-// étoiles, notes (Durée / Lieu / Scores sont ignorés). Version et étoiles,
+// étoiles, notes, durée (Lieu / Scores sont ignorés). Version et étoiles,
 // absentes du fichier, se choisissent dans l'aperçu.
 // Additif uniquement : n'altère jamais les sessions existantes.
 // Les parties déjà importées (même ligne) sont ignorées.
@@ -2006,6 +2008,7 @@ function _prepareTestSessionsImport(text, protoId) {
     const rating = Math.min(5, Math.max(0, parseInt(get(C.stars)) || 0));
     const date = _parseFlexDate(rawDate);
     const players = parseInt(playersRaw) || null;
+    const duration = parseInt(dur) || 0;
     const base = [_tsNorm(game), date || _tsNorm(rawDate), players, _tsNorm(dur), _tsNorm(lieu), _tsNorm(notes), _tsNorm(scores)].join('|');
     seen[base] = (seen[base] || 0) + 1;
     const importKey = 'csv:' + _tsHash(base + '#' + seen[base]);
@@ -2013,7 +2016,7 @@ function _prepareTestSessionsImport(text, protoId) {
     const gameMatch = !g || g === title || (g.length >= 3 && title.length >= 3 && (g.includes(title) || title.includes(g)));
     return {
       game, rawDate, date, players, gameMatch, dup: already.has(importKey),
-      session: { date, version, players, rating, comments: notes, importKey },
+      session: { date, version, players, rating, comments: notes, ...(duration > 0 ? { duration } : {}), importKey },
     };
   });
   const anyMatch = items.some(it => it.gameMatch && it.game);
@@ -2041,6 +2044,7 @@ function _renderTestSessionsImport() {
       <td style="padding:.3rem .4rem;white-space:nowrap">${it.date ? fmt(it.date) : esc(it.rawDate || '—')}</td>
       <td style="padding:.3rem .4rem">${esc(it.game || '—')}</td>
       <td style="padding:.3rem .4rem;text-align:center">${it.players != null ? it.players + '👤' : '—'}</td>
+      <td style="padding:.3rem .4rem;text-align:center;white-space:nowrap">${it.session.duration ? it.session.duration + ' min' : '—'}</td>
       <td style="padding:.3rem .4rem">${it.dup ? (it.session.rating ? '⭐'.repeat(it.session.rating) : '—')
         : `<select class="form-select" style="width:auto;font-size:.78rem;padding:.15rem .3rem" onchange="_tsImport.items[${i}].session.rating=+this.value">
             ${[0,1,2,3,4,5].map(n => `<option value="${n}" ${it.session.rating === n ? 'selected' : ''}>${n ? '⭐'.repeat(n) : '—'}</option>`).join('')}
@@ -2075,6 +2079,7 @@ function _renderTestSessionsImport() {
             <th style="text-align:left;padding:.3rem .4rem">Date</th>
             <th style="text-align:left;padding:.3rem .4rem">Jeu</th>
             <th style="padding:.3rem .4rem">Joueurs</th>
+            <th style="padding:.3rem .4rem">Durée</th>
             <th style="text-align:left;padding:.3rem .4rem">Étoiles</th>
             <th style="text-align:left;padding:.3rem .4rem">Notes</th>
             <th></th>
@@ -2765,6 +2770,8 @@ function populateCostsForm(costs = []) {
 // ═══════════════════════════════════════════════════
 // TEST SESSIONS (prototype)
 // ═══════════════════════════════════════════════════
+let _testSessionsOrig = {};
+
 function addTestRow(session = {}) {
   const tbody = document.getElementById('proto-test-body');
   if (!tbody) return;
@@ -2776,7 +2783,8 @@ function addTestRow(session = {}) {
   tr.innerHTML = `
     <td><input type="date" value="${esc(session.date || '')}" style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
     <td><input type="text" class="test-version" placeholder="v1.0" value="${esc(session.version || '')}" style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
-    <td><input type="number" min="1" max="99" placeholder="nb" value="${session.players != null ? session.players : ''}" style="font-size:.8rem;padding:.25rem .35rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
+    <td><input type="number" class="test-players" min="1" max="99" placeholder="nb" value="${session.players != null ? session.players : ''}" style="font-size:.8rem;padding:.25rem .35rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
+    <td><input type="number" class="test-duration" min="1" max="999" placeholder="min" value="${session.duration ? session.duration : ''}" style="font-size:.8rem;padding:.25rem .35rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit" /></td>
     <td><select style="font-size:.75rem;padding:.25rem .3rem;border:1px solid var(--border-input);border-radius:var(--rx);width:100%;font-family:inherit"><option value="">—</option>${ratingOpts}</select></td>
     <td><input type="text" class="test-comments" placeholder="Retours, impressions…" value="${esc(session.comments || '')}" /></td>
     <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>`;
@@ -2786,21 +2794,30 @@ function addTestRow(session = {}) {
 function getTestSessionsFromForm() {
   const tbody = document.getElementById('proto-test-body');
   if (!tbody) return [];
-  return Array.from(tbody.querySelectorAll('tr')).map(tr => ({
-    id:       tr.dataset.testId || uid(),
-    date:     tr.querySelector('input[type="date"]')?.value || '',
-    version:  tr.querySelector('.test-version')?.value.trim() || '',
-    players:  parseInt(tr.querySelector('input[type="number"]')?.value) || null,
-    rating:   parseInt(tr.querySelector('select')?.value) || null,
-    comments: tr.querySelector('.test-comments')?.value.trim() || '',
-  })).filter(s => s.date || s.comments);
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => {
+    const id = tr.dataset.testId || uid();
+    // On repart de la session d'origine : les champs non affichés (ex. importKey) sont conservés.
+    const s = {
+      ...(_testSessionsOrig[id] || {}),
+      id,
+      date:     tr.querySelector('input[type="date"]')?.value || '',
+      version:  tr.querySelector('.test-version')?.value.trim() || '',
+      players:  parseInt(tr.querySelector('.test-players')?.value) || null,
+      rating:   parseInt(tr.querySelector('select')?.value) || null,
+      comments: tr.querySelector('.test-comments')?.value.trim() || '',
+    };
+    const dur = parseInt(tr.querySelector('.test-duration')?.value) || 0;
+    if (dur > 0) s.duration = dur; else delete s.duration;
+    return s;
+  }).filter(s => s.date || s.comments);
 }
 
 function populateTestSessionsForm(sessions = []) {
   const tbody = document.getElementById('proto-test-body');
   if (!tbody) return;
   tbody.innerHTML = '';
-  sessions.forEach(s => addTestRow(s));
+  _testSessionsOrig = {};
+  sessions.forEach(s => { if (s && s.id) _testSessionsOrig[s.id] = s; addTestRow(s); });
 }
 
 // ═══════════════════════════════════════════════════
@@ -5134,6 +5151,11 @@ function openDetail(type, id) {
           const avgStars = avg !== null
             ? `<span class="test-avg-badge" title="${avg.toFixed(1)}/5">${'⭐'.repeat(Math.round(avg))} <span style="font-size:.72rem;color:var(--text-500)">${avg.toFixed(1)}/5 (${rated.length} noté${rated.length>1?'s':''})</span></span>`
             : '';
+          const timed = sessions.filter(s => +s.duration > 0);
+          const avgDur = timed.length ? Math.round(timed.reduce((sum, s) => sum + (+s.duration), 0) / timed.length) : null;
+          const avgDurBadge = avgDur !== null
+            ? `<span class="test-avg-badge" title="Durée moyenne sur ${timed.length} partie${timed.length>1?'s':''} minutée${timed.length>1?'s':''}">⏱ ${avgDur} min <span style="font-size:.72rem;color:var(--text-500)">moy. (${timed.length} minutée${timed.length>1?'s':''})</span></span>`
+            : '';
           const ratingOpts = [0,1,2,3,4,5].map(n =>
             `<option value="${n}">${n === 0 ? '— sans note' : '⭐'.repeat(n)}</option>`
           ).join('');
@@ -5151,19 +5173,20 @@ function openDetail(type, id) {
           });
           const rows = versionKeys.map(v => {
             const groupSessions = [...byVersion[v]].sort((a,b) => b.date.localeCompare(a.date));
-            const sep = `<tr><td colspan="4" style="padding:.35rem .4rem .1rem;border-top:1px solid var(--border)">
+            const sep = `<tr><td colspan="5" style="padding:.35rem .4rem .1rem;border-top:1px solid var(--border)">
               <span style="font-size:.7rem;font-weight:700;color:var(--text-400);text-transform:uppercase;letter-spacing:.06em">${v ? esc(v) : 'Sans version'}</span>
             </td></tr>`;
             const dataRows = groupSessions.map(s => `<tr>
               <td style="padding:.25rem .4rem;white-space:nowrap">${s.date ? new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
               <td style="padding:.25rem .4rem;text-align:center">${s.players != null ? s.players + '👤' : '—'}</td>
+              <td style="padding:.25rem .4rem;text-align:center;white-space:nowrap">${+s.duration > 0 ? s.duration + ' min' : '—'}</td>
               <td style="padding:.25rem .4rem;text-align:center">${s.rating ? '⭐'.repeat(s.rating) : '—'}</td>
               <td style="padding:.25rem .4rem">${esc(s.comments||'')}</td>
             </tr>`).join('');
             return sep + dataRows;
           }).join('');
           return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
-              <span style="display:flex;align-items:center;gap:.6rem">Sessions de test ${avgStars}</span>
+              <span style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">Sessions de test ${avgStars}${avgDurBadge}</span>
               <span style="display:flex;gap:.35rem">
                 <label class="btn-quick-task-toggle" style="cursor:pointer" title="Importer des parties depuis un fichier CSV (BBG App…)">📥 Importer
                   <input type="file" accept=".csv,text/csv,text/plain" style="display:none" onchange="importTestSessionsFile(event,'${p.id}')" />
@@ -5175,6 +5198,7 @@ function openDetail(type, id) {
               <input type="date" id="qts-date" class="form-input" value="${today()}" style="width:auto" />
               <input type="text" id="qts-version" class="form-input" placeholder="Version" style="width:6rem" />
               <input type="number" id="qts-players" class="form-input" placeholder="Joueurs" min="1" max="99" style="width:5.5rem" />
+              <input type="number" id="qts-duration" class="form-input" placeholder="Durée (min)" min="1" max="999" style="width:6.5rem" />
               <select id="qts-rating" class="form-select" style="width:auto">${ratingOpts}</select>
               <input type="text" id="qts-comments" class="form-input" placeholder="Commentaires…" style="flex:1;min-width:80px" />
               <button onclick="saveQuickTestSession('${p.id}')" class="btn-save" style="padding:.25rem .75rem;font-size:.8rem">Ajouter</button>
@@ -5184,6 +5208,7 @@ function openDetail(type, id) {
             <thead><tr style="color:var(--text-500)">
               <th style="text-align:left;padding:.2rem .4rem">Date</th>
               <th style="text-align:center;padding:.2rem .4rem">Joueurs</th>
+              <th style="text-align:center;padding:.2rem .4rem">Durée</th>
               <th style="text-align:center;padding:.2rem .4rem">Note</th>
               <th style="text-align:left;padding:.2rem .4rem">Commentaires</th>
             </tr></thead>
@@ -6208,9 +6233,9 @@ function buildReportHTML() {
       (p.tasks||[]).map(t => [nz(t.text), urg(t.urgency), fmtD(t.dueDate), t.done?'✅ Fait':'À faire', nz(t.note)]));
     const costs = table(['Poste','Montant'], (p.costs||[]).map(c => [nz(c.description), money(c.price)]));
     const totalCost = (p.costs||[]).reduce((s,c)=>s+(c.price||0),0);
-    const sessions = table(['Date','Version','Joueurs','Note','Commentaires'],
+    const sessions = table(['Date','Version','Joueurs','Durée','Note','Commentaires'],
       (p.testSessions||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(s => [
-        fmtD(s.date), nz(s.version), s.players != null ? String(s.players) : '—',
+        fmtD(s.date), nz(s.version), s.players != null ? String(s.players) : '—', +s.duration > 0 ? s.duration + ' min' : '—',
         s.rating ? '⭐'.repeat(s.rating) : '—', nz(s.comments)]));
     return `<div class="card">
       <div class="card-h">${nz(p.title)} <span class="card-tag">${esc(STATUS_LABELS[p.status] || p.status || '')}</span></div>
