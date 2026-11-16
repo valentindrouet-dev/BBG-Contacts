@@ -316,6 +316,16 @@ const STATUS_LABELS = {
 
 const URGENCY_EMOJI = { faible: '💤', normal: '📌', urgent: '⚠️', critique: '🚨' };
 
+// Onglet « 🧪 Test Proto » (grille d'évaluation) masqué : fonction non utilisée.
+// Les évaluations déjà saisies restent conservées dans les données.
+const SHOW_TEST_PROTO = false;
+
+// Nombre total de joueurs sur les sessions de test d'un jeu
+function totalTestPlayers(p) {
+  return (p.testSessions || []).filter(s => s.date || s.comments || s.rating)
+    .reduce((n, s) => n + (parseInt(s.players) || 0), 0);
+}
+
 const CAT_LABELS = {
   auteur: 'Auteurs', illustrateur: 'Illustrateurs', editeur: 'Éditeurs',
   distributeur: 'Distributeurs', fabricant: 'Fabricants', medias: 'Médias', assos: 'Festivals & Assos', administratif: 'Administratif'
@@ -475,7 +485,7 @@ function renderDashboard() {
     .map(p => {
       const sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
       const counterTask = (p.tasks||[]).find(t => t.subtype === 'test_counter');
-      return { ...counterTask, _from: 'prototype', _name: p.title, _id: p.id, _sessionCount: sc, _status: p.status, _emoji: p.emoji };
+      return { ...counterTask, _from: 'prototype', _name: p.title, _id: p.id, _sessionCount: sc, _status: p.status, _emoji: p.emoji, _players: totalTestPlayers(p) };
     })
     .sort((a,b) => {
       const da = a.dueDate || '', db = b.dueDate || '';
@@ -618,6 +628,7 @@ function renderDashboard() {
                 <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s"></div>
               </div>
               <span style="font-size:.8rem;font-weight:600;color:${barColor};white-space:nowrap">${cur}/${target}</span>
+              <span style="font-size:.78rem;color:var(--text-500);white-space:nowrap" title="Nombre total de joueurs sur les sessions de test">👥 ${t._players || 0} joueur${(t._players || 0) > 1 ? 's' : ''}</span>
               ${daysBadge}
             </div>
           </div>`;
@@ -1188,7 +1199,7 @@ function renderPrototypesStats() {
       const sc = (p.testSessions||[]).filter(s => s.date||s.comments||s.rating).length;
       const counterTask = (p.tasks||[]).find(t => t.subtype === 'test_counter');
       const target = counterTask ? (counterTask.targetCount || 1) : 1;
-      return { title: p.title, count: sc, target, status: p.status };
+      return { title: p.title, count: sc, target, status: p.status, players: totalTestPlayers(p) };
     })
     .sort((a, b) => {
       const sa = TEST_STATUS_ORDER_STATS[a.status] ?? 99;
@@ -1196,6 +1207,7 @@ function renderPrototypesStats() {
       return sa - sb;
     });
   const totalTests = testProtos.reduce((s, p) => s + p.count, 0);
+  const totalPlayers = testProtos.reduce((s, p) => s + p.players, 0);
 
   el.innerHTML = `
     <div class="fstat-block">
@@ -1219,16 +1231,17 @@ function renderPrototypesStats() {
         const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#ca8a04' : '#ea580c';
         const sIcon = p.status ? (PROTO_ICONS[p.status]||'') : '';
         return `<div class="fstat-row" style="flex-wrap:wrap;gap:.2rem .5rem">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(STATUS_LABELS[p.status]||p.status||'')}">${sIcon ? sIcon+' ' : ''}${esc(p.title)}</span>
-          <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0">
-            <div style="width:52px;height:5px;background:var(--border-input);border-radius:3px;overflow:hidden">
+          <span style="flex:1;min-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.title)} — ${esc(STATUS_LABELS[p.status]||p.status||'')}">${sIcon ? sIcon+' ' : ''}${esc(p.title)}</span>
+          <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0">
+            <div style="width:34px;height:5px;background:var(--border-input);border-radius:3px;overflow:hidden">
               <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px"></div>
             </div>
             <span class="fstat-row-val" style="color:${barColor}">${p.count}/${p.target}</span>
+            <span style="font-size:.72rem;color:var(--text-500);white-space:nowrap" title="${p.players} joueur${p.players > 1 ? 's' : ''} au total">👥 ${p.players}</span>
           </div>
         </div>`;
       }).join('')}
-      ${totalTests ? `<div class="fstat-total-row"><span>Total</span><span>${totalTests}</span></div>` : ''}
+      ${totalTests ? `<div class="fstat-total-row"><span>Total</span><span>${totalTests} · 👥 ${totalPlayers}</span></div>` : ''}
     </div>` : ''}
 
     <div class="fstat-block">
@@ -1384,8 +1397,7 @@ function prototypeCard(p, zoom) {
     </div>`;
   }
 
-  const allDoneP = (p.tasks||[]).length > 0 && (p.tasks||[]).every(t => t.done);
-  const allDoneEmoji = allDoneP ? `<span class="card-urg-emoji" data-urg="done" title="Toutes les tâches terminées">✅</span>` : '';
+  // (✅ « toutes les tâches terminées » volontairement non affiché sur les vignettes des jeux)
 
   const compareCheck = state.compareMode
     ? `<input type="checkbox" class="card-compare-check"
@@ -1396,7 +1408,7 @@ function prototypeCard(p, zoom) {
   return `<div class="card card-hover"
     onclick="${state.compareMode ? '' : `openDetail('prototype','${p.id}')`}" title="${esc(p.title)}" style="${state.compareMode ? 'cursor:default' : ''}">
     <div class="card-media card-media-${p.status}">
-      ${compareCheck}${mediaContent}${badge}${urgEmoji}${allDoneEmoji}${pVideoBadge}${editBtn}
+      ${compareCheck}${mediaContent}${badge}${urgEmoji}${pVideoBadge}${editBtn}
     </div>
     ${body}
   </div>`;
@@ -5017,6 +5029,7 @@ function openDetail(type, id) {
         <button class="modal-close" onclick="closeModal('detail')" style="flex-shrink:0;margin-left:.5rem">✕</button>
       </div>
       ${(() => {
+        if (!SHOW_TEST_PROTO) { _detailTab = 'fiche'; return ''; }
         const ev = getEval(p);
         const done = ev.primary.some(c => (c.score||0) > 0) || ev.status !== '';
         const testLabel = done
@@ -5186,7 +5199,7 @@ function openDetail(type, id) {
             return sep + dataRows;
           }).join('');
           return `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
-              <span style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">Sessions de test ${avgStars}${avgDurBadge}</span>
+              <span style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">Sessions de test ${avgStars}${avgDurBadge}${(() => { const tp = totalTestPlayers(p); return tp ? `<span class="test-avg-badge" title="Nombre total de joueurs sur les sessions de test">👥 ${tp} <span style="font-size:.72rem;color:var(--text-500)">joueur${tp > 1 ? 's' : ''} au total</span></span>` : ''; })()}</span>
               <span style="display:flex;gap:.35rem">
                 <label class="btn-quick-task-toggle" style="cursor:pointer" title="Importer des parties depuis un fichier CSV (BBG App…)">📥 Importer
                   <input type="file" accept=".csv,text/csv,text/plain" style="display:none" onchange="importTestSessionsFile(event,'${p.id}')" />
